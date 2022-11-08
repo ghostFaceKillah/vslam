@@ -1,0 +1,3 @@
+
+DirPath = str
+FilePath = str
