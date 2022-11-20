@@ -1,7 +1,29 @@
+2022-11-08
+==========
+
+What 'Intro to VSLAM' book did:
+
+1) take GFTT feature extractor and extract features
+2) use LK optical flow to figure out feature flow between left eye and right eye
+3) based on this matching, do triangulation and initialize first baseline map from it
+
+I guess they don't want to burn too much compute on the feature matching ...
+I wonder:
+- how much better ORB features are for tracking
+- how much faster is GFTT vs ORB+ brute force match +RANSAC 
+
+
+
+
 2022-11-07
 ==========
 
-Probably need a nice camera library
+Probably need a nice camera library.
+
+Would be super nice to have cool visualizations of the camera matrix,
+projections, etc.
+
+Maybe just in pangolin, right ?
 
 
 2022-11-06
