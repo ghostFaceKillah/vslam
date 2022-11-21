@@ -217,7 +217,6 @@ if __name__ == '__main__':
     cam_pts_1 = transform(pts1)
     cam_pts_2 = transform(pts2)
 
-
     scales = mike_triangulation(cam_pts_1, T1, cam_pts_2, T2)
     # pts_3d_2, status = linear_LS_triangulation(cam_pts_1, T1, cam_pts_2, T2)
 
