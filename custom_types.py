@@ -1,9 +1,10 @@
-from typing import TypeVar, Generic, TypeAlias, Union, Type
+from typing import TypeAlias
 
 import numpy as np
-from numpy.typing import ArrayLike
 
 DirPath = str
 FilePath = str
 
 Array: TypeAlias = np.ndarray
+
+BinaryFeature = Array['N', np.uint8]

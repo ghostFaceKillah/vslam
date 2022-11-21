@@ -154,12 +154,14 @@ if __name__ == '__main__':
     # cx = 367.215
     # cy = 248.375
 
-    img_2_path = "/Users/misiu-dev/temp/phd/2022/mav0/cam0/data/1403636582763555584.png"
-    img_1_path = "/Users/misiu-dev/temp/phd/2022/mav0/cam0/data/1403636583013555456.png"
-    fx: 517.3
-    fy: 516.5
-    cx: 325.1
-    cy: 249.7
+    # super doesn't work
+    img_1_path = "/Users/misiu-dev/temp/phd/kitti-dataset/sequences/00/image_0/000000.png"
+    img_2_path = "/Users/misiu-dev/temp/phd/kitti-dataset/sequences/00/image_1/000000.png"
+
+    fx = 517.3
+    fy = 516.5
+    cx = 325.1
+    cy = 249.7
 
 
     focal_len = fx
