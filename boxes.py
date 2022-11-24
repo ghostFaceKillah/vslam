@@ -57,8 +57,7 @@ class Packer(Protocol):
     def pack(self, name_to_img: Dict[str, ImageArray]) -> Packing:
         ...
 
-# class PaddedBox():
-#     pass
+
 
 class _Ordering(StrEnum):
     VERTICAL = 'vertical'
@@ -85,16 +84,14 @@ def _get_size_of_combined_packings(
     return height, width
 
 
-@attr.s(auto_attribs=True)
-class _RowCol(Packer):
-    _items: List[Union[Packer, ImageName]]
-    _ordering: _Ordering
-
-    def _items_to_packings(self, name_to_img: Dict[str, ImageArray]) -> List[Packing]:
+def _items_and_images_to_packings(
+        items: List[Union[Packer, ImageName]],
+        name_to_img: Dict[str, ImageArray]
+    ):
         packings = []
 
         # render items into packings
-        for item in self._items:
+        for item in items:
             if isinstance(item, Packer):
                 packing = item.pack(name_to_img)
             else:
@@ -107,9 +104,36 @@ class _RowCol(Packer):
 
         return packings
 
+
+@attr.s(auto_attribs=True)
+class Padding(Packer):
+    _item: Union[Packer, ImageName]
+    _padding: int = 20
+
+    def pack(self, name_to_img: Dict[str, ImageArray]) -> Packing:
+        assert len(name_to_img)
+
+        packing = _items_and_images_to_packings([self._item], name_to_img)[0]
+        height, width = packing.size
+
+        height += 2 * self._padding
+        width += 2 * self._padding
+
+        elem_name_to_px: Dict[ImageName, PxCoords] = {}
+        for name, px_coords in packing.elem_name_to_px.items():
+            elem_name_to_px[name] = PxCoords(h=px_coords.h + self._padding, w=px_coords.w + self._padding)
+
+        return Packing(elem_name_to_px=elem_name_to_px, size=(height, width))
+
+
+@attr.s(auto_attribs=True)
+class _RowCol(Packer):
+    _items: List[Union[Packer, ImageName]]
+    _ordering: _Ordering
+
     def pack(self, name_to_img: Dict[str, ImageArray]) -> Packing:
 
-        packings = self._items_to_packings(name_to_img)
+        packings = _items_and_images_to_packings(self._items, name_to_img)
         height, width = _get_size_of_combined_packings(packings, self._ordering)
 
         elem_name_to_px: Dict[ImageName, PxCoords] = {}
@@ -132,10 +156,7 @@ class _RowCol(Packer):
             for name, px_coords in packing.elem_name_to_px.items():
                 elem_name_to_px[name] = PxCoords(h=px_coords.h + packing_h_offset, w=px_coords.w + packing_w_offset)
 
-        return Packing(
-            elem_name_to_px=elem_name_to_px,
-            size=(height, width)
-        )
+        return Packing(elem_name_to_px=elem_name_to_px, size=(height, width))
 
     def render(self, name_to_img: Dict[str, ImageArray]) -> BGRImageArray:
         return self.pack(name_to_img).render(name_to_img)
@@ -176,6 +197,7 @@ def test_integration():
     }
     Col(Row("a", "b"), Row("c", "d")).render(inputs)
     Col("a", "b", "c", "d").render(inputs)
+    Row(Padding("a"), "b", Padding(Col("c", "d"))).render(inputs)
 
 
 if __name__ == '__main__':
