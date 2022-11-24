@@ -1,5 +1,7 @@
 import attr
+import numpy as np
 
+from colors import BGRCuteColors, BGRColor
 from custom_types import ImageArray
 from utils.enum import StrEnum
 
@@ -14,8 +16,7 @@ Packing
     layout
 """
 
-from typing import Tuple, Dict, List, Union
-from abc import ABC, abstractmethod
+from typing import Tuple, Dict, List, Union, Protocol, runtime_checkable
 import attr
 
 import enum
@@ -38,14 +39,21 @@ class Packing:
 
     def render(
         self,
-        name_to_img: Dict[ImageName, ImageArray]
+        name_to_img: Dict[ImageName, ImageArray],
+        background_color: BGRColor = BGRCuteColors.DARK_BLUE
     ):
-        pass
+        canvas = np.ones(self.size + (3,), dtype=np.uint8) * np.array(background_color)
+
+        for elem, px_coords in self.elem_name_to_px.items():
+            assert elem in name_to_img, f"Cannot find image {elem} in {name_to_img=}"
+            img = name_to_img[elem]
+            canvas[px_coords.h:px_coords.h+img.shape[0], px_coords.w:px_coords.w+img.shape[1]] = img
+        return canvas
 
 
-class Packer(ABC):
+@runtime_checkable
+class Packer(Protocol):
 
-    @abstractmethod
     def pack(self, name_to_img: Dict[str, ImageArray]) -> Packing:
         ...
 
@@ -93,7 +101,7 @@ class _RowCol(Packer):
                 assert isinstance(item, str)
                 packing = Packing(
                     elem_name_to_px={item: PxCoords(h=0, w=0)},
-                    size=name_to_img[item].size[:2]
+                    size=name_to_img[item].shape[:2]
                 )
             packings.append(packing)
 
@@ -140,23 +148,48 @@ class Row(_RowCol):
         _RowCol.__init__(self, items=list(args), ordering=_Ordering.HORIZONTAL)
 
 
+def test_more_complex():
+    layout = Row(Col("A", Row("B")), "C")
+
+    packing = layout.pack({
+        "baba": np.zeros(shape=(640, 480), dtype=np.uint8),
+        "BABA": np.zeros(shape=(1024, 768, 3), dtype=np.uint8),
+        "ahaha": np.zeros(shape=(2880, 1440), dtype=np.uint8)
+    })
+    print(packing)
+
+
+def test_basic_row_and_col_behaviour():
+
+    inputs = {
+        "a": np.zeros(shape=(640, 480), dtype=np.uint8),
+        "b": np.zeros(shape=(1024, 768, 3), dtype=np.uint8),
+        "c": np.zeros(shape=(2880, 1440), dtype=np.uint8)
+    }
+
+    assert Row("a", "b", "c").pack(inputs).size == (2880, 2688)
+    assert Col("a", "b", "c").pack(inputs).size == (4544, 1440)
+    assert Col(Row("a"), Row("b"), Row("c")).pack(inputs).size == (4544, 1440)
+    assert Row(Col("a"), Col("b"), Col("c")).pack(inputs).size == (2880, 2688)
+    assert Row(Col("a", Row("b")), "c").pack(inputs).size == (2880, 2208)
 
 
 if __name__ == '__main__':
-    oke = Row(
-    Col(
-        "ahaha",
-        Row(
-            "BABA"
-        ),
-    ), 
-    "baba"
-)
+    layout = Row(Col("a", Row("b")), "c")
 
-    oke.pack({
-        'baba': ...,
-        "BABA": ...,
-        "ahaha": ...
+    inputs = {
+        "a": np.array(BGRCuteColors.CYAN) * np.ones(shape=(640, 480, 3), dtype=np.uint8),
+        "b": np.array(BGRCuteColors.SALMON) * np.ones(shape=(100, 600, 3), dtype=np.uint8),
+        "c": np.array(BGRCuteColors.CRIMSON) * np.zeros(shape=(288, 244, 3), dtype=np.uint8),
+        "d": np.array(BGRCuteColors.SUN_YELLOW) * np.zeros(shape=(288, 244, 3), dtype=np.uint8)
     }
-    )
+
+    packing = layout.pack(inputs)
+    print(packing)
+    img = packing.render(inputs)
+    import cv2
+
+    cv2.imshow('hehe', img)
+    cv2.waitKey(-1)
+
     x = 1
