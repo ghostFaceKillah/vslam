@@ -2,7 +2,7 @@ import attr
 import numpy as np
 
 from colors import BGRCuteColors, BGRColor
-from custom_types import ImageArray
+from custom_types import ImageArray, BGRImageArray
 from utils.enum import StrEnum
 
 """
@@ -42,7 +42,7 @@ class Packing:
         name_to_img: Dict[ImageName, ImageArray],
         background_color: BGRColor = BGRCuteColors.DARK_BLUE
     ):
-        canvas = np.ones(self.size + (3,), dtype=np.uint8) * np.array(background_color)
+        canvas = np.ones(self.size + (3,), dtype=np.uint8) * np.array(background_color, dtype=np.uint8)
 
         for elem, px_coords in self.elem_name_to_px.items():
             assert elem in name_to_img, f"Cannot find image {elem} in {name_to_img=}"
@@ -120,10 +120,10 @@ class _RowCol(Packer):
 
             if self._ordering == _Ordering.VERTICAL:
                 packing_h_offset = h_offset
-                packing_w_offset = width - pack_w // 2
+                packing_w_offset = (width - pack_w) // 2
                 h_offset += pack_h
             elif self._ordering == _Ordering.HORIZONTAL:
-                packing_h_offset = height - pack_h // 2
+                packing_h_offset = (height - pack_h) // 2
                 packing_w_offset = w_offset
                 w_offset += pack_w
             else:
@@ -137,6 +137,9 @@ class _RowCol(Packer):
             size=(height, width)
         )
 
+    def render(self, name_to_img: Dict[str, ImageArray]) -> BGRImageArray:
+        return self.pack(name_to_img).render(name_to_img)
+
 
 class Col(_RowCol):
     def __init__(self, *args):
@@ -146,17 +149,6 @@ class Col(_RowCol):
 class Row(_RowCol):
     def __init__(self, *args):
         _RowCol.__init__(self, items=list(args), ordering=_Ordering.HORIZONTAL)
-
-
-def test_more_complex():
-    layout = Row(Col("A", Row("B")), "C")
-
-    packing = layout.pack({
-        "baba": np.zeros(shape=(640, 480), dtype=np.uint8),
-        "BABA": np.zeros(shape=(1024, 768, 3), dtype=np.uint8),
-        "ahaha": np.zeros(shape=(2880, 1440), dtype=np.uint8)
-    })
-    print(packing)
 
 
 def test_basic_row_and_col_behaviour():
@@ -174,22 +166,18 @@ def test_basic_row_and_col_behaviour():
     assert Row(Col("a", Row("b")), "c").pack(inputs).size == (2880, 2208)
 
 
-if __name__ == '__main__':
-    layout = Row(Col("a", Row("b")), "c")
+def test_integration():
 
     inputs = {
-        "a": np.array(BGRCuteColors.CYAN) * np.ones(shape=(640, 480, 3), dtype=np.uint8),
-        "b": np.array(BGRCuteColors.SALMON) * np.ones(shape=(100, 600, 3), dtype=np.uint8),
-        "c": np.array(BGRCuteColors.CRIMSON) * np.zeros(shape=(288, 244, 3), dtype=np.uint8),
-        "d": np.array(BGRCuteColors.SUN_YELLOW) * np.zeros(shape=(288, 244, 3), dtype=np.uint8)
+        "a": np.array(BGRCuteColors.CYAN, dtype=np.uint8) * np.ones(shape=(640, 480, 3), dtype=np.uint8),
+        "b": np.array(BGRCuteColors.SALMON, dtype=np.uint8) * np.ones(shape=(100, 600, 3), dtype=np.uint8),
+        "c": np.array(BGRCuteColors.CRIMSON, dtype=np.uint8) * np.ones(shape=(288, 244, 3), dtype=np.uint8),
+        "d": np.array(BGRCuteColors.SUN_YELLOW, dtype=np.uint8) * np.ones(shape=(288, 244, 3), dtype=np.uint8)
     }
+    Col(Row("a", "b"), Row("c", "d")).render(inputs)
+    Col("a", "b", "c", "d").render(inputs)
 
-    packing = layout.pack(inputs)
-    print(packing)
-    img = packing.render(inputs)
-    import cv2
 
-    cv2.imshow('hehe', img)
-    cv2.waitKey(-1)
-
-    x = 1
+if __name__ == '__main__':
+    test_basic_row_and_col_behaviour()
+    test_integration()
