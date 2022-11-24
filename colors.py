@@ -1,7 +1,11 @@
 from typing import Tuple
 
 
+BGRColor = Tuple[int, int, int]
+
 class BGRCuteColors:
+    DARK_GRAY = 20, 20, 20
+
     PURPLE = 119, 17, 136
     CRIMSON = 85, 51, 170
     SALMON = 102, 102, 204
@@ -18,7 +22,7 @@ class BGRCuteColors:
     VIOLET = 153, 51, 102
 
 
-def _convert_12_bit_to_bgr(clr_12_bit: str) -> Tuple[int]:
+def _convert_12_bit_to_bgr(clr_12_bit: str) -> BGRColor:
     r, g, b = [int(2 * b, 16) for b in clr_12_bit]
     return b, g, r
 
