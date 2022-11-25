@@ -1,10 +1,17 @@
+2022-11-24
+----------
+Added nice debugging tool for evaluating matches.
+- [ ] Add UI: use case y / n good bad match, general displaying of information
+- [X] Need to add text rendering and display match details
+
+
 2022-11-08
-==========
+----------
 
 What 'Intro to VSLAM' book did:
 
 1) take GFTT feature extractor and extract features
-2) use LK optical flow to figure out feature flow between left eye and right eye
+2) use LK optical flow to figure out feature matching between left eye and right eye
 3) based on this matching, do triangulation and initialize first baseline map from it
 
 I guess they don't want to burn too much compute on the feature matching ...
