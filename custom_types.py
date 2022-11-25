@@ -15,3 +15,7 @@ BGRImageArray = Array['H,W,3', np.uint8]
 GrayImageArray = Array['H,W', np.uint8]
 
 ImageArray = Union[BGRImageArray, GrayImageArray]
+
+HeightPx = int
+WidthPx = int
+Channels = int
