@@ -2,7 +2,8 @@ import cv2
 import numpy as np
 from typing import Tuple
 
-from custom_types import BGRImageArray
+from colors import BGRCuteColors
+from custom_types import BGRImageArray, Channels, WidthPx, HeightPx, BGRColor
 
 
 def magnify(img: BGRImageArray, factor: float = 0.5) -> BGRImageArray:
@@ -26,3 +27,10 @@ def take_crop_around(
     to_w = min(im_w, w + crop_w // 2)
 
     return np.copy(img[from_h:to_h, from_w:to_w])
+
+
+def get_canvas(
+    shape: Tuple[HeightPx, WidthPx, Channels],
+    background_color: BGRColor = BGRCuteColors.DARK_BLUE
+):
+    return np.ones(shape, dtype=np.uint8) * np.array(background_color, dtype=np.uint8)
