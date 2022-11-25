@@ -4,8 +4,10 @@ from typing import Tuple, Dict, List, Union, Protocol, runtime_checkable
 import attr
 
 from colors import BGRCuteColors, BGRColor
-from custom_types import ImageArray, BGRImageArray
+from custom_types import ImageArray, BGRImageArray, HeightPx, WidthPx
+from utils.cv2_but_its_typed import cv2_get_text_size
 from utils.enum import StrEnum
+from utils.image import get_canvas
 
 
 @attr.s(auto_attribs=True)
@@ -14,8 +16,6 @@ class PxCoords:
     w: int   # 0 is top
 
 
-HeightPx = int
-WidthPx = int
 ImageName = str
 
 
@@ -29,7 +29,7 @@ class Packing:
         name_to_img: Dict[ImageName, ImageArray],
         background_color: BGRColor = BGRCuteColors.DARK_BLUE
     ):
-        canvas = np.ones(self.size + (3,), dtype=np.uint8) * np.array(background_color, dtype=np.uint8)
+        canvas = get_canvas(self.size + (3,), background_color)
 
         for elem, px_coords in self.elem_name_to_px.items():
             assert elem in name_to_img, f"Cannot find image {elem} in {name_to_img=}"
@@ -160,16 +160,47 @@ class Row(_RowCol):
 
 
 @attr.s(auto_attribs=True)
-class FontFace:
-    color: BGRColor = BGRCuteColors.DARK_BLUE
+class FontStyle:
+    color: BGRColor = BGRCuteColors.OFF_WHITE
     thickness: int = 1
-    font: int = cv2.FONT_HERSHEY_PLAIN
+    face: int = cv2.FONT_HERSHEY_PLAIN
     scale: float = 1
 
 
 @attr.s(auto_attribs=True)
 class TextRenderer:
-    font_face: FontFace = attr.Factory(FontFace)
+    font_style: FontStyle = attr.Factory(FontStyle)
+    vspace: float = 0.4
+    padding: int = 15
+    background_color: BGRColor = BGRCuteColors.DARK_BLUE
 
     def render(self, txt: str) -> BGRImageArray:
-        pass
+        lines = txt.split('\n')
+
+        longest_line = max(lines, key=len)
+
+        text_size = cv2_get_text_size(longest_line, self.font_style.face, self.font_style.scale, self.font_style.thickness)
+        width = text_size.width_px + self.padding
+        height = int(len(lines) * text_size.height_px * (1 + self.vspace))
+        canvas = get_canvas((height, width, 3), self.background_color)
+
+        for i, line in enumerate(lines):
+            cv2.putText(
+                canvas,
+                line,
+                (0, int(text_size.baseline* 2 + i * (1 + self.vspace) * text_size.height_px)),
+                fontFace=self.font_style.face,
+                fontScale=self.font_style.scale,
+                color=self.font_style.color,
+                thickness=self.font_style.thickness,
+                bottomLeftOrigin=False
+            )
+
+        return canvas
+
+
+if __name__ == '__main__':
+    img = TextRenderer().render('heheh \npoetry of the heart \n okekoekeoke')
+    import cv2
+    cv2.imshow('hehe', img)
+    cv2.waitKey(-1)
