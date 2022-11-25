@@ -4,6 +4,7 @@ import cv2
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 
 
 
@@ -77,11 +78,11 @@ def read_calib_from_file(filepath: FilePath) -> Calibration:
 
 @attr.s(auto_attribs=True)
 class FeatureMatch:
-    _raw_match: cv2.DMatch    # trainIdx, queryIdx, distance # I am assuming hamming distance
-    _from_keypoint: cv2.KeyPoint   # pt, size, angle, octave, class_id, response
-    _to_keypoint: cv2.KeyPoint
-    _from_feature: Array['N', np.uint8]   # binary feature
-    _to_feature: Array['N', np.uint8]    # binary feature
+    raw_match: cv2.DMatch    # trainIdx, queryIdx, distance # I am assuming hamming distance
+    from_keypoint: cv2.KeyPoint   # pt, size, angle, octave, class_id, response
+    to_keypoint: cv2.KeyPoint
+    from_feature: Array['N', np.uint8]   # binary feature
+    to_feature: Array['N', np.uint8]    # binary feature
 
     @classmethod
     def from_cv2_match_and_keypoints(
@@ -101,23 +102,16 @@ class FeatureMatch:
         )
 
     def get_hamming_distance(self) -> float:
-        return self._raw_match.distance
+        return self.raw_match.distance
 
     def get_pixel_distance(self) -> float:
-        from_pt = self._from_keypoint.pt
-        to_pt = self._to_keypoint.pt
+        from_pt = self.from_keypoint.pt
+        to_pt = self.to_keypoint.pt
         return np.sqrt((from_pt[0] - to_pt[0])**2 + (from_pt[1] - to_pt[1])**2)
 
 
 
-def draw_matches(
-        im_left,
-        im_right,
-):
-    pass
 
-
-import time
 
 
 if __name__ == '__main__':

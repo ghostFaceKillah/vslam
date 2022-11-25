@@ -1,9 +1,18 @@
+2022-11-25
+----------
+
+todo: 
+- refactor feature extraction
+- depth estimation and show
+- ui
+
 2022-11-24
 ----------
 Added nice debugging tool for evaluating matches.
-- [ ] Add UI: use case y / n good bad match, general displaying of information
+- [ ] Add UI: general displaying of information
 - [X] Need to add text rendering and display match details
 
+Actually turns out that filtering by low hamming distance was pretty good
 
 2022-11-08
 ----------
