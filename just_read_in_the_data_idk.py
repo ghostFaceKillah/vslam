@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 from typing import List
 
-from plotting import Col, Padding, Row
+from plotting import Col, Padding, Row, TextRenderer
 from colors import BGRCuteColors
 from custom_types import DirPath, FilePath, Array, BinaryFeature
 from utils.cv2_but_its_typed import cv2_circle
@@ -117,6 +117,7 @@ def draw_matches(
     pass
 
 
+import time
 
 
 if __name__ == '__main__':
@@ -126,19 +127,29 @@ if __name__ == '__main__':
     # read the data
     # like 2 iamges
     # maybe triangulate it or sth
-    calibration = read_calib_from_file(get_calibration_path(sequence_no=0))
+    calibration = read_calib_from_file(get_calibration_path(sequence_no=3))
 
-    sequence_no = 0
+    sequence_no = 3
     im_left = cv2.imread(get_im_path(sequence_no=sequence_no, cam_no=1))
     im_right = cv2.imread(get_im_path(sequence_no=sequence_no, cam_no=0))
 
-    orb = cv2.ORB_create(1000)
-
-    img_left_kp, img_left_desc = orb.detectAndCompute(im_left, None)
-    img_right_kp, img_right_desc = orb.detectAndCompute(im_right, None)
-
+    orb = cv2.ORB_create(1000000)
     matcher = cv2.BFMatcher(cv2.NORM_HAMMING)
+
+    start = time.monotonic()
+    img_left_kp, img_left_desc = orb.detectAndCompute(im_left, None)
+    end = time.monotonic()
+    print(f"it took {end - start} to compute")
+
+    start = time.monotonic()
+    img_right_kp, img_right_desc = orb.detectAndCompute(im_right, None)
+    end = time.monotonic()
+    print(f"it took {end - start} to compute")
+
+    start = time.monotonic()
     raw_matches = matcher.match(img_left_desc, img_right_desc)
+    end = time.monotonic()
+    print(f"it took {end - start} to match")
 
     matches = [
         FeatureMatch.from_cv2_match_and_keypoints(
@@ -153,16 +164,22 @@ if __name__ == '__main__':
 
     # df = pd.Series([match.distance for match in raw_matches])
     df = pd.Series([match.get_pixel_distance() for match in matches])
-    print(df.quantile(np.linspace(0, 1, num=21)))
+    # print(df.quantile(np.linspace(0, 1, num=21)))
     # let's take maybe ~30pixels max distance. When turning, that will probably be different
     max_px_distance = 100.0
+    max_hamming_distance = 31
 
-    relevant_matches = [match for match in matches if match.get_pixel_distance() < max_px_distance]
+    relevant_matches = sorted([match for match in matches
+                        if match.get_pixel_distance() < max_px_distance
+                        and match.get_hamming_distance() < max_hamming_distance],
+                              key=lambda match: match.get_hamming_distance())
+
 
     print(f"Pre filtering = {len(raw_matches)} post filtering = {len(relevant_matches)}")
 
-    for match in relevant_matches:
+    for i, match in enumerate(relevant_matches):
         layout = Col(
+            Row(Padding("desc")),
             Row(Padding('left_crop'), Padding('left')),
             Row(Padding('right_crop'), Padding('right')),
         )
@@ -196,8 +213,12 @@ if __name__ == '__main__':
             radius=10,
             thickness=4,
         )
+        desc = f"Match {i} out of {len(relevant_matches)}. " \
+               f"Euc dist = {match.get_pixel_distance():.2f} " \
+               f"Hamming dist = {match.get_hamming_distance():.2f}"
 
         img = layout.render({
+            'desc': TextRenderer().render(desc),
             'left': from_img,
             'right': to_img,
             'left_crop': magnify(crop_from, factor=4.0),
