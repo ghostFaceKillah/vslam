@@ -174,16 +174,16 @@ if __name__ == '__main__':
         cv2_circle(
             image=from_img,
             center_coordinates=tuple(int(x) for x in match._from_keypoint.pt),
-            color=BGRCuteColors.OCEAN_BLUE,
-            radius=4,
+            color=BGRCuteColors.ORANGE,
+            radius=5,
             thickness=2,
         )
 
         cv2_circle(
             image=to_img,
             center_coordinates=tuple(int(x) for x in match._to_keypoint.pt),
-            color=BGRCuteColors.OCEAN_BLUE,
-            radius=4,
+            color=BGRCuteColors.ORANGE,
+            radius=5,
             thickness=2,
         )
 

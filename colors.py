@@ -1,7 +1,7 @@
 from typing import Tuple
 
+from custom_types import BGRColor
 
-BGRColor = Tuple[int, int, int]
 
 class BGRCuteColors:
     DARK_GRAY = 20, 20, 20
