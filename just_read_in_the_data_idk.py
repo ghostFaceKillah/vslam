@@ -9,8 +9,11 @@ import matplotlib.pyplot as plt
 
 from typing import List
 
+from boxes import Col, Padding
+from colors import BGRCuteColors
 from custom_types import DirPath, FilePath, Array, BinaryFeature
-from utils import batched
+from utils.cv2_but_its_typed import cv2_circle
+from utils.iteration import batched
 
 
 def get_im_path(
@@ -160,21 +163,33 @@ if __name__ == '__main__':
 
     print(f"Pre filtering = {len(raw_matches)} post filtering = {len(relevant_raw_matches)}")
 
-    for sub_matches in batched(relevant_raw_matches, 1):
-        final_img = cv2.drawMatches(
-            im_left,
-            img_left_kp,
-            im_right,
-            img_right_kp,
-            sub_matches,
-            2
+    for match in matches:
+        layout = Col(
+            Padding('left'),
+            Padding('right'),
         )
-        cv2.imshow("Matches", final_img)
+        from_img = np.copy(im_left)
+        to_img = np.copy(im_right)
+
+        cv2_circle(
+            image=from_img,
+            center_coordinates=tuple(int(x) for x in match._from_keypoint.pt),
+            color=BGRCuteColors.OCEAN_BLUE,
+            radius=4,
+            thickness=2,
+        )
+
+        cv2_circle(
+            image=to_img,
+            center_coordinates=tuple(int(x) for x in match._to_keypoint.pt),
+            color=BGRCuteColors.OCEAN_BLUE,
+            radius=4,
+            thickness=2,
+        )
+
+        img = layout.render({'left': from_img, 'right': to_img})
+
+        cv2.imshow('wow', img)
         cv2.waitKey(-1)
-
-
-    # Idea: really nice visualization for the matches
-
-    x = 1
 
 
