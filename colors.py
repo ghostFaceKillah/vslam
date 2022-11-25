@@ -5,6 +5,7 @@ from custom_types import BGRColor
 
 class BGRCuteColors:
     DARK_GRAY = 20, 20, 20
+    OFF_WHITE = 240, 240, 240
 
     PURPLE = 119, 17, 136
     CRIMSON = 85, 51, 170

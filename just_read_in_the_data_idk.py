@@ -9,10 +9,11 @@ import matplotlib.pyplot as plt
 
 from typing import List
 
-from boxes import Col, Padding
+from plotting import Col, Padding, Row
 from colors import BGRCuteColors
 from custom_types import DirPath, FilePath, Array, BinaryFeature
 from utils.cv2_but_its_typed import cv2_circle
+from utils.image import take_crop_around, magnify
 from utils.iteration import batched
 
 
@@ -131,7 +132,7 @@ if __name__ == '__main__':
     im_left = cv2.imread(get_im_path(sequence_no=sequence_no, cam_no=1))
     im_right = cv2.imread(get_im_path(sequence_no=sequence_no, cam_no=0))
 
-    orb = cv2.ORB_create(100000)
+    orb = cv2.ORB_create(1000)
 
     img_left_kp, img_left_desc = orb.detectAndCompute(im_left, None)
     img_right_kp, img_right_desc = orb.detectAndCompute(im_right, None)
@@ -154,22 +155,31 @@ if __name__ == '__main__':
     df = pd.Series([match.get_pixel_distance() for match in matches])
     print(df.quantile(np.linspace(0, 1, num=21)))
     # let's take maybe ~30pixels max distance. When turning, that will probably be different
-    max_px_distance = 30.0
+    max_px_distance = 100.0
 
-    relevant_raw_matches = []
-    for match, raw_match in zip(matches, raw_matches):
-        if match.get_pixel_distance() < max_px_distance:
-            relevant_raw_matches.append(raw_match)
+    relevant_matches = [match for match in matches if match.get_pixel_distance() < max_px_distance]
 
-    print(f"Pre filtering = {len(raw_matches)} post filtering = {len(relevant_raw_matches)}")
+    print(f"Pre filtering = {len(raw_matches)} post filtering = {len(relevant_matches)}")
 
-    for match in matches:
+    for match in relevant_matches:
         layout = Col(
-            Padding('left'),
-            Padding('right'),
+            Row(Padding('left_crop'), Padding('left')),
+            Row(Padding('right_crop'), Padding('right')),
         )
         from_img = np.copy(im_left)
         to_img = np.copy(im_right)
+
+        crop_from = take_crop_around(
+            img=from_img,
+            around_point=tuple(int(x) for x in match._from_keypoint.pt)[::-1],
+            crop_size=(32, 32)
+        )
+
+        crop_to = take_crop_around(
+            img=to_img,
+            around_point=tuple(int(x) for x in match._to_keypoint.pt)[::-1],
+            crop_size=(32, 32)
+        )
 
         cv2_circle(
             image=from_img,
@@ -187,7 +197,12 @@ if __name__ == '__main__':
             thickness=2,
         )
 
-        img = layout.render({'left': from_img, 'right': to_img})
+        img = layout.render({
+            'left': from_img,
+            'right': to_img,
+            'left_crop': magnify(crop_from, factor=4.0),
+            'right_crop': magnify(crop_to, factor=4.0),
+        })
 
         cv2.imshow('wow', img)
         cv2.waitKey(-1)

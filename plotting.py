@@ -1,25 +1,12 @@
-import attr
+import cv2
 import numpy as np
+from typing import Tuple, Dict, List, Union, Protocol, runtime_checkable
+import attr
 
 from colors import BGRCuteColors, BGRColor
 from custom_types import ImageArray, BGRImageArray
 from utils.enum import StrEnum
 
-"""
-inputs:
-    a bunch of images
-    a bunch of Rows, Cols that have panel names
-    
-    
-Packing
-    size
-    layout
-"""
-
-from typing import Tuple, Dict, List, Union, Protocol, runtime_checkable
-import attr
-
-import enum
 
 @attr.s(auto_attribs=True)
 class PxCoords:
@@ -172,34 +159,17 @@ class Row(_RowCol):
         _RowCol.__init__(self, items=list(args), ordering=_Ordering.HORIZONTAL)
 
 
-def test_basic_row_and_col_behaviour():
-
-    inputs = {
-        "a": np.zeros(shape=(640, 480), dtype=np.uint8),
-        "b": np.zeros(shape=(1024, 768, 3), dtype=np.uint8),
-        "c": np.zeros(shape=(2880, 1440), dtype=np.uint8)
-    }
-
-    assert Row("a", "b", "c").pack(inputs).size == (2880, 2688)
-    assert Col("a", "b", "c").pack(inputs).size == (4544, 1440)
-    assert Col(Row("a"), Row("b"), Row("c")).pack(inputs).size == (4544, 1440)
-    assert Row(Col("a"), Col("b"), Col("c")).pack(inputs).size == (2880, 2688)
-    assert Row(Col("a", Row("b")), "c").pack(inputs).size == (2880, 2208)
+@attr.s(auto_attribs=True)
+class FontFace:
+    color: BGRColor = BGRCuteColors.DARK_BLUE
+    thickness: int = 1
+    font: int = cv2.FONT_HERSHEY_PLAIN
+    scale: float = 1
 
 
-def test_integration():
+@attr.s(auto_attribs=True)
+class TextRenderer:
+    font_face: FontFace = attr.Factory(FontFace)
 
-    inputs = {
-        "a": np.array(BGRCuteColors.CYAN, dtype=np.uint8) * np.ones(shape=(640, 480, 3), dtype=np.uint8),
-        "b": np.array(BGRCuteColors.SALMON, dtype=np.uint8) * np.ones(shape=(100, 600, 3), dtype=np.uint8),
-        "c": np.array(BGRCuteColors.CRIMSON, dtype=np.uint8) * np.ones(shape=(288, 244, 3), dtype=np.uint8),
-        "d": np.array(BGRCuteColors.SUN_YELLOW, dtype=np.uint8) * np.ones(shape=(288, 244, 3), dtype=np.uint8)
-    }
-    Col(Row("a", "b"), Row("c", "d")).render(inputs)
-    Col("a", "b", "c", "d").render(inputs)
-    Row(Padding("a"), "b", Padding(Col("c", "d"))).render(inputs)
-
-
-if __name__ == '__main__':
-    test_basic_row_and_col_behaviour()
-    test_integration()
+    def render(self, txt: str) -> BGRImageArray:
+        pass
