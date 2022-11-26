@@ -7,7 +7,7 @@ from custom_types import BGRImageArray, BGRColor
 
 def cv2_circle(
     image: BGRImageArray,
-    center_coordinates: Tuple[int, int],   # maybe also int works ?
+    center_coordinates: Tuple[int, int],   # mind the opencv coordinate flip
     radius: int,
     color: BGRColor,
     thickness: int = 1,   # -1 if filled

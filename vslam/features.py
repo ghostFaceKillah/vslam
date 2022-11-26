@@ -1,4 +1,4 @@
-from typing import List, Protocol
+from typing import List, Tuple
 
 import attr
 import cv2
@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from custom_types import Array, BinaryFeature, BGRImageArray
+from utils.profiling import just_time
 
 
 @attr.s(auto_attribs=True)
@@ -41,6 +42,16 @@ class FeatureMatch:
         to_pt = self.to_keypoint.pt
         return np.sqrt((from_pt[0] - to_pt[0])**2 + (from_pt[1] - to_pt[1])**2)
 
+    def get_from_keypoint_px(self) -> Tuple[int, int]:
+        fw, fh = self.from_keypoint.pt    # mind the opencv coord flip
+        # mildly buggy :) something something rounding
+        return int(fh), int(fw)
+
+    def get_to_keypoint_px(self) -> Tuple[int, int]:
+        fw, fh = self.to_keypoint.pt    # mind the opencv coord flippendo
+        # mildly buggy :) something something rounding
+        return int(fh), int(fw)
+
 
 def analyze_orb_feature_matches(matches: List[FeatureMatch]):
     df = pd.DataFrame({
@@ -60,7 +71,7 @@ class OrbBasedFeatureMatcher:
     @classmethod
     def build(
         cls,
-        max_features: int = 1000,
+        max_features: int = 10000,
         max_px_distance: float =100.0,
         max_hamming_distance: float = 31    # this will likely break during turning. In the book they had
     ):
@@ -80,9 +91,12 @@ class OrbBasedFeatureMatcher:
         img_right: BGRImageArray,
     ) -> List[FeatureMatch]:
 
-        img_left_kp, img_left_desc = self.orb_feature_detector.detectAndCompute(img_left, None)
-        img_right_kp, img_right_desc = self.orb_feature_detector.detectAndCompute(img_right, None)
-        raw_matches = self.feature_matcher.match(img_left_desc, img_right_desc)
+        with just_time('detecting'):
+            img_left_kp, img_left_desc = self.orb_feature_detector.detectAndCompute(img_left, None)
+            img_right_kp, img_right_desc = self.orb_feature_detector.detectAndCompute(img_right, None)
+
+        with just_time('matching'):
+            raw_matches = self.feature_matcher.match(img_left_desc, img_right_desc)
 
         matches = [
             FeatureMatch.from_cv2_match_and_keypoints(

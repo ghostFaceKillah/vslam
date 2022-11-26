@@ -24,44 +24,31 @@ if __name__ == '__main__':
 
     print(f"Found {len(feature_matches)} feature matches")
 
+    layout = Col(
+        Row(Padding("desc")),
+        Row(Padding('left_crop'), Padding('left')),
+        Row(Padding('right_crop'), Padding('right')),
+    )
+
+    # draw the matches
+    from_canvas_img = np.copy(im_left)
+    to_canvas_img = np.copy(im_right)
+
+    for match in feature_matches:
+        cv2_circle(from_canvas_img, match.get_from_keypoint_px()[::-1], color=BGRCuteColors.GRASS_GREEN, radius=1, thickness=1)
+        cv2_circle(to_canvas_img, match.get_to_keypoint_px()[::-1], color=BGRCuteColors.GRASS_GREEN, radius=1, thickness=1)
+
     for i, match in enumerate(feature_matches):
-        layout = Col(
-            Row(Padding("desc")),
-            Row(Padding('left_crop'), Padding('left')),
-            Row(Padding('right_crop'), Padding('right')),
-        )
-        from_img = np.copy(im_left)
-        to_img = np.copy(im_right)
+        from_img = np.copy(from_canvas_img)
+        to_img = np.copy(to_canvas_img)
 
-        crop_from = take_crop_around(
-            img=from_img,
-            around_point=tuple(int(x) for x in match.from_keypoint.pt)[::-1],
-            crop_size=(32, 32)
-        )
+        crop_from = take_crop_around(im_left, around_point=match.get_from_keypoint_px(), crop_size=(32, 32))
+        crop_to = take_crop_around(im_right, around_point=match.get_to_keypoint_px(), crop_size=(32, 32))
 
-        crop_to = take_crop_around(
-            img=to_img,
-            around_point=tuple(int(x) for x in match.to_keypoint.pt)[::-1],
-            crop_size=(32, 32)
-        )
+        cv2_circle(from_img, match.get_from_keypoint_px()[::-1], color=BGRCuteColors.ORANGE, radius=10, thickness=4)
+        cv2_circle(to_img, match.get_to_keypoint_px()[::-1], color=BGRCuteColors.ORANGE, radius=10, thickness=4)
 
-        cv2_circle(
-            image=from_img,
-            center_coordinates=tuple(int(x) for x in match.from_keypoint.pt),
-            color=BGRCuteColors.ORANGE,
-            radius=10,
-            thickness=4,
-        )
-
-        cv2_circle(
-            image=to_img,
-            center_coordinates=tuple(int(x) for x in match.to_keypoint.pt),
-            color=BGRCuteColors.ORANGE,
-            radius=10,
-            thickness=4,
-        )
-        desc = f"Match {i} out of {len(feature_matches)}. " \
-               f"Euc dist = {match.get_pixel_distance():.2f} " \
+        desc = f"Match {i} out of {len(feature_matches)}. Euc dist = {match.get_pixel_distance():.2f} " \
                f"Hamming dist = {match.get_hamming_distance():.2f}"
 
         img = layout.render({
@@ -74,5 +61,3 @@ if __name__ == '__main__':
 
         cv2.imshow('wow', img)
         cv2.waitKey(-1)
-
-
