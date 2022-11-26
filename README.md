@@ -5,6 +5,7 @@ todo:
 - refactor feature extraction
 - depth estimation and show
 - ui
+- unit tests etc
 
 2022-11-24
 ----------
