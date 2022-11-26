@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from custom_types import Array, BinaryFeature, BGRImageArray
+from utils.custom_types import Array, BinaryFeature, BGRImageArray
 from utils.profiling import just_time
 
 

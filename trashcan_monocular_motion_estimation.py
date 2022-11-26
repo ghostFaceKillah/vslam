@@ -117,7 +117,12 @@ def vec_hat(x):
     pass
 
 
-def mike_triangulation(pts_1, T1, pts_2, T2) -> List[Optional[float]]:
+def mike_triangulation(
+    pts_1,
+    T1,
+    pts_2,
+    T2
+) -> List[Optional[float]]:
 
     R = T2[:, :3]
     t = T2[:, 3]

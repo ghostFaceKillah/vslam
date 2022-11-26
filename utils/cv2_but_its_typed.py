@@ -2,7 +2,7 @@ import attr
 import cv2
 from typing import Tuple, TypeAlias
 
-from custom_types import BGRImageArray, BGRColor
+from utils.custom_types import BGRImageArray, BGRColor
 
 
 def cv2_circle(

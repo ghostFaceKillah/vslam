@@ -1,6 +1,4 @@
-from typing import Tuple
-
-from custom_types import BGRColor
+from utils.custom_types import BGRColor
 
 
 class BGRCuteColors:

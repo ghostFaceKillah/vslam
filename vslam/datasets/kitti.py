@@ -3,7 +3,7 @@ import os
 import attr
 import numpy as np
 
-from custom_types import DirPath, FilePath
+from utils.custom_types import DirPath, FilePath
 
 
 def get_im_path(

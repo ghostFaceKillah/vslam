@@ -1,10 +1,9 @@
 import cv2
-import numpy as np
 from typing import Tuple, Dict, List, Union, Protocol, runtime_checkable
 import attr
 
 from colors import BGRCuteColors, BGRColor
-from custom_types import ImageArray, BGRImageArray, HeightPx, WidthPx
+from utils.custom_types import ImageArray, BGRImageArray, HeightPx, WidthPx
 from utils.cv2_but_its_typed import cv2_get_text_size
 from utils.enum import StrEnum
 from utils.image import get_canvas
