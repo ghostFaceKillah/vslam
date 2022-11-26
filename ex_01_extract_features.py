@@ -8,14 +8,12 @@ from utils.image import take_crop_around, magnify
 from vslam.datasets.kitti import get_im_path, get_calibration_path, read_calib_from_file
 from vslam.features import OrbBasedFeatureMatcher
 
+
 if __name__ == '__main__':
 
-    # read the data
-    # like 2 iamges
-    # maybe triangulate it or sth
-    calibration = read_calib_from_file(get_calibration_path(sequence_no=3))
+    sequence_no = 10
 
-    sequence_no = 3
+    calibration = read_calib_from_file(get_calibration_path(sequence_no=sequence_no))
     im_left = cv2.imread(get_im_path(sequence_no=sequence_no, cam_no=1))
     im_right = cv2.imread(get_im_path(sequence_no=sequence_no, cam_no=0))
 
