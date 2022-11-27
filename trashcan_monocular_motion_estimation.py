@@ -13,8 +13,6 @@ import pandas as pd
 from typing import Tuple, List, Optional
 
 
-
-
 def pixel_2_cam(
         px: float, py: float, fx: float, fy: float, cx: float, cy: float
 ):
