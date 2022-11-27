@@ -1,5 +1,5 @@
 import numpy as np
-from colors import BGRCuteColors
+from utils.colors import BGRCuteColors
 from plotting import Row, Col, Padding, TextRenderer
 
 

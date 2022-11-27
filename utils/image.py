@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from typing import Tuple
 
-from colors import BGRCuteColors
+from utils.colors import BGRCuteColors
 from utils.custom_types import BGRImageArray, Channels, WidthPx, HeightPx, BGRColor
 
 

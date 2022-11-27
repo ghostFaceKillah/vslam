@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 from plotting import Col, Padding, Row, TextRenderer
-from colors import BGRCuteColors
+from utils.colors import BGRCuteColors
 from utils.cv2_but_its_typed import cv2_circle
 from utils.image import take_crop_around, magnify
 from vslam.datasets.kitti import KittiDataset
