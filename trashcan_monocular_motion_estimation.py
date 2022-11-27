@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 from typing import Tuple, List, Optional
 
-from vslam.transforms import ImgCoords2d, CameraPoseSE3
+from vslam.types import CameraPoseSE3, ImgCoords2d
 
 
 def pixel_2_cam(px: float, py: float, fx: float, fy: float, cx: float, cy: float):

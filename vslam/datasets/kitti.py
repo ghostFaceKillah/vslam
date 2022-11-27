@@ -4,7 +4,7 @@ import numpy as np
 import os
 
 from utils.custom_types import DirPath, FilePath
-from vslam.transforms import CameraPoseSE3
+from vslam.types import CameraPoseSE3
 
 
 def _get_im_path(
@@ -59,7 +59,6 @@ def _read_calib_from_file(filepath: FilePath) -> KittiCalibration:
     # https://github.com/pratikac/kitti/blob/master/readme.raw.txt
     #  P_rect_xx: 3x4 projection matrix after rectification.
 
-    x = 1
     return KittiCalibration(
         camera_right_projection_matrix=P_rect_00,
         camera_left_projection_matrix=P_rect_10
@@ -83,3 +82,13 @@ class KittiDataset:
 
     def get_calibration(self) -> KittiCalibration:
         return _read_calib_from_file(_get_calibration_path(sequence_no=self._sequence_no))
+
+    def get_camera_intrinsics(self):
+        """
+        Camera.fx: 707.0912
+        Camera.fy: 707.0912
+        Camera.cx: 601.8873
+        Camera.cy: 183.1104
+
+        :return:
+        """

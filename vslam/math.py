@@ -1,7 +1,7 @@
 import numpy as np
 
 from utils.custom_types import Array
-from vslam.transforms import Vector3d
+from vslam.types import Vector3d
 
 
 def vec_hat(x: Vector3d) -> Array['3,3', np.float64]:

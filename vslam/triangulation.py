@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from vslam.math import vec_hat
-from vslam.transforms import CameraPoseSE3, CamCoords3dHomog
+from vslam.types import CameraPoseSE3, CamCoords3dHomog
 
 
 def naive_triangulation(
