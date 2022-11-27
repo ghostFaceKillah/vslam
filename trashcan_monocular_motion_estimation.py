@@ -12,10 +12,11 @@ import numpy as np
 import pandas as pd
 from typing import Tuple, List, Optional
 
+from vslam.transforms import ImgCoords2d, CameraPoseSE3
 
-def pixel_2_cam(
-        px: float, py: float, fx: float, fy: float, cx: float, cy: float
-):
+
+def pixel_2_cam(px: float, py: float, fx: float, fy: float, cx: float, cy: float):
+    # poor man's mapping from PxCoords2d to CamCoords2d
     return (
         (px - cx) / fx,
         (py - cy) / fy
@@ -23,6 +24,7 @@ def pixel_2_cam(
 
 
 def cam_2_pixel(x: float, y: float, fx: float, fy: float, cx: float, cy: float) -> Tuple[int, int]:
+    # poor man's mapping from CamCoords2d to PxCoords2d
     px = int(fx * x + cx)
     py = int(fy * y + cy)
     return px, py
@@ -112,21 +114,19 @@ def vec_hat(x):
         [ x[2],    0., -x[0]],
         [-x[1], x[0],    0.]
     ])
-    pass
 
 
 def mike_triangulation(
-    pts_1,
-    T1,
-    pts_2,
-    T2
+    pts_1: ImgCoords2d,
+    pts_2: ImgCoords2d,
+    T2: CameraPoseSE3
 ) -> List[Optional[float]]:
+    """ We assume T1 to be identity (we compute everything in image frame of camera 1) """
 
-    R = T2[:, :3]
-    t = T2[:, 3]
+    R = T2[:3, :3]
+    t = T2[:3, 3]
 
     scales = []
-    pts_3d = []
 
     for i in range(len(pts_1)):
         x1 = np.array([pts_1[i, 0], pts_1[i, 1], 1.0])
@@ -139,6 +139,7 @@ def mike_triangulation(
         # s = - b / a
         s = - b / a
 
+        # very dirty filtering
         if s.std() < 0.5 and s.mean() > 0:
             scales.append(s.mean())
         else:

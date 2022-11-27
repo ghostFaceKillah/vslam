@@ -35,6 +35,9 @@ ImgCoords2d = Array['N,2', np.float64]        # x goes left, y down, z out of ca
 PxCoords2d = Array['N,2', np.int64]           # int, x goes down, y goes right
 Cv2PxCoords2d = Array['N,2', np.int64]        # int, x goes right, y goes down
 
+Vector3d = Array['3', np.float64]
+
+
 """
 WorldCoords3D
     -[CameraPoseSE3 * _]->
