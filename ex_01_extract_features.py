@@ -5,17 +5,15 @@ from plotting import Col, Padding, Row, TextRenderer
 from colors import BGRCuteColors
 from utils.cv2_but_its_typed import cv2_circle
 from utils.image import take_crop_around, magnify
-from vslam.datasets.kitti import get_im_path, get_calibration_path, read_calib_from_file
+from vslam.datasets.kitti import KittiDataset
 from vslam.features import OrbBasedFeatureMatcher
 
 
 if __name__ == '__main__':
 
-    sequence_no = 10
-
-    calibration = read_calib_from_file(get_calibration_path(sequence_no=sequence_no))
-    im_left = cv2.imread(get_im_path(sequence_no=sequence_no, cam_no=1))
-    im_right = cv2.imread(get_im_path(sequence_no=sequence_no, cam_no=0))
+    dataset = KittiDataset(sequence_no=10)
+    im_left = dataset.get_left_image(image_no=0)
+    im_right = dataset.get_right_image(image_no=0)
 
     matcher = OrbBasedFeatureMatcher.build()
     feature_matches = matcher.detect_and_match(im_left, im_right)

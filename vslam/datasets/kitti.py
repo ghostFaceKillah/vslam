@@ -1,12 +1,13 @@
+import attr
+import cv2
+import numpy as np
 import os
 
-import attr
-import numpy as np
-
 from utils.custom_types import DirPath, FilePath
+from vslam.transforms import CameraPoseSE3
 
 
-def get_im_path(
+def _get_im_path(
     dataset_path: DirPath = '/Users/misiu-dev/temp/phd/kitti-dataset/sequences',
     sequence_no: int = 0,
     cam_no: int = 0,
@@ -18,7 +19,7 @@ def get_im_path(
     return os.path.join(dataset_path, f"{sequence_no:02d}", f"image_{cam_no:d}", f"{image_no:06d}.png")
 
 
-def get_calibration_path(
+def _get_calibration_path(
         dataset_path: DirPath = '/Users/misiu-dev/temp/phd/kitti-dataset/sequences',
         sequence_no: int = 0,
 ) -> FilePath:
@@ -28,11 +29,11 @@ def get_calibration_path(
 
 @attr.s(auto_attribs=True)
 class KittiCalibration:
-    camera_left_projection_matrix: np.ndarray['3,4', np.float64]
-    camera_right_projection_matrix: np.ndarray['3,4', np.float64]
+    camera_left_projection_matrix: CameraPoseSE3
+    camera_right_projection_matrix: CameraPoseSE3
 
 
-def read_calib_from_file(filepath: FilePath) -> KittiCalibration:
+def _read_calib_from_file(filepath: FilePath) -> KittiCalibration:
     """Read in a calibration file and parse into a dictionary."""
     data = {}
 
@@ -56,9 +57,29 @@ def read_calib_from_file(filepath: FilePath) -> KittiCalibration:
     # P_rect_30 = np.reshape(data['P3'], (3, 4))
 
     # https://github.com/pratikac/kitti/blob/master/readme.raw.txt
-    #  P_rect_xx: 3x4 projection matrix after rectification
+    #  P_rect_xx: 3x4 projection matrix after rectification.
 
+    x = 1
     return KittiCalibration(
         camera_right_projection_matrix=P_rect_00,
         camera_left_projection_matrix=P_rect_10
     )
+
+
+@attr.s(auto_attribs=True)
+class KittiDataset:
+    _sequence_no: int
+
+    @classmethod
+    def make(cls, sequence_no: int = 0):
+        assert 0 <= sequence_no <= 21
+        return cls(sequence_no=sequence_no )
+
+    def get_left_image(self, image_no: int):
+        return cv2.imread(_get_im_path(image_no=image_no, sequence_no=self._sequence_no, cam_no=1))
+
+    def get_right_image(self, image_no: int):
+        return cv2.imread(_get_im_path(image_no=image_no, sequence_no=self._sequence_no, cam_no=0))
+
+    def get_calibration(self) -> KittiCalibration:
+        return _read_calib_from_file(_get_calibration_path(sequence_no=self._sequence_no))
