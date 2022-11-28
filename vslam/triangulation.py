@@ -1,4 +1,5 @@
 from typing import List, Optional
+import numpy as np
 
 from vslam.math import vec_hat
 from vslam.types import CameraPoseSE3, CamCoords3dHomog
@@ -20,17 +21,17 @@ def naive_triangulation(
         x1 = pts_1[i]
         x2 = pts_2[i]
 
-        x2_hat = vec_hat(x1)
+        x2_hat = vec_hat(x2)
 
         a = x2_hat @ R @ x1
         b = x2_hat @ t
         # s * a + b = 0
         # s = - b / a
-        s = - b / a
+        s = b / a
 
         # very dirty success filtering
-        if s.std() < 0.5 and s.mean() > 0:
-            scales.append(s.mean())
+        if np.nanstd(s) < 0.5 and np.nanmean(s) > 0:
+            scales.append(np.nanmean(s))
         else:
             scales.append(None)
 

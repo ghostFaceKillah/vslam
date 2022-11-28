@@ -4,6 +4,11 @@ import numpy as np
 from utils.custom_types import Array
 
 
+Vector3d = Array['3', np.float64]
+
+CameraIntrinsicMatrix = Array['3,3', np.float64]
+
+
 @attr.s(auto_attribs=True)
 class CameraIntrinsics:
     fx: float
@@ -11,10 +16,13 @@ class CameraIntrinsics:
     cx: float
     cy: float
 
-    def to_matrix(self):
-        pass
+    def to_matrix(self) -> CameraIntrinsicMatrix:
+        return np.array([
+            [self.fx, 0, self.cx],
+            [0, self.fy, self.fx],
+            [0, 0, 1]
+        ], dtype=np.float64)
 
-Vector3d = Array['3', np.float64]
 
 """
 perception equation in the camera frame
@@ -38,19 +46,17 @@ ZP_uv =  Z *  [v]  = K(R P_w + T) = KTP
 """
 
 
-CameraIntrinsicMatrix = Array['3,3', np.float64]
 CameraPoseSE3 = Array['4,4', np.float64]
 CameraRotationSO3 = Array['3,3', np.float64]
 CameraTranslationVector = Array['3', np.float64]
 
-WorldCoords3D = Array['N,3', np.float64]       # starts at world origin
-CamCoords3d = Array['N,3', np.float64]        # x goes left, y goes down, z goes towards viewer
+WorldCoords3D = Array['N,3', np.float64]      # starts at world origin, assume normalized unit image plane in front
+CamCoords3d = Array['N,3', np.float64]        # x goes right, y down, z out, looking out of cam
 CamCoords3dHomog = Array['N,3', np.float64]   # X/Z Y/Z 1
-UndistCamCoords3dHomog = Array['N,3', np.float64]  # same as CamCoords3dHomog, but not linear for once
-ImgCoords3d = Array['N,3', np.float64]        # x goes left, y down, z out of cam; z*u, z*v, z
-ImgCoords2d = Array['N,2', np.float64]        # x goes left, y down, z out of cam; homogenous without z,
+ImgCoords3d = Array['N,3', np.float64]        # x goes right, y down, z out of cam; z*u, z*v, z
+ImgCoords2d = Array['N,2', np.float64]        # x goes right, y down, z out of cam; homogenous without z,
 PxCoords2d = Array['N,2', np.int64]           # int, x goes down, y goes right
-Cv2PxCoords2d = Array['N,2', np.int64]        # int, x goes right, y goes down
+Cv2PxCoords2d = Array['N,2', np.int64]        # int, x goes right (todo left ?), y goes down
 
 """
 WorldCoords3D
@@ -58,12 +64,10 @@ WorldCoords3D
         CamCoords3d
             -[/Z] -> 
                 CamCoords3dHomog 
-                    -[undistortion, perhaps]->
-                        UndistCamCoords3dHomog 
-                            -[* CameraIntrinsicMatrix]-> 
-                                ImgCoords3d
-                                    -[drop third dim]->
-                                        ImgCoords2d
-                                            -[-center, *px scale]
-                                                -> PxCoords2d
+                    -[undistortion]->
+                            ImgCoords3d
+                                -[drop third dim]->
+                                    ImgCoords2d
+                                        -[-center, *px scale and focal (intrinsics)]
+                                            -> PxCoords2d
 """
