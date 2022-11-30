@@ -1,3 +1,37 @@
+2022-11-29
+----------
+- tried SBGM based depth estimation (see 4.4.1 Stereo Vision)
+  it was brittle, not understandable to me, dropping it for now
+  
+- probably this is way too overkill, but I think to understand the frontend stuff well I need
+  to have a synthetic dataset with rendering, etc, and assert 100% convergence
+
+todo:
+- core:
+    - implement frontend
+- support
+    - even more docs around types - would beginner be able to read them ?
+    - unit tests and mypy
+    - dep inject kitti fpath
+    - kitti fix calibration
+
+2022-11-27
+----------
+
+done:
+  - refactor feature extraction
+  - depth estimation and show
+  
+todo:
+  - support
+    - even more docs around types
+    - unit tests and mypy
+    - dep inject kitti fpath
+    - kitti fix calibration
+  - core:
+    - implement frontend
+  - ui
+
 2022-11-25
 ----------
 

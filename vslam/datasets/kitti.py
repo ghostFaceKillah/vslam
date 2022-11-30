@@ -90,8 +90,8 @@ class KittiDataset:
         """ Source: https://github.com/raulmur/ORB_SLAM2/blob/master/Examples/Stereo/KITTI04-12.yaml """
         # TODO: figure out this calibration, it looks all over the place
         return CameraIntrinsics(
-            fx=707.0912,    # in pixels
-            fy=707.0912,
-            cx=601.8873,
-            cy=183.1104
+            fx=718.856,    # in pixels
+            fy=718.856,
+            cx=601.1928,
+            cy=185.2157
         )
