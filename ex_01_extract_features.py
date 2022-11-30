@@ -11,7 +11,7 @@ from vslam.features import OrbBasedFeatureMatcher
 
 if __name__ == '__main__':
 
-    dataset = KittiDataset(sequence_no=10)
+    dataset = KittiDataset(sequence_no=0)
     im_left = dataset.get_left_image(image_no=0)
     im_right = dataset.get_right_image(image_no=0)
 
