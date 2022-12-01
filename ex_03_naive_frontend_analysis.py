@@ -40,6 +40,10 @@
 
 
 
+some further details
+- prior of pose of the current frame is (last relative movement estimate) * (last frame's pose)
+- g2o optimizes map points vs currently observed pose
+
     int Frontend::EstimateCurrentPose() {
         // setup g2o
         typedef g2o::BlockSolver_6_3 BlockSolverType;
