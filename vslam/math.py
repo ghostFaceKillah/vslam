@@ -10,3 +10,14 @@ def vec_hat(x: Vector3d) -> Array['3,3', np.float64]:
         [ x[2],    0., -x[0]],
         [-x[1],  x[0],    0.]
     ], dtype=np.float64)
+
+
+def vector_to_unit(x: Vector3d) -> Vector3d:
+    return x / np.linalg.norm(x)
+
+
+def dot_product(x: Vector3d, y: Vector3d) -> Vector3d:
+    # probably need to defend stuff like zero norm
+    return x @ y / np.linalg.norm(x) / np.linalg.norm(y)
+
+
