@@ -1,3 +1,17 @@
+2022-12-05
+----------
+Cool! I have first draft of stupid rendering :)
+
+2022-11-30
+----------
+To properly debug bundle adjustment, I feel we need to have our own simulated environment rendering.
+
+- don't make it a rabbithole
+- don't need tight rendering and keyboard input interaction
+- avoid adding new dependencies
+
+conclusion: try realtime rendering with opencv.
+
 2022-11-29
 ----------
 - tried SBGM based depth estimation (see 4.4.1 Stereo Vision)
@@ -14,6 +28,7 @@ todo:
     - unit tests and mypy
     - dep inject kitti fpath
     - kitti fix calibration
+    - add unit tests around transforms
 
 2022-11-27
 ----------
