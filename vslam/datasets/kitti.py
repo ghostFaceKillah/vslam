@@ -29,7 +29,7 @@ def _get_calibration_path(
 
 @attr.s(auto_attribs=True)
 class KittiCalibration:
-    camera_left_projection_matrix: CameraPoseSE3
+    camera_left_projection_matrix: CameraPoseSE3   # TODO: This is wrong (!) - mixing up projection and pose
     camera_right_projection_matrix: CameraPoseSE3
 
 
