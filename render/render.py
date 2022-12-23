@@ -126,12 +126,12 @@ if __name__ == '__main__':
     light_direction = normalize_vector(np.array([1.0, -1.0, -8.0]))
 
     # looking toward +x direction in world frame, +z in camera
-    camera_pose: CameraPoseSE3 = get_SE3_pose()
+    camera_pose: CameraPoseSE3 = get_SE3_pose(x=-2.5)
 
     triangle = Triangle3d(np.array([
-        [1.5, -1.0, -1.0, 1.0],
-        [1.5,  2.0, -1.0, 1.0],
-        [1.5, -1.0, 2.0, 1.0],
+        [0.0, -1.0, -1.0, 1.0],
+        [0.0,  2.0, -1.0, 1.0],
+        [0.0, -1.0, 2.0, 1.0],
     ], dtype=np.float64))
 
     while True:
