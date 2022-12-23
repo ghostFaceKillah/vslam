@@ -31,6 +31,10 @@ class Triangle3d:
         resu = np.cross(vec_1, vec_2)
         return resu / np.linalg.norm(resu)
 
+    def mutate(self, transform: TransformSE3) -> 'Triangle3d':
+        result = transform @ self.points.T
+        return Triangle3d(points=result.T)
+
 
 def toy_render_one_triangle(
     screen: BGRImageArray,
@@ -94,9 +98,22 @@ def _key_to_maybe_transforms(cv_key: int) -> MaybeTransforms:
     # 0 up, 1 down, 3 right
     if key == -1:
         return MaybeTransforms.empty()
-    elif key == 2:
-        # key left
-        return MaybeTransforms.empty()
+    elif key == 0:   # up
+        return MaybeTransforms(scene=get_SE3_pose(pitch=np.deg2rad(10)))
+    elif key == 1:   # down
+        return MaybeTransforms(scene=get_SE3_pose(pitch=np.deg2rad(-10)))
+    elif key == 2:   # left
+        return MaybeTransforms(scene=get_SE3_pose(roll=np.deg2rad(10)))
+    elif key == 3:   # right
+        return MaybeTransforms(scene=get_SE3_pose(roll=np.deg2rad(-10)))
+    elif key == ord('w'):
+        return MaybeTransforms(camera=get_SE3_pose(x=0.1))
+    elif key == ord('s'):
+        return MaybeTransforms(camera=get_SE3_pose(x=-0.1))
+    elif key == ord('a'):
+        return MaybeTransforms(camera=get_SE3_pose(y=-0.1))
+    elif key == ord('d'):
+        return MaybeTransforms(camera=get_SE3_pose(y=0.1))
     else:
         print(f"Unknown keypress {cv_key} {chr(cv_key)}")
         return MaybeTransforms.empty()
@@ -108,7 +125,7 @@ if __name__ == '__main__':
     cam_intrinsics = CameraIntrinsics(fx=640 / 4, fy=480 / 3, cx=640 / 2, cy=480 / 2)
     light_direction = normalize_vector(np.array([1.0, -1.0, -8.0]))
 
-    # looking toward -y direction in world frame
+    # looking toward +x direction in world frame, +z in camera
     camera_pose: CameraPoseSE3 = get_SE3_pose()
 
     triangle = Triangle3d(np.array([
@@ -126,6 +143,12 @@ if __name__ == '__main__':
         key = cv2.waitKey(-1)
 
         transforms = _key_to_maybe_transforms(key)
+
+        if transforms.scene is not None:
+            triangle = triangle.mutate(transforms.scene)
+
+        if transforms.camera is not None:
+            camera_pose = transforms.camera @ camera_pose
 
 
 
