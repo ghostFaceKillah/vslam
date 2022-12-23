@@ -10,10 +10,10 @@ import numpy as np
 from utils.colors import BGRCuteColors
 from utils.custom_types import Array, BGRImageArray
 from utils.image import get_canvas
-from vslam.math import normalize_vector, dot_product
+from vslam.math import normalize_vector
 from vslam.poses import get_SE3_pose
 from vslam.transforms import get_world_to_cam_coord_flip_matrix, SE3_inverse, the_cv_flip
-from vslam.types import CameraPoseSE3, CameraIntrinsics, Vector3dHomogenous, Vector3d, TransformSE3
+from vslam.types import CameraPoseSE3, CameraIntrinsics, Vector3d, TransformSE3
 
 
 # https://github.com/krishauser/Klampt/blob/master/Python/klampt/math/se3.py
@@ -24,17 +24,24 @@ class Triangle3d:
     """ a triangle floating in space """
     points: Array['3,4', np.float64]   # three 3d points
 
-    def get_surface_normal(self) -> Vector3dHomogenous:
+    def get_surface_normal(self) -> Vector3d:
         # TODO: There has to be a convention around those in rendering community
         vec_1 = (self.points[1] - self.points[0])[:3]
         vec_2 = (self.points[2] - self.points[0])[:3]
         resu = np.cross(vec_1, vec_2)
-        return resu / np.linalg.norm(resu)
+        return resu[:3] / np.linalg.norm(resu)
 
     def mutate(self, transform: TransformSE3) -> 'Triangle3d':
         result = transform @ self.points.T
         return Triangle3d(points=result.T)
 
+
+def flat_shade(
+        surface_normal: Vector3d,
+        light_direction: Vector3d
+):
+    # I have no idea what I am doing here, just checking if something intuitive works
+    pass
 
 def toy_render_one_triangle(
     screen: BGRImageArray,
@@ -60,7 +67,7 @@ def toy_render_one_triangle(
     cam_points = cam_points[:, :3]
 
     # drop things that are not visible
-    cam_points = cam_points[cam_points[:, 2] > 1]
+    # cam_points = cam_points[cam_points[:, 2] > 1]
 
     # project to unit image plane
     projected_to_unit_plane = cam_points / cam_points[:, 2][:, np.newaxis]
@@ -72,12 +79,27 @@ def toy_render_one_triangle(
     ...
 
     # we will want to compute surface normal by computing crossproduct
-    normal = triangle.get_surface_normal()
+    # normal = triangle.get_surface_normal()
+    surface_normal = np.cross(cam_points[1] - cam_points[0], cam_points[2] - cam_points[0])
+    unit_surface_normal = surface_normal / np.linalg.norm(surface_normal)
 
-    # we will want to compute color by inner_product(light direction, surface normal)
-    dot_product(triangle.get_surface_normal(), light_direction)
-    # TODO
-    color = BGRCuteColors.GRASS_GREEN
+    light_direction_homogenous = np.array([light_direction[0], light_direction[1], light_direction[2], 0.0])
+    light_direction_in_camera = world_to_cam_flip @ cam_pose_inv @ light_direction_homogenous
+    light_direction_in_camera = light_direction_in_camera[:3]
+
+    light_coeff = -light_direction_in_camera[:3] @ unit_surface_normal
+
+    # blend the color
+    alpha = (light_coeff + 1) / 2
+
+    if unit_surface_normal[2] < 0:
+        from_color = np.array(BGRCuteColors.DARK_GRAY)
+        to_color = np.array(BGRCuteColors.GRASS_GREEN)
+    else:
+        from_color = np.array(BGRCuteColors.CRIMSON)
+        to_color = np.array(BGRCuteColors.DARK_GRAY)
+
+    color = tuple(int(x) for x in (alpha * to_color + (1 - alpha) * from_color).astype(np.uint8))
 
     poly_coords = the_cv_flip(px_coords.round().astype(np.int32))
 
@@ -128,16 +150,24 @@ if __name__ == '__main__':
     # looking toward +x direction in world frame, +z in camera
     camera_pose: CameraPoseSE3 = get_SE3_pose(x=-2.5)
 
-    triangle = Triangle3d(np.array([
-        [0.0, -1.0, -1.0, 1.0],
-        [0.0,  2.0, -1.0, 1.0],
-        [0.0, -1.0, 2.0, 1.0],
-    ], dtype=np.float64))
+    triangles = [
+        Triangle3d(np.array([
+            [0.0, -1.0, -1.0, 1.0],
+            [0.0,  1.0, -1.0, 1.0],
+            [0.0, -1.0, 1.0, 1.0],
+        ], dtype=np.float64)),
+        Triangle3d(np.array([
+            [0.0,  1.0,  -1.0, 1.0],
+            [0.0,  1.0,   1.0, 1.0],
+            [0.0, -1.0,   1.0, 1.0],
+        ], dtype=np.float64)),
+    ]
 
     while True:
         screen = get_canvas(shape=(480, 640, 3), background_color=BGRCuteColors.DARK_GRAY)
 
-        toy_render_one_triangle(screen, camera_pose, triangle, cam_intrinsics, light_direction)
+        for triangle in triangles:
+            toy_render_one_triangle(screen, camera_pose, triangle, cam_intrinsics, light_direction)
 
         cv2.imshow('scene', screen)
         key = cv2.waitKey(-1)
@@ -145,7 +175,7 @@ if __name__ == '__main__':
         transforms = _key_to_maybe_transforms(key)
 
         if transforms.scene is not None:
-            triangle = triangle.mutate(transforms.scene)
+            triangles = [triangle.mutate(transforms.scene) for triangle in triangles]
 
         if transforms.camera is not None:
             camera_pose = transforms.camera @ camera_pose
