@@ -56,6 +56,4 @@ def SE3_inverse(T: TransformSE3) -> TransformSE3:
 
 
 def the_cv_flip(px_coords):
-    cv_px_coords = np.copy(px_coords)
-    cv_px_coords[:, 0] = 640 - cv_px_coords[:, 0]
-    return cv_px_coords
+    return px_coords[:, ::-1]
