@@ -12,7 +12,7 @@ def vec_hat(x: Vector3d) -> Array['3,3', np.float64]:
     ], dtype=np.float64)
 
 
-def vector_to_unit(x: Vector3d) -> Vector3d:
+def normalize_vector(x: Vector3d) -> Vector3d:
     return x / np.linalg.norm(x)
 
 
