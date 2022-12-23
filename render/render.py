@@ -10,7 +10,7 @@ from utils.custom_types import Array
 from utils.image import get_canvas
 from vslam.math import vector_to_unit, dot_product
 from vslam.poses import get_SE3_pose
-from vslam.transforms import get_world_to_cam_coord_flip_matrix, SE3_inverse
+from vslam.transforms import get_world_to_cam_coord_flip_matrix, SE3_inverse, the_cv_flip
 from vslam.types import CameraPoseSE3, CameraIntrinsics, Vector3dHomogenous
 
 
@@ -76,9 +76,6 @@ if __name__ == '__main__':
     # render the triangle if at least one point lies within the image plane
     ...
 
-    # select image plane
-    ...
-
     # we will want to compute surface normal by computing crossproduct
     normal = triangle.get_surface_normal()
     # we will want to compute color by inner_product(light direction, surface normal)
@@ -89,20 +86,22 @@ if __name__ == '__main__':
     # we will want to render triangle on surface plane
 
     # prepare surface plane
-    screen = get_canvas(shape=(640, 480, 3), background_color=BGRCuteColors.DARK_GRAY)
+    screen = get_canvas(shape=(480, 640, 3), background_color=BGRCuteColors.DARK_GRAY)
 
     # draw triangle to screen
     """
-        .   @param img Image.
-    .   @param pts Array of polygons where each polygon is represented as an array of points.
+    .   @param img Image.
+    .   @param pts Array of polygons where each polygon is represented as an array of points. List[Tuple[int, int]]
     .   @param color Polygon color.
     .   @param lineType Type of the polygon boundaries. See #LineTypes
     .   @param shift Number of fractional bits in the vertex coordinates.
     .   @param offset Optional offset of all points of the contours.
     """
 
-    cv2.fillPoly(screen, [px_coords.round().astype(np.int32)], color)
-    cv2.imshow('oke', screen)
+    poly_coords = the_cv_flip(px_coords.round().astype(np.int32))
+
+    cv2.fillPoly(screen, [poly_coords], color)
+    cv2.imshow('scene', screen)
     cv2.waitKey(-1)
 
     """
