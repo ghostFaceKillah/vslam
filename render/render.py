@@ -1,7 +1,8 @@
 """
 Small demo of naive rendering
 """
-from typing import Optional
+import itertools
+from typing import Optional, List, Tuple
 
 import attr
 import cv2
@@ -12,12 +13,36 @@ from utils.custom_types import Array, BGRImageArray
 from utils.image import get_canvas
 from vslam.math import normalize_vector
 from vslam.poses import get_SE3_pose
-from vslam.transforms import get_world_to_cam_coord_flip_matrix, SE3_inverse, the_cv_flip
+from vslam.transforms import get_world_to_cam_coord_flip_matrix, SE3_inverse, the_cv_flip, homogenize
 from vslam.types import CameraPoseSE3, CameraIntrinsics, Vector3d, TransformSE3
 
 
 # https://github.com/krishauser/Klampt/blob/master/Python/klampt/math/se3.py
 # cool reference
+
+
+def generate_cube_sides() -> List[Tuple[Vector3d, Vector3d, Vector3d]]:
+    def _is_nice_triangle(a, b, c):
+        diff_ab = b - a
+        diff_bc = b - c
+        diff_ac = a - c
+
+        m1, m2, _ = sorted([np.abs(diff).sum() / 2 for diff in [diff_ab, diff_bc, diff_ac]])
+        _, _, m3 = sorted([np.abs(diff.sum()) // 2 for diff in [diff_ab, diff_bc, diff_ac]])
+        return m1 < 1.1 and m2 < 1.1 and m3 == 1
+
+    vals = [-1, 1]
+    triplets = [np.array([x, y, z]) for x in vals for y in vals for z in vals]
+
+    sides = [
+        np.array(triplet, dtype=np.float64)
+        for triplet in itertools.combinations(triplets, 3)
+        if _is_nice_triangle(*triplet)
+    ]
+
+    # need to renormalize
+
+    return sides
 
 @attr.define
 class Triangle3d:
@@ -36,12 +61,26 @@ class Triangle3d:
         return Triangle3d(points=result.T)
 
 
-def flat_shade(
-        surface_normal: Vector3d,
-        light_direction: Vector3d
-):
-    # I have no idea what I am doing here, just checking if something intuitive works
-    pass
+def compute_triangle_sorting_index(
+    camera_pose: CameraPoseSE3,
+    triangles: List[Triangle3d],
+) -> List[int]:
+
+    world_to_cam_flip = get_world_to_cam_coord_flip_matrix()
+    cam_pose_inv = SE3_inverse(camera_pose)
+
+    mean_depths = []
+    for triangle in triangles:
+        cam_points_T = world_to_cam_flip @ cam_pose_inv @ triangle.points.T
+        cam_points = cam_points_T.T
+
+        # drop_homogenous coord one
+        cam_points = cam_points[:, :3]
+        mean_depth = cam_points.mean(axis=0)[-1]
+        mean_depths.append(mean_depth)
+
+    return np.argsort(np.array(mean_depths))
+
 
 def toy_render_one_triangle(
     screen: BGRImageArray,
@@ -150,23 +189,28 @@ if __name__ == '__main__':
     # looking toward +x direction in world frame, +z in camera
     camera_pose: CameraPoseSE3 = get_SE3_pose(x=-2.5)
 
-    triangles = [
-        Triangle3d(np.array([
-            [0.0, -1.0, -1.0, 1.0],
-            [0.0,  1.0, -1.0, 1.0],
-            [0.0, -1.0, 1.0, 1.0],
-        ], dtype=np.float64)),
-        Triangle3d(np.array([
-            [0.0,  1.0,  -1.0, 1.0],
-            [0.0,  1.0,   1.0, 1.0],
-            [0.0, -1.0,   1.0, 1.0],
-        ], dtype=np.float64)),
-    ]
+    # triangles = [
+    #     Triangle3d(np.array([
+    #         [0.0, -1.0, -1.0, 1.0],
+    #         [0.0,  1.0, -1.0, 1.0],
+    #         [0.0, -1.0, 1.0, 1.0],
+    #     ], dtype=np.float64)),
+    #     Triangle3d(np.array([
+    #         [0.0,  1.0,  -1.0, 1.0],
+    #         [0.0,  1.0,   1.0, 1.0],
+    #         [0.0, -1.0,   1.0, 1.0],
+    #     ], dtype=np.float64)),
+    # ]
+
+    triangles = [Triangle3d(homogenize(x)) for x in generate_cube_sides()]
 
     while True:
         screen = get_canvas(shape=(480, 640, 3), background_color=BGRCuteColors.DARK_GRAY)
 
-        for triangle in triangles:
+        sorting_index = compute_triangle_sorting_index(camera_pose, triangles)[::-1]
+        # in reality, it's more complicated - need to calculate partial occlusion
+        for idx in sorting_index:
+            triangle = triangles[idx]
             toy_render_one_triangle(screen, camera_pose, triangle, cam_intrinsics, light_direction)
 
         cv2.imshow('scene', screen)

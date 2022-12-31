@@ -57,3 +57,7 @@ def SE3_inverse(T: TransformSE3) -> TransformSE3:
 
 def the_cv_flip(px_coords):
     return px_coords[:, ::-1]
+
+
+def homogenize(x):
+    return np.concatenate([x, np.ones(x.shape[:-1] + (1,))], axis=-1)
