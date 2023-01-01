@@ -4,6 +4,8 @@ import numpy as np
 from utils.custom_types import Array
 
 Vector3d = Array['3', np.float64]
+Point2d = Array['2', np.float64]
+Points2d = Array['N,2', np.float64]
 
 CameraIntrinsicMatrix = Array['3,3', np.float64]
 Cam3dHomogToPxMatrix = Array['3,2', np.float64]
