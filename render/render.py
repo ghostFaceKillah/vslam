@@ -330,7 +330,7 @@ def _get_triangles_colors(
     light_direction_in_camera = world_to_cam_flip @ SE3_inverse(camera_pose) @ light_direction_homogenous
     light_direction_in_camera = light_direction_in_camera[:3]
 
-    light_coeffs = unit_surface_normals @ -light_direction_in_camera
+    light_coeffs = unit_surface_normals @ light_direction_in_camera
     alphas = ((light_coeffs + 1) / 2)[:, None]
 
     # back color blending
@@ -383,78 +383,65 @@ def render_scene_pixelwise_depth(
     3) for each pixel in the image, we take the nearest depth triangle and we take color from it
 
     """
-    with just_time('one'):
-        world_to_cam_flip = get_world_to_cam_coord_flip_matrix()
-        cam_pose_inv = SE3_inverse(camera_pose)
-        points = np.array([tri.points for tri in triangles])
-        cam_points = points @ cam_pose_inv.T @ world_to_cam_flip.T
+    world_to_cam_flip = get_world_to_cam_coord_flip_matrix()
+    cam_pose_inv = SE3_inverse(camera_pose)
+    points = np.array([tri.points for tri in triangles])
+    cam_points = points @ cam_pose_inv.T @ world_to_cam_flip.T
 
-    with just_time('two'):
-        unit_depth_cam_points = cam_points[..., :-1]
-        triangle_depths = unit_depth_cam_points[..., -1]
-        triangles_in_image = (unit_depth_cam_points / triangle_depths[..., np.newaxis])[..., :-1]
+    unit_depth_cam_points = cam_points[..., :-1]
+    triangle_depths = unit_depth_cam_points[..., -1]
+    triangles_in_image = (unit_depth_cam_points / triangle_depths[..., np.newaxis])[..., :-1]
 
-    with just_time('three'):
-        visibility_indicator = _filter_triangles_by_visibility(cam_points)
+    visibility_indicator = _filter_triangles_by_visibility(cam_points)
 
-    with just_time('four'):
-        colors = _get_triangles_colors(world_to_cam_flip, camera_pose, cam_points, triangles, light_direction, shade_color)
+    colors = _get_triangles_colors(world_to_cam_flip, camera_pose, cam_points, triangles, light_direction, shade_color)
 
-    with just_time('five'):
-        # 1 ms for 640 x 480
-        px_center_coords_in_cam = get_pixel_center_coordinates(screen_h, screen_w, cam_intrinsics)
+    # 1 ms for 640 x 480
+    px_center_coords_in_cam = get_pixel_center_coordinates(screen_h, screen_w, cam_intrinsics)
 
-    # express pixel centers in barycentric coordinates (see wikipedia)
-    with just_time('six'):
-        T = np.zeros(shape=(len(triangles), 2, 2), dtype=np.float64)
+    T = np.zeros(shape=(len(triangles), 2, 2), dtype=np.float64)
 
-        x_1 = triangles_in_image[:, 0, 0]
-        y_1 = triangles_in_image[:, 0, 1]
-        x_2 = triangles_in_image[:, 1, 0]
-        y_2 = triangles_in_image[:, 1, 1]
-        x_3 = triangles_in_image[:, 2, 0]
-        y_3 = triangles_in_image[:, 2, 1]
-        r_3 = triangles_in_image[:, 2, :]
+    x_1 = triangles_in_image[:, 0, 0]
+    y_1 = triangles_in_image[:, 0, 1]
+    x_2 = triangles_in_image[:, 1, 0]
+    y_2 = triangles_in_image[:, 1, 1]
+    x_3 = triangles_in_image[:, 2, 0]
+    y_3 = triangles_in_image[:, 2, 1]
+    r_3 = triangles_in_image[:, 2, :]
 
-    with just_time('seven'):
-        T[:, 0, 0] = x_1 - x_3
-        T[:, 0, 1] = x_2 - x_3
-        T[:, 1, 0] = y_1 - y_3
-        T[:, 1, 1] = y_2 - y_3
+    T[:, 0, 0] = x_1 - x_3
+    T[:, 0, 1] = x_2 - x_3
+    T[:, 1, 0] = y_1 - y_3
+    T[:, 1, 1] = y_2 - y_3
 
-    with just_time('eight'):
-        T_inv = np.linalg.inv(T)
+    T_inv = np.linalg.inv(T)
 
-    # normalized_px_coords = np.einsum('hwc,nc->hwnc', px_center_coords_in_cam, -r_3)
-    with just_time('nive'):
-        # 60 ms for 640 x 480
-        normalized_px_coords = px_center_coords_in_cam[:, :, np.newaxis, :] - r_3[np.newaxis, np.newaxis, :, :]
+    # 60 ms for 640 x 480
+    normalized_px_coords = px_center_coords_in_cam[:, :, np.newaxis, :] - r_3[np.newaxis, np.newaxis, :, :]
 
-    with just_time('ten'):
-        # 0.27 s for 640 x 480
-        # (480, 640, 12, 2)    (12, 2, 2)
-        bary_partial = np.einsum('hwnc,nbc->hwnb', normalized_px_coords, T_inv)
-        third_coordinate = 1 - bary_partial.sum(axis=-1)
-        bary = np.block([bary_partial, third_coordinate[..., np.newaxis]])
+    # 0.27 s for 640 x 480
+    # (480, 640, 12, 2)    (12, 2, 2)
+    bary_partial = np.einsum('hwnc,nbc->hwnb', normalized_px_coords, T_inv)
+    third_coordinate = 1 - bary_partial.sum(axis=-1)
+    bary = np.block([bary_partial, third_coordinate[..., np.newaxis]])
 
-    with just_time('eleven'):
-        #  Elapsed 0.07564s in: eleven
-        # bary.shape = (480, 640, 12, 3)
-        # triangle_depths.shape = (12, 3)
-        est_depth_per_pixel_per_triangle = (bary * triangle_depths[np.newaxis, np.newaxis, ...]).sum(axis=-1)
-        inside_triangle_pixel_filter = np.all(bary > 0, axis=-1)
-        est_depth_per_pixel_per_triangle[~inside_triangle_pixel_filter] = np.inf
+    #  Elapsed 0.07564s in: eleven
+    # bary.shape = (480, 640, 12, 3)
+    # triangle_depths.shape = (12, 3)
+    est_depth_per_pixel_per_triangle = (bary * triangle_depths[np.newaxis, np.newaxis, ...]).sum(axis=-1)
+    inside_triangle_pixel_filter = np.all(bary > 0, axis=-1)
+    est_depth_per_pixel_per_triangle[~inside_triangle_pixel_filter] = np.inf
 
-    with just_time('twelve'):
-        best_triangle_idx = np.argmin(est_depth_per_pixel_per_triangle, axis=-1)
-        # np.all(bary > 0, axis=-1).sum(axis=0).sum(axis=0) sum of legit pixels
-        px_with_any_triangle = np.any(inside_triangle_pixel_filter, axis=-1)
+    # Elapsed 0.005924s in: twelve
+    best_triangle_idx = np.argmin(est_depth_per_pixel_per_triangle, axis=-1)
+    # np.all(bary > 0, axis=-1).sum(axis=0).sum(axis=0) sum of legit pixels
+    px_with_any_triangle = np.any(inside_triangle_pixel_filter, axis=-1)
 
-    with just_time('thirteen'):
-        screen = get_canvas(shape=(480, 640, 3), background_color=BGRCuteColors.DARK_GRAY)
+    # Elapsed 0.002221s in: thirteen
+    screen = get_canvas(shape=(480, 640, 3), background_color=BGRCuteColors.DARK_GRAY)
 
-    with just_time('fourteen'):
-        screen[px_with_any_triangle] = colors[best_triangle_idx][px_with_any_triangle]
+    #  Elapsed 0.004542s in: fourteen
+    screen[px_with_any_triangle] = colors[best_triangle_idx][px_with_any_triangle]
 
     return screen
 
@@ -476,7 +463,9 @@ def main():
 
     while True:
         # screen = render_scene_naively(screen_h, screen_w, camera_pose, triangles, cam_intrinsics, light_direction)
-        screen = render_scene_pixelwise_depth(screen_h, screen_w, camera_pose, triangles, cam_intrinsics, light_direction, shade_color)
+        with just_time('render'):
+            # ~0.37 s currently
+            screen = render_scene_pixelwise_depth(screen_h, screen_w, camera_pose, triangles, cam_intrinsics, light_direction, shade_color)
 
         cv2.imshow('scene', screen)
         key = cv2.waitKey(-1)
