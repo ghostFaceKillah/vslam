@@ -13,6 +13,7 @@ import numpy as np
 from utils.colors import BGRCuteColors
 from utils.custom_types import Array, BGRImageArray, BGRColor
 from utils.image import get_canvas
+from utils.profiling import just_time
 from vslam.math import normalize_vector
 from vslam.poses import get_SE3_pose
 from vslam.transforms import get_world_to_cam_coord_flip_matrix, SE3_inverse, the_cv_flip, homogenize
@@ -88,13 +89,8 @@ def generate_cube_sides() -> List[Tuple[Vector3d, Vector3d, Vector3d]]:
 class Triangle3d:
     """ a triangle floating in space """
     points: Array['3,4', np.float64]   # three 3d points
-
-    def get_surface_normal(self) -> Vector3d:
-        # TODO: There has to be a convention around those in rendering community
-        vec_1 = (self.points[1] - self.points[0])[:3]
-        vec_2 = (self.points[2] - self.points[0])[:3]
-        resu = np.cross(vec_1, vec_2)
-        return resu[:3] / np.linalg.norm(resu)
+    front_face_color: BGRColor = BGRCuteColors.GRASS_GREEN
+    back_face_color: BGRColor = BGRCuteColors.CRIMSON
 
     def mutate(self, transform: TransformSE3) -> 'Triangle3d':
         result = transform @ self.points.T
@@ -166,7 +162,6 @@ def _get_color(
     world_to_cam_flip = get_world_to_cam_coord_flip_matrix()
 
     # we will want to compute surface normal by computing crossproduct
-    # normal = triangle.get_surface_normal()
     surface_normal = np.cross(cam_points[1] - cam_points[0], cam_points[2] - cam_points[0])
     unit_surface_normal = surface_normal / np.linalg.norm(surface_normal)
 
@@ -206,30 +201,6 @@ def toy_render_one_triangle(
     poly_coords = the_cv_flip(px_coords.round().astype(np.int32))
     cv2.fillPoly(screen, [poly_coords], color)
 
-
-class TriangleRenderContext:
-    mask: Array['H,W', np.bool]
-    depths: Array['H,W', np.float64]
-    color: BGRColor
-
-
-def get_triangle_render_context(
-        screen: BGRImageArray,
-        camera_pose: CameraPoseSE3,
-        triangle: Triangle3d,
-        cam_intrinsics: CameraIntrinsics,
-        light_direction: Vector3d
-) -> TriangleRenderContext:
-    cam_points, px_coords = _get_px_coords(camera_pose, triangle, cam_intrinsics)
-    color = _get_color(camera_pose, cam_points, light_direction)
-    poly_coords = the_cv_flip(px_coords.round().astype(np.int32))
-
-    mask = np.zeros(screen.shape[:2], dtype=np.bool)
-    cv2.fillPoly(mask, [poly_coords], 1)
-
-    # get depths !
-    # need better Triangle2D.to_barycentric
-    pass
 
 
 @attr.s(auto_attribs=True)
@@ -310,26 +281,182 @@ def render_scene_naively(
     return screen
 
 
+TrianglesPointsInCam = Array['N,3,4', np.float64]
+
+
+def _filter_triangles_by_visibility(cam_points: TrianglesPointsInCam):
+    in_front_of_camera = np.any(cam_points[..., 2] > 0.5, axis=1)
+    return in_front_of_camera
+
+
+class TriangleRenderContext:
+    mask: Array['H,W', np.bool]
+    depths: Array['H,W', np.float64]
+    color: BGRColor
+
+
+def get_triangle_render_context(
+        screen: BGRImageArray,
+        camera_pose: CameraPoseSE3,
+        triangle: Triangle3d,
+        cam_intrinsics: CameraIntrinsics,
+        light_direction: Vector3d
+) -> TriangleRenderContext:
+    cam_points, px_coords = _get_px_coords(camera_pose, triangle, cam_intrinsics)
+    color = _get_color(camera_pose, cam_points, light_direction)
+    poly_coords = the_cv_flip(px_coords.round().astype(np.int32))
+
+    mask = np.zeros(screen.shape[:2], dtype=np.bool)
+    cv2.fillPoly(mask, [poly_coords], 1)
+
+
+
+def _get_triangles_colors(
+    world_to_cam_flip: TransformSE3,
+    camera_pose: CameraPoseSE3,
+    cam_points: TrianglesPointsInCam,
+    triangles: List[Triangle3d],
+    light_direction: Vector3d,
+    shade_color: BGRColor
+):
+    spanning_vectors_1 = cam_points[:, 1, :] - cam_points[:, 0, :]
+    spanning_vectors_2 = cam_points[:, 2, :] - cam_points[:, 0, :]
+
+    surface_normals = np.cross(spanning_vectors_1[:, :-1], spanning_vectors_2[:, :-1])
+    inverse_norms = 1 / np.linalg.norm(surface_normals, axis=1)
+    unit_surface_normals = np.einsum('i,ij->ij', inverse_norms, surface_normals)
+
+    light_direction_homogenous = np.array([light_direction[0], light_direction[1], light_direction[2], 0.0])
+    light_direction_in_camera = world_to_cam_flip @ SE3_inverse(camera_pose) @ light_direction_homogenous
+    light_direction_in_camera = light_direction_in_camera[:3]
+
+    light_coeffs = unit_surface_normals @ -light_direction_in_camera
+    alphas = ((light_coeffs + 1) / 2)[:, None]
+
+    # back color blending
+    from_colors_back = np.tile(shade_color, (len(triangles), 1))
+    to_colors_back = np.array([tri.back_face_color for tri in triangles], dtype=np.uint8)
+    colors_back = (alphas * to_colors_back + (1 - alphas) * from_colors_back).astype(np.uint8)
+
+    from_colors_front = np.array([tri.front_face_color for tri in triangles], dtype=np.uint8)
+    to_colors_front = from_colors_back
+    colors_front = (alphas * to_colors_front + (1 - alphas) * from_colors_front).astype(np.uint8)
+
+    colors = np.zeros_like(colors_front)
+
+    front_face_filter = unit_surface_normals[:, 2] < 0
+
+    colors[front_face_filter] = colors_front[front_face_filter]
+    colors[~front_face_filter] = colors_back[~front_face_filter]
+
+    return colors
+
+
+def get_pixel_center_coordinates(
+    screen_h: int,
+    screen_w: int,
+    cam_intrinsics: CameraIntrinsics,
+):
+    ws = (np.arange(0, screen_w) - cam_intrinsics.cx) / cam_intrinsics.fx
+    hs = (np.arange(0, screen_h) - cam_intrinsics.cy) / cam_intrinsics.fy
+    px_center_coords_in_cam = np.stack(np.meshgrid(ws, hs), axis=-1)
+    return px_center_coords_in_cam
+
+
 def render_scene_pixelwise_depth(
     screen_h: int,
     screen_w: int,
     camera_pose: CameraPoseSE3,
     triangles: List[Triangle3d],
     cam_intrinsics: CameraIntrinsics,
-    light_direction: Vector3d
+    light_direction: Vector3d,
+    shade_color: BGRColor
 ):
     """
-Next Rendering idea:
+    Next Rendering idea:
 
-for each triangle we have all pixels that it fills.
-    For each pixel we have it's depth
+    1) Maybe decide to not render some of the triangles based on visibility
 
-for each pixel in the image, we take the nearest depth triangle and we take color from it
+    2) for each triangle we have all pixels that it fills.
+         For each pixel we have it's depth
 
-
+    3) for each pixel in the image, we take the nearest depth triangle and we take color from it
 
     """
-    pass
+    with just_time('one'):
+        world_to_cam_flip = get_world_to_cam_coord_flip_matrix()
+        cam_pose_inv = SE3_inverse(camera_pose)
+        points = np.array([tri.points for tri in triangles])
+        cam_points = points @ cam_pose_inv.T @ world_to_cam_flip.T
+
+    with just_time('two'):
+        unit_depth_cam_points = cam_points[..., :-1]
+        triangle_depths = unit_depth_cam_points[..., -1]
+        triangles_in_image = (unit_depth_cam_points / triangle_depths[..., np.newaxis])[..., :-1]
+
+    with just_time('three'):
+        visibility_indicator = _filter_triangles_by_visibility(cam_points)
+
+    with just_time('four'):
+        colors = _get_triangles_colors(world_to_cam_flip, camera_pose, cam_points, triangles, light_direction, shade_color)
+
+    with just_time('five'):
+        # 1 ms for 640 x 480
+        px_center_coords_in_cam = get_pixel_center_coordinates(screen_h, screen_w, cam_intrinsics)
+
+    # express pixel centers in barycentric coordinates (see wikipedia)
+    with just_time('six'):
+        T = np.zeros(shape=(len(triangles), 2, 2), dtype=np.float64)
+
+        x_1 = triangles_in_image[:, 0, 0]
+        y_1 = triangles_in_image[:, 0, 1]
+        x_2 = triangles_in_image[:, 1, 0]
+        y_2 = triangles_in_image[:, 1, 1]
+        x_3 = triangles_in_image[:, 2, 0]
+        y_3 = triangles_in_image[:, 2, 1]
+        r_3 = triangles_in_image[:, 2, :]
+
+    with just_time('seven'):
+        T[:, 0, 0] = x_1 - x_3
+        T[:, 0, 1] = x_2 - x_3
+        T[:, 1, 0] = y_1 - y_3
+        T[:, 1, 1] = y_2 - y_3
+
+    with just_time('eight'):
+        T_inv = np.linalg.inv(T)
+
+    # normalized_px_coords = np.einsum('hwc,nc->hwnc', px_center_coords_in_cam, -r_3)
+    with just_time('nive'):
+        # 60 ms for 640 x 480
+        normalized_px_coords = px_center_coords_in_cam[:, :, np.newaxis, :] - r_3[np.newaxis, np.newaxis, :, :]
+
+    with just_time('ten'):
+        # 0.27 s for 640 x 480
+        # (480, 640, 12, 2)    (12, 2, 2)
+        bary_partial = np.einsum('hwnc,nbc->hwnb', normalized_px_coords, T_inv)
+        third_coordinate = 1 - bary_partial.sum(axis=-1)
+        bary = np.block([bary_partial, third_coordinate[..., np.newaxis]])
+
+    with just_time('eleven'):
+        #  Elapsed 0.07564s in: eleven
+        # bary.shape = (480, 640, 12, 3)
+        # triangle_depths.shape = (12, 3)
+        est_depth_per_pixel_per_triangle = (bary * triangle_depths[np.newaxis, np.newaxis, ...]).sum(axis=-1)
+        inside_triangle_pixel_filter = np.all(bary > 0, axis=-1)
+        est_depth_per_pixel_per_triangle[~inside_triangle_pixel_filter] = np.inf
+
+    with just_time('twelve'):
+        best_triangle_idx = np.argmin(est_depth_per_pixel_per_triangle, axis=-1)
+        # np.all(bary > 0, axis=-1).sum(axis=0).sum(axis=0) sum of legit pixels
+        px_with_any_triangle = np.any(inside_triangle_pixel_filter, axis=-1)
+
+    with just_time('thirteen'):
+        screen = get_canvas(shape=(480, 640, 3), background_color=BGRCuteColors.DARK_GRAY)
+
+    with just_time('fourteen'):
+        screen[px_with_any_triangle] = colors[best_triangle_idx][px_with_any_triangle]
+
+    return screen
 
 
 def main():
@@ -337,6 +464,7 @@ def main():
     # I want it to map from 4 by 3 meters
     screen_h = 480
     screen_w = 640
+    shade_color = BGRCuteColors.DARK_GRAY
     cam_intrinsics = CameraIntrinsics(fx=screen_w / 4, fy=screen_h / 3, cx=screen_w / 2, cy=screen_h / 2)
     light_direction = normalize_vector(np.array([1.0, -1.0, -8.0]))
 
@@ -347,7 +475,8 @@ def main():
     triangles = get_cube_scene()
 
     while True:
-        screen = render_scene_naively(screen_h, screen_w, camera_pose, triangles, cam_intrinsics, light_direction)
+        # screen = render_scene_naively(screen_h, screen_w, camera_pose, triangles, cam_intrinsics, light_direction)
+        screen = render_scene_pixelwise_depth(screen_h, screen_w, camera_pose, triangles, cam_intrinsics, light_direction, shade_color)
 
         cv2.imshow('scene', screen)
         key = cv2.waitKey(-1)
