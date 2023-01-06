@@ -8,7 +8,9 @@ from typing import Optional, List, Tuple
 
 import attr
 import cv2
-import numpy as np
+# import numpy as np
+import jax.numpy as np
+import numpy as onp
 
 from utils.colors import BGRCuteColors
 from utils.custom_types import Array, BGRImageArray, BGRColor
@@ -290,7 +292,7 @@ def _filter_triangles_by_visibility(cam_points: TrianglesPointsInCam):
 
 
 class TriangleRenderContext:
-    mask: Array['H,W', np.bool]
+    mask: Array['H,W', bool]
     depths: Array['H,W', np.float64]
     color: BGRColor
 
@@ -310,12 +312,16 @@ def get_triangle_render_context(
     cv2.fillPoly(mask, [poly_coords], 1)
 
 
-
 def _get_triangles_colors(
     world_to_cam_flip: TransformSE3,
     camera_pose: CameraPoseSE3,
     cam_points: TrianglesPointsInCam,
     triangles: List[Triangle3d],
+        # from_colors_front: Array['N,3', np.uint8],
+        # to_colors_back: Array['N,3', np.uint8],
+        # to_colors_back,
+        # len_triangles: int,
+
     light_direction: Vector3d,
     shade_color: BGRColor
 ):
@@ -334,7 +340,7 @@ def _get_triangles_colors(
     alphas = ((light_coeffs + 1) / 2)[:, None]
 
     # back color blending
-    from_colors_back = np.tile(shade_color, (len(triangles), 1))
+    from_colors_back = np.tile(np.array(shade_color), (len(triangles), 1))
     to_colors_back = np.array([tri.back_face_color for tri in triangles], dtype=np.uint8)
     colors_back = (alphas * to_colors_back + (1 - alphas) * from_colors_back).astype(np.uint8)
 
@@ -346,8 +352,10 @@ def _get_triangles_colors(
 
     front_face_filter = unit_surface_normals[:, 2] < 0
 
-    colors[front_face_filter] = colors_front[front_face_filter]
-    colors[~front_face_filter] = colors_back[~front_face_filter]
+    # colors[front_face_filter] = colors_front[front_face_filter]
+    # colors[~front_face_filter] = colors_back[~front_face_filter]
+    colors = colors.at[front_face_filter].set(colors_front[front_face_filter])
+    colors = colors.at[~front_face_filter].set(colors_back[~front_face_filter])
 
     return colors
 
@@ -363,6 +371,7 @@ def get_pixel_center_coordinates(
     return px_center_coords_in_cam
 
 
+# @jit
 def render_scene_pixelwise_depth(
     screen_h: int,
     screen_w: int,
@@ -409,10 +418,15 @@ def render_scene_pixelwise_depth(
     y_3 = triangles_in_image[:, 2, 1]
     r_3 = triangles_in_image[:, 2, :]
 
-    T[:, 0, 0] = x_1 - x_3
-    T[:, 0, 1] = x_2 - x_3
-    T[:, 1, 0] = y_1 - y_3
-    T[:, 1, 1] = y_2 - y_3
+    # T[:, 0, 0] = x_1 - x_3
+    # T[:, 0, 1] = x_2 - x_3
+    # T[:, 1, 0] = y_1 - y_3
+    # T[:, 1, 1] = y_2 - y_3
+
+    T = T.at[:, 0, 0].set(x_1 - x_3)
+    T = T.at[:, 0, 1].set(x_2 - x_3)
+    T = T.at[:, 1, 0].set(y_1 - y_3)
+    T = T.at[:, 1, 1].set(y_2 - y_3)
 
     T_inv = np.linalg.inv(T)
 
@@ -430,7 +444,9 @@ def render_scene_pixelwise_depth(
     # triangle_depths.shape = (12, 3)
     est_depth_per_pixel_per_triangle = (bary * triangle_depths[np.newaxis, np.newaxis, ...]).sum(axis=-1)
     inside_triangle_pixel_filter = np.all(bary > 0, axis=-1)
-    est_depth_per_pixel_per_triangle[~inside_triangle_pixel_filter] = np.inf
+
+    # est_depth_per_pixel_per_triangle[~inside_triangle_pixel_filter] = np.inf
+    est_depth_per_pixel_per_triangle = est_depth_per_pixel_per_triangle.at[~inside_triangle_pixel_filter].set(np.inf)
 
     # Elapsed 0.005924s in: twelve
     best_triangle_idx = np.argmin(est_depth_per_pixel_per_triangle, axis=-1)
@@ -438,10 +454,10 @@ def render_scene_pixelwise_depth(
     px_with_any_triangle = np.any(inside_triangle_pixel_filter, axis=-1)
 
     # Elapsed 0.002221s in: thirteen
-    screen = get_canvas(shape=(480, 640, 3), background_color=BGRCuteColors.DARK_GRAY)
+    screen = np.ones((480, 640, 3), dtype=np.uint8) * np.array(BGRCuteColors.DARK_GRAY, dtype=np.uint8)
 
     #  Elapsed 0.004542s in: fourteen
-    screen[px_with_any_triangle] = colors[best_triangle_idx][px_with_any_triangle]
+    screen = screen.at[px_with_any_triangle].set(colors[best_triangle_idx][px_with_any_triangle])
 
     return screen
 
@@ -467,7 +483,7 @@ def main():
             # ~0.37 s currently
             screen = render_scene_pixelwise_depth(screen_h, screen_w, camera_pose, triangles, cam_intrinsics, light_direction, shade_color)
 
-        cv2.imshow('scene', screen)
+        cv2.imshow('scene', onp.array(screen))
         key = cv2.waitKey(-1)
 
         # mutate state based on keys
