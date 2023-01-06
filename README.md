@@ -1,3 +1,10 @@
+2023-01-02
+----------
+I have figured out a nice rendering methods that handles overlaps, etc.
+It looks a bit slow: 640x480, 12 triangles renders in 0.37 seconds.
+There's a couple of different possibilities of rendering it, many would work.
+I think I will try to do it based on jax.
+
 2022-12-05
 ----------
 Cool! I have first draft of stupid rendering :)
