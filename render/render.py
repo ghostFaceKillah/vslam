@@ -232,10 +232,14 @@ def _key_to_maybe_transforms(key: int) -> MaybeTransforms:
         return MaybeTransforms(camera=get_SE3_pose(x=0.1))
     elif key == ord('s'):
         return MaybeTransforms(camera=get_SE3_pose(x=-0.1))
-    elif key == ord('a'):
+    elif key == ord('q'):
         return MaybeTransforms(camera=get_SE3_pose(y=-0.1))
-    elif key == ord('d'):
+    elif key == ord('e'):
         return MaybeTransforms(camera=get_SE3_pose(y=0.1))
+    elif key == ord('a'):
+        return MaybeTransforms(camera=get_SE3_pose(yaw=np.deg2rad(2)))
+    elif key == ord('d'):
+        return MaybeTransforms(camera=get_SE3_pose(yaw=np.deg2rad(-2)))
     else:
         print(f"Unknown keypress {key} {chr(key)}")
         return MaybeTransforms.empty()
@@ -485,7 +489,6 @@ def main():
     while True:
         # screen = render_scene_naively(screen_h, screen_w, camera_pose, triangles, cam_intrinsics, light_direction)
         with just_time('render'):
-            # ~0.37 s currently
             screen = render_scene_pixelwise_depth(screen_h, screen_w, camera_pose, triangles, cam_intrinsics, light_direction, shade_color)
 
         cv2.imshow('scene', onp.array(screen))
@@ -498,7 +501,7 @@ def main():
             triangles = [triangle.mutate(transforms.scene) for triangle in triangles]
 
         if transforms.camera is not None:
-            camera_pose = transforms.camera @ camera_pose
+            camera_pose = camera_pose @ transforms.camera
 
 
 if __name__ == '__main__':

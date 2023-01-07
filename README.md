@@ -1,3 +1,12 @@
+2023-01-07
+-----------
+
+- bug in rendering - uneccessary / incorrect transform of light to camera frame ?
+- make a simulated room
+- tune camera intrinsics to get rid of weird scaling
+- visibility bug
+
+
 2023-01-05
 -----------
 What should the next steps be?
