@@ -1,3 +1,62 @@
+2023-01-05
+-----------
+What should the next steps be?
+
+Our ultimate goal is to have mobile phone on a stick robot, that navigates around arbitrary indoor environment.
+Why? 
+- to start a company selling cheap robots
+- if starting company too ambitious or doesn't work, at least I would have a nice blog post out of it :))
+- learn VSLAM 
+- practice C++ 
+- learn jax <--
+
+What concrete tickets could we do to hit this goal?
+
+- start building the robot - huge
+  - pick two cameras (or one), pick compute module, pick the wheel base and try to get it to actually move
+    - can we do all of this on a mobile phone ?
+    - all this para-hardware work is streamable on Twitch using go pro
+    
+    - Roomba as a base
+      - the vacuum can be bought from craiglist for around 100 bucks
+      - most roomba's (notably 600/700/800/900 series) have debug ports that accept external messages
+        with some hacking, there's hope of being able to control the base
+        https://www.irobot.lv/uploaded_files/File/iRobot_Roomba_500_Open_Interface_Spec.pdf
+      Also, just google "roomba open interface"
+        
+    - IRobot create 3 as a base
+      - it's only 300 USD new, and it looks like it might save a lot of time
+      - but it uses ROS :(
+      100 USD + / - per hour
+        
+    - compute platform
+      - qualcomm
+      - Nvidia Xavier, etc
+  
+    - cameras for VSLAM
+      - super high quality leopard cameras (likely huge overkill)
+      - one or two mobile phones - a lot on ebay etc, but hard to access raw data stream, 
+        pay a lot for sensors you don't need
+      - microsoft kinnect
+      - intel realsense
+      - qualcomm prebuilt robotics kit
+  
+  - continue building naive VSLAM on top of simulated dataset
+    - speed up the rendering in jax - 2-4 weeks
+      - disadvantage: adds big dependency to otherwise simple to understand and use framework
+    - don't speed up rendering and just live with current 0.4 s renders or incorrect occlusion rendering
+    
+  - clean up Orb SLAM V3, keep dataset performance defended by unit tests / provided benchmarks 
+  and refactor it to be nice
+    
+    + doing the angel's work: taking best VSLAM method and making it usable in real life
+    - huge time investment and likely not directly related to building the real life robot.
+      Likely it will contain high amount of stuff not really needed for our usecase.
+      
+  In summary, as of today, it's probably a bit suboptimal, but I feel like doing jax.
+  Specifically, speeding up the rendering thing in jax.
+
+
 2023-01-02
 ----------
 I have figured out a nice rendering methods that handles overlaps, etc.
