@@ -8,9 +8,10 @@ from typing import Optional, List, Tuple
 
 import attr
 import cv2
-# import numpy as np
 import jax.numpy as np
 import numpy as onp
+# import numpy as np
+from jax import jit
 
 from utils.colors import BGRCuteColors
 from utils.custom_types import Array, BGRImageArray, BGRColor
@@ -348,14 +349,8 @@ def _get_triangles_colors(
     to_colors_front = from_colors_back
     colors_front = (alphas * to_colors_front + (1 - alphas) * from_colors_front).astype(np.uint8)
 
-    colors = np.zeros_like(colors_front)
-
     front_face_filter = unit_surface_normals[:, 2] < 0
-
-    # colors[front_face_filter] = colors_front[front_face_filter]
-    # colors[~front_face_filter] = colors_back[~front_face_filter]
-    colors = colors.at[front_face_filter].set(colors_front[front_face_filter])
-    colors = colors.at[~front_face_filter].set(colors_back[~front_face_filter])
+    colors = np.where(front_face_filter[:, np.newaxis], colors_front, colors_back)
 
     return colors
 
@@ -371,44 +366,14 @@ def get_pixel_center_coordinates(
     return px_center_coords_in_cam
 
 
-# @jit
-def render_scene_pixelwise_depth(
-    screen_h: int,
-    screen_w: int,
-    camera_pose: CameraPoseSE3,
-    triangles: List[Triangle3d],
-    cam_intrinsics: CameraIntrinsics,
-    light_direction: Vector3d,
-    shade_color: BGRColor
+@jit
+def true_render(
+    triangle_depths,
+    T,
+    triangles_in_image,
+    px_center_coords_in_cam,
+    colors
 ):
-    """
-    Next Rendering idea:
-
-    1) Maybe decide to not render some of the triangles based on visibility
-
-    2) for each triangle we have all pixels that it fills.
-         For each pixel we have it's depth
-
-    3) for each pixel in the image, we take the nearest depth triangle and we take color from it
-
-    """
-    world_to_cam_flip = get_world_to_cam_coord_flip_matrix()
-    cam_pose_inv = SE3_inverse(camera_pose)
-    points = np.array([tri.points for tri in triangles])
-    cam_points = points @ cam_pose_inv.T @ world_to_cam_flip.T
-
-    unit_depth_cam_points = cam_points[..., :-1]
-    triangle_depths = unit_depth_cam_points[..., -1]
-    triangles_in_image = (unit_depth_cam_points / triangle_depths[..., np.newaxis])[..., :-1]
-
-    visibility_indicator = _filter_triangles_by_visibility(cam_points)
-
-    colors = _get_triangles_colors(world_to_cam_flip, camera_pose, cam_points, triangles, light_direction, shade_color)
-
-    # 1 ms for 640 x 480
-    px_center_coords_in_cam = get_pixel_center_coordinates(screen_h, screen_w, cam_intrinsics)
-
-    T = np.zeros(shape=(len(triangles), 2, 2), dtype=np.float64)
 
     x_1 = triangles_in_image[:, 0, 0]
     y_1 = triangles_in_image[:, 0, 1]
@@ -442,11 +407,12 @@ def render_scene_pixelwise_depth(
     #  Elapsed 0.07564s in: eleven
     # bary.shape = (480, 640, 12, 3)
     # triangle_depths.shape = (12, 3)
-    est_depth_per_pixel_per_triangle = (bary * triangle_depths[np.newaxis, np.newaxis, ...]).sum(axis=-1)
+    raw_est_depth_per_pixel_per_triangle = (bary * triangle_depths[np.newaxis, np.newaxis, ...]).sum(axis=-1)
     inside_triangle_pixel_filter = np.all(bary > 0, axis=-1)
 
     # est_depth_per_pixel_per_triangle[~inside_triangle_pixel_filter] = np.inf
-    est_depth_per_pixel_per_triangle = est_depth_per_pixel_per_triangle.at[~inside_triangle_pixel_filter].set(np.inf)
+    # est_depth_per_pixel_per_triangle = raw_est_depth_per_pixel_per_triangle.at[~inside_triangle_pixel_filter].set(np.inf)
+    est_depth_per_pixel_per_triangle = np.where(inside_triangle_pixel_filter, raw_est_depth_per_pixel_per_triangle, np.inf)
 
     # Elapsed 0.005924s in: twelve
     best_triangle_idx = np.argmin(est_depth_per_pixel_per_triangle, axis=-1)
@@ -454,12 +420,51 @@ def render_scene_pixelwise_depth(
     px_with_any_triangle = np.any(inside_triangle_pixel_filter, axis=-1)
 
     # Elapsed 0.002221s in: thirteen
-    screen = np.ones((480, 640, 3), dtype=np.uint8) * np.array(BGRCuteColors.DARK_GRAY, dtype=np.uint8)
+    bg_color = np.array(BGRCuteColors.DARK_GRAY, dtype=np.uint8)
 
     #  Elapsed 0.004542s in: fourteen
-    screen = screen.at[px_with_any_triangle].set(colors[best_triangle_idx][px_with_any_triangle])
+    image = np.where(px_with_any_triangle[..., np.newaxis], colors[best_triangle_idx], bg_color[np.newaxis, np.newaxis, :])
 
-    return screen
+    return image
+
+
+def render_scene_pixelwise_depth(
+    screen_h: int,
+    screen_w: int,
+    camera_pose: CameraPoseSE3,
+    triangles: List[Triangle3d],
+    cam_intrinsics: CameraIntrinsics,
+    light_direction: Vector3d,
+    shade_color: BGRColor
+):
+    """
+    Next Rendering idea:
+
+    1) Maybe decide to not render some of the triangles based on visibility
+
+    2) for each triangle we have all pixels that it fills.
+         For each pixel we have it's depth
+
+    3) for each pixel in the image, we take the nearest depth triangle and we take color from it
+
+    """
+    world_to_cam_flip = get_world_to_cam_coord_flip_matrix()
+    cam_pose_inv = SE3_inverse(camera_pose)
+    points = np.array([tri.points for tri in triangles])
+    cam_points = points @ cam_pose_inv.T @ world_to_cam_flip.T
+
+    unit_depth_cam_points = cam_points[..., :-1]
+    triangle_depths = unit_depth_cam_points[..., -1]
+    triangles_in_image = (unit_depth_cam_points / triangle_depths[..., np.newaxis])[..., :-1]
+
+    visibility_indicator = _filter_triangles_by_visibility(cam_points)
+
+    colors = _get_triangles_colors(world_to_cam_flip, camera_pose, cam_points, triangles, light_direction, shade_color)
+
+    px_center_coords_in_cam = get_pixel_center_coordinates(screen_h, screen_w, cam_intrinsics)
+
+    T = np.zeros(shape=(len(triangles), 2, 2), dtype=np.float64)
+    return true_render(triangle_depths, T, triangles_in_image, px_center_coords_in_cam, colors)
 
 
 def main():
