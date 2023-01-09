@@ -1,10 +1,19 @@
 2023-01-07
 -----------
 
-- bug in rendering - uneccessary / incorrect transform of light to camera frame ?
-- make a simulated room
-- tune camera intrinsics to get rid of weird scaling
-- visibility bug
+- refactor render to make it clear
+
+- features
+  - make a simulated room
+  
+- bugs
+  - tune camera intrinsics to get rid of weird scaling
+  - bug in rendering - uneccessary / incorrect transform of light to camera frame ?
+  - visibility bug (we render things which are behind us :o)
+  
+- set up proper CICD
+
+did a small sanity check to see if we will even have matching keypoints in a simulated environment.
 
 
 2023-01-05

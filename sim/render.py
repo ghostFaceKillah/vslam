@@ -1,0 +1,222 @@
+"""
+Small demo of naive rendering
+
+
+"""
+from typing import List
+
+import cv2
+import jax.numpy as np
+import numpy as onp
+
+from sim.sample_scenes import get_cube_scene
+from sim.sim_types import RenderTriangle3d, RenderTrianglesPointsInCam
+from sim.ui import key_to_maybe_transforms
+from utils.colors import BGRCuteColors
+from utils.custom_types import BGRColor
+from utils.profiling import just_time
+from vslam.math import normalize_vector
+from vslam.poses import get_SE3_pose
+from vslam.transforms import get_world_to_cam_coord_flip_matrix, SE3_inverse
+from vslam.types import CameraPoseSE3, CameraIntrinsics, Vector3d, TransformSE3
+
+
+def _filter_triangles_by_visibility(cam_points: RenderTrianglesPointsInCam):
+    in_front_of_camera = np.any(cam_points[..., 2] > 1.0, axis=1)
+    return in_front_of_camera
+
+
+def _get_triangles_colors(
+    world_to_cam_flip: TransformSE3,
+    camera_pose: CameraPoseSE3,
+    cam_points: RenderTrianglesPointsInCam,
+    triangles: List[RenderTriangle3d],
+    light_direction: Vector3d,
+    shade_color: BGRColor
+):
+    spanning_vectors_1 = cam_points[:, 1, :] - cam_points[:, 0, :]
+    spanning_vectors_2 = cam_points[:, 2, :] - cam_points[:, 0, :]
+
+    surface_normals = np.cross(spanning_vectors_1[:, :-1], spanning_vectors_2[:, :-1])
+    inverse_norms = 1 / np.linalg.norm(surface_normals, axis=1)
+    unit_surface_normals = np.einsum('i,ij->ij', inverse_norms, surface_normals)
+
+    light_direction_homogenous = np.array([light_direction[0], light_direction[1], light_direction[2], 0.0])
+    light_direction_in_camera = world_to_cam_flip @ SE3_inverse(camera_pose) @ light_direction_homogenous
+    light_direction_in_camera = light_direction_in_camera[:3]
+
+    light_coeffs = unit_surface_normals @ light_direction_in_camera
+    alphas = ((light_coeffs + 1) / 2)[:, None]
+
+    # back color blending
+    from_colors_back = np.tile(np.array(shade_color), (len(triangles), 1))
+    to_colors_back = np.array([tri.back_face_color for tri in triangles], dtype=np.uint8)
+    colors_back = (alphas * to_colors_back + (1 - alphas) * from_colors_back).astype(np.uint8)
+
+    from_colors_front = np.array([tri.front_face_color for tri in triangles], dtype=np.uint8)
+    to_colors_front = from_colors_back
+    colors_front = (alphas * to_colors_front + (1 - alphas) * from_colors_front).astype(np.uint8)
+
+    front_face_filter = unit_surface_normals[:, 2] < 0
+    colors = np.where(front_face_filter[:, np.newaxis], colors_front, colors_back)
+
+    return colors
+
+
+def get_pixel_center_coordinates(
+    screen_h: int,
+    screen_w: int,
+    cam_intrinsics: CameraIntrinsics,
+):
+    ws = (np.arange(0, screen_w) - cam_intrinsics.cx) / cam_intrinsics.fx
+    hs = (np.arange(0, screen_h) - cam_intrinsics.cy) / cam_intrinsics.fy
+    px_center_coords_in_cam = np.stack(np.meshgrid(ws, hs), axis=-1)
+    return px_center_coords_in_cam
+
+
+# @jit
+def true_render(
+    triangle_depths,
+    T,
+    triangles_in_image,
+    px_center_coords_in_cam,
+    colors
+):
+
+    x_1 = triangles_in_image[:, 0, 0]
+    y_1 = triangles_in_image[:, 0, 1]
+    x_2 = triangles_in_image[:, 1, 0]
+    y_2 = triangles_in_image[:, 1, 1]
+    x_3 = triangles_in_image[:, 2, 0]
+    y_3 = triangles_in_image[:, 2, 1]
+    r_3 = triangles_in_image[:, 2, :]
+
+    # T[:, 0, 0] = x_1 - x_3
+    # T[:, 0, 1] = x_2 - x_3
+    # T[:, 1, 0] = y_1 - y_3
+    # T[:, 1, 1] = y_2 - y_3
+
+    T = T.at[:, 0, 0].set(x_1 - x_3)
+    T = T.at[:, 0, 1].set(x_2 - x_3)
+    T = T.at[:, 1, 0].set(y_1 - y_3)
+    T = T.at[:, 1, 1].set(y_2 - y_3)
+
+    T_inv = np.linalg.inv(T)
+
+    # 60 ms for 640 x 480
+    normalized_px_coords = px_center_coords_in_cam[:, :, np.newaxis, :] - r_3[np.newaxis, np.newaxis, :, :]
+
+    # 0.27 s for 640 x 480
+    # (480, 640, 12, 2)    (12, 2, 2)
+    bary_partial = np.einsum('hwnc,nbc->hwnb', normalized_px_coords, T_inv)
+    third_coordinate = 1 - bary_partial.sum(axis=-1)
+    bary = np.block([bary_partial, third_coordinate[..., np.newaxis]])
+
+    #  Elapsed 0.07564s in: eleven
+    # bary.shape = (480, 640, 12, 3)
+    # triangle_depths.shape = (12, 3)
+    raw_est_depth_per_pixel_per_triangle = (bary * triangle_depths[np.newaxis, np.newaxis, ...]).sum(axis=-1)
+    inside_triangle_pixel_filter = np.all(bary > 0, axis=-1)
+    in_front_of_image_plane = raw_est_depth_per_pixel_per_triangle > 1.0
+
+    # est_depth_per_pixel_per_triangle[~inside_triangle_pixel_filter] = np.inf
+    # est_depth_per_pixel_per_triangle = raw_est_depth_per_pixel_per_triangle.at[~inside_triangle_pixel_filter].set(np.inf)
+    est_depth_per_pixel_per_triangle = np.where(
+        inside_triangle_pixel_filter & in_front_of_image_plane,
+        raw_est_depth_per_pixel_per_triangle,
+        np.inf
+    )
+
+    # Elapsed 0.005924s in: twelve
+    best_triangle_idx = np.argmin(est_depth_per_pixel_per_triangle, axis=-1)
+    # np.all(bary > 0, axis=-1).sum(axis=0).sum(axis=0) sum of legit pixels
+    px_with_any_triangle = np.any(inside_triangle_pixel_filter, axis=-1)
+
+    # Elapsed 0.002221s in: thirteen
+    bg_color = np.array(BGRCuteColors.DARK_GRAY, dtype=np.uint8)
+
+    #  Elapsed 0.004542s in: fourteen
+    image = np.where(px_with_any_triangle[..., np.newaxis], colors[best_triangle_idx], bg_color[np.newaxis, np.newaxis, :])
+
+    return image
+
+
+def render_scene_pixelwise_depth(
+    screen_h: int,
+    screen_w: int,
+    camera_pose: CameraPoseSE3,
+    triangles: List[RenderTriangle3d],
+    cam_intrinsics: CameraIntrinsics,
+    light_direction: Vector3d,
+    shade_color: BGRColor
+):
+    """
+    Next Rendering idea:
+
+    1) Maybe decide to not render some of the triangles based on visibility
+
+    2) for each triangle we have all pixels that it fills.
+         For each pixel we have it's depth
+
+    3) for each pixel in the image, we take the nearest depth triangle and we take color from it
+
+    """
+    world_to_cam_flip = get_world_to_cam_coord_flip_matrix()
+    cam_pose_inv = SE3_inverse(camera_pose)
+    points = np.array([tri.points for tri in triangles])
+    cam_points = points @ cam_pose_inv.T @ world_to_cam_flip.T
+
+    unit_depth_cam_points = cam_points[..., :-1]
+    triangle_depths = unit_depth_cam_points[..., -1]
+    triangles_in_image = (unit_depth_cam_points / triangle_depths[..., np.newaxis])[..., :-1]
+
+    visibility_indicator = _filter_triangles_by_visibility(cam_points)
+
+    triangles = [triangle for triangle, is_visible in zip(triangles, visibility_indicator) if is_visible]
+    cam_points = cam_points[visibility_indicator]
+    triangles_in_image = triangles_in_image[visibility_indicator]
+    triangle_depths = triangle_depths[visibility_indicator]
+
+    colors = _get_triangles_colors(world_to_cam_flip, camera_pose, cam_points, triangles, light_direction, shade_color)
+
+    px_center_coords_in_cam = get_pixel_center_coordinates(screen_h, screen_w, cam_intrinsics)
+
+    T = np.zeros(shape=(len(triangles), 2, 2), dtype=np.float64)
+    return true_render(triangle_depths, T, triangles_in_image, px_center_coords_in_cam, colors)
+
+
+def main():
+    # I want image to be 640 by 480
+    # I want it to map from 4 by 3 meters
+    screen_h = 480
+    screen_w = 640
+    shade_color = BGRCuteColors.DARK_GRAY
+    cam_intrinsics = CameraIntrinsics(fx=screen_w / 4, fy=screen_h / 3, cx=screen_w / 2, cy=screen_h / 2)
+    light_direction = normalize_vector(np.array([1.0, -1.0, -8.0]))
+
+    # looking toward +x direction in world frame, +z in camera
+    camera_pose: CameraPoseSE3 = get_SE3_pose(x=-2.5)
+
+    # triangles = get_two_triangle_scene()aaaaa
+    triangles = get_cube_scene()
+
+    while True:
+        # screen = render_scene_naively(screen_h, screen_w, camera_pose, triangles, cam_intrinsics, light_direction)
+        with just_time('render'):
+            screen = render_scene_pixelwise_depth(screen_h, screen_w, camera_pose, triangles, cam_intrinsics, light_direction, shade_color)
+
+        cv2.imshow('scene', onp.array(screen))
+        key = cv2.waitKey(-1)
+
+        # mutate state based on keys
+        transforms = key_to_maybe_transforms(key)
+
+        if transforms.scene is not None:
+            triangles = [triangle.mutate(transforms.scene) for triangle in triangles]
+
+        if transforms.camera is not None:
+            camera_pose = camera_pose @ transforms.camera
+
+
+if __name__ == '__main__':
+    main()
