@@ -1,6 +1,8 @@
 import numpy as np
-from utils.colors import BGRCuteColors
+
 from plotting import Row, Col, Padding, TextRenderer
+from utils.colors import BGRCuteColors
+from utils.image import get_canvas
 
 
 def test_basic_row_and_col_behaviour():
@@ -34,3 +36,9 @@ def test_integration_row_and_col():
 def test_integration_text_rendering():
     TextRenderer().render('heheh')
     TextRenderer().render('heheh \npoetry of the heart \n okekoekeoke')
+
+
+def test_generator_expression():
+    layout = Col(Padding(color_name) for color_name in BGRCuteColors.all().keys())
+    data = {color_name: get_canvas((100, 100, 3), color) for color_name, color in BGRCuteColors.all().items()}
+    layout.render(data)

@@ -1,4 +1,4 @@
-from typing import Tuple, Dict, List, Union, Protocol, runtime_checkable
+from typing import Tuple, Dict, List, Union, Protocol, runtime_checkable, Generator
 
 import attr
 import cv2
@@ -151,12 +151,21 @@ class _RowCol(Packer):
 
 class Col(_RowCol):
     def __init__(self, *args):
-        _RowCol.__init__(self, items=list(args), ordering=_Ordering.VERTICAL)
+        if len(args) == 1 and isinstance(args[0], Generator):
+            items = list(args[0])
+        else:
+            items = list(args)
+        _RowCol.__init__(self, items=items, ordering=_Ordering.VERTICAL)
+
 
 
 class Row(_RowCol):
     def __init__(self, *args):
-        _RowCol.__init__(self, items=list(args), ordering=_Ordering.HORIZONTAL)
+        if len(args) == 1 and isinstance(args[0], Generator):
+            items = list(args[0])
+        else:
+            items = list(args)
+        _RowCol.__init__(self, items=items, ordering=_Ordering.HORIZONTAL)
 
 
 @attr.s(auto_attribs=True)
