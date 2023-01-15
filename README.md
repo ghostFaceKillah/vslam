@@ -38,7 +38,7 @@ Exploring
 Run `python -m sim.render` to see the current status of the rendering code.
 Experiment with WSAD, QE and arrow keys. Looks more or less like this:
 
-![render](imgs/render.mp4)
+![render](imgs/render.gif)
 
 
 You can also check out the VSLAM framework pieces that I am building one-by-one.
