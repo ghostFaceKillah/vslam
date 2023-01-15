@@ -20,6 +20,25 @@ class BGRCuteColors:
     DARK_BLUE = 187, 102, 51
     VIOLET = 153, 51, 102
 
+    @staticmethod
+    def all() -> List['BGRCuteColors']:
+        return {
+            'DARK_GRAY': BGRCuteColors.DARK_GRAY,
+            'OFF_WHITE': BGRCuteColors.OFF_WHITE,
+            'PURPLE': BGRCuteColors.PURPLE,
+            'CRIMSON': BGRCuteColors.CRIMSON,
+            'SALMON': BGRCuteColors.SALMON,
+            'ORANGE': BGRCuteColors.ORANGE,
+            'SUN_YELLOW': BGRCuteColors.SUN_YELLOW,
+            'GRASS_GREEN': BGRCuteColors.GRASS_GREEN,
+            'CYAN': BGRCuteColors.CYAN,
+            'TURQUOISE': BGRCuteColors.TURQUOISE,
+            'OCEAN_BLUE': BGRCuteColors.OCEAN_BLUE,
+            'SKY_BLUE': BGRCuteColors.SKY_BLUE,
+            'DARK_BLUE': BGRCuteColors.DARK_BLUE,
+            'VIOLET': BGRCuteColors.VIOLET,
+        }
+
 
 def _convert_12_bit_to_bgr(clr_12_bit: str) -> BGRColor:
     r, g, b = [int(2 * b, 16) for b in clr_12_bit]
