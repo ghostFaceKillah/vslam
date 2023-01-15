@@ -89,11 +89,6 @@ def true_render(
     y_3 = triangles_in_image[:, 2, 1]
     r_3 = triangles_in_image[:, 2, :]
 
-    # T[:, 0, 0] = x_1 - x_3
-    # T[:, 0, 1] = x_2 - x_3
-    # T[:, 1, 0] = y_1 - y_3
-    # T[:, 1, 1] = y_2 - y_3
-
     T = T.at[:, 0, 0].set(x_1 - x_3)
     T = T.at[:, 0, 1].set(x_2 - x_3)
     T = T.at[:, 1, 0].set(y_1 - y_3)
@@ -110,7 +105,6 @@ def true_render(
     third_coordinate = 1 - bary_partial.sum(axis=-1)
     bary = np.block([bary_partial, third_coordinate[..., np.newaxis]])
 
-    #  Elapsed 0.07564s in: eleven
     # bary.shape = (480, 640, 12, 3)
     # triangle_depths.shape = (12, 3)
     raw_est_depth_per_pixel_per_triangle = (bary * triangle_depths[np.newaxis, np.newaxis, ...]).sum(axis=-1)
@@ -125,15 +119,11 @@ def true_render(
         np.inf
     )
 
-    # Elapsed 0.005924s in: twelve
     best_triangle_idx = np.argmin(est_depth_per_pixel_per_triangle, axis=-1)
-    # np.all(bary > 0, axis=-1).sum(axis=0).sum(axis=0) sum of legit pixels
     px_with_any_triangle = np.any(inside_triangle_pixel_filter & in_front_of_image_plane, axis=-1)
 
-    # Elapsed 0.002221s in: thirteen
     bg_color = np.array(BGRCuteColors.DARK_GRAY, dtype=np.uint8)
 
-    #  Elapsed 0.004542s in: fourteen
     image = np.where(px_with_any_triangle[..., np.newaxis], colors[best_triangle_idx], bg_color[np.newaxis, np.newaxis, :])
 
     return image
@@ -171,9 +161,6 @@ def _clip_triangles_with_one_vertex_visible(
          for triangle_vertices, right_order in zip(cam_points[clip_triangles_filter], the_glorious_roll)]
     )
 
-    # drop the homogenous coord
-    # cam_points_in_need_of_clipping = cam_points_in_need_of_clipping[:, :, :-1]
-
     a = cam_points_in_need_of_clipping[:, 0, :]
     b_minus_a = cam_points_in_need_of_clipping[:, 1, :] - cam_points_in_need_of_clipping[:, 0, :]
     c_minus_a = cam_points_in_need_of_clipping[:, 2, :] - cam_points_in_need_of_clipping[:, 0, :]
@@ -196,17 +183,7 @@ def clip_two_vertices_visible_triangles(
         no_vertices_visible,
         signed_dists
 ):
-    """
-    } else /* only one of {d0, d1, d2} is negative */ {
-        let C be the vertex with a negative distance
-        compute A' = Intersection(AC, plane)
-        compute B' = Intersection(BC, plane)
-        [Triangle(A, B, A'), Triangle(A', B, B')]
-    }
-
-    https://gabrielgambetta.com/computer-graphics-from-scratch/11-clipping.html
-    :return:
-    """
+    """ https://gabrielgambetta.com/computer-graphics-from-scratch/11-clipping.html """
     # need to put the visible vertex in known place in the array
     clip_triangles_filter = no_vertices_visible == 2
 
@@ -346,11 +323,12 @@ def render_scene_pixelwise_depth(
 
 
 def main():
-    # I want image to be 640 by 480
-    # I want it to map from 4 by 3 meters
     screen_h = 480
     screen_w = 640
+
+    # higher f_mod -> less distortion, less field of view
     f_mod = 2.0
+
     shade_color = BGRCuteColors.DARK_GRAY
     cam_intrinsics = CameraIntrinsics(
         fx=screen_w / 4 * f_mod,
@@ -359,8 +337,6 @@ def main():
         cy=screen_h / 2,
     )
     light_direction = normalize_vector(np.array([1.0, -1.0, -8.0]))
-
-
     clipping_surfaces = ClippingSurfaces.from_screen_dimensions_and_cam_intrinsics(screen_h, screen_w, cam_intrinsics)
 
     # looking toward +x direction in world frame, +z in camera
@@ -370,7 +346,6 @@ def main():
     triangles = get_cube_scene()
 
     while True:
-        # screen = render_scene_naively(screen_h, screen_w, camera_pose, triangles, cam_intrinsics, light_direction)
         with just_time('render'):
             screen = render_scene_pixelwise_depth(
                 screen_h, screen_w,
