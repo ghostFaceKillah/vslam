@@ -350,8 +350,14 @@ def main():
     # I want it to map from 4 by 3 meters
     screen_h = 480
     screen_w = 640
+    f_mod = 2.0
     shade_color = BGRCuteColors.DARK_GRAY
-    cam_intrinsics = CameraIntrinsics(fx=screen_w / 4, fy=screen_h / 3, cx=screen_w / 2, cy=screen_h / 2)
+    cam_intrinsics = CameraIntrinsics(
+        fx=screen_w / 4 * f_mod,
+        fy=screen_h / 3 * f_mod,
+        cx=screen_w / 2,
+        cy=screen_h / 2,
+    )
     light_direction = normalize_vector(np.array([1.0, -1.0, -8.0]))
 
 
