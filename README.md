@@ -1,3 +1,27 @@
+2023-01-09
+----------
+
+Need to do triangle visibility clipping
+
+Need to compute clipping volume.
+
+
+Need to compute coordinates of edges of the screen in camera coords.
+
+a--e--b
+|     |
+g     h
+|     |
+c--f--d
+
+
+then we can take {e,f,g,h} - origin and take vectors orthogonal to them
+
+
+Then we can take vectors orthogonal sides of the screen 
+
+
+
 2023-01-07
 -----------
 

@@ -62,6 +62,7 @@ CameraRotationSO3 = Array['3,3', np.float64]
 CameraTranslationVector = Array['3', np.float64]
 Vector3dHomogenous = Array['4', np.float64]   # TODO: nomenclature difference between having 0 on last coordinate or not
 
+ArrayOfColors = Array['N,3', np.uint8]
 
 WorldCoords3D = Array['N,3', np.float64]      # x away from us, y to right, z up, starts at world origin
 CamCoords3d = Array['N,3', np.float64]        # x goes right, y down, z out, looking out of cam, origin is optical center
