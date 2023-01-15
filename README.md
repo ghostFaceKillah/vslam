@@ -36,14 +36,18 @@ Exploring
 ----------
 
 Run `python -m sim.render` to see the current status of the rendering code.
+Experiment with WSAD, QE and arrow keys. Looks more or less like this:
+
+![render](imgs/render.mp4)
+
 
 You can also check out the VSLAM framework pieces that I am building one-by-one.
 These examples, generally, require downloading data from the Kitti dataset.
 
 - `python ex_01_extract_and_match_features.py` shows details of basic keypoint / feature detection matching
-It looks like this: ![hehe](imgs/feature_matching.gif)
+It looks like this: ![feature_matching](imgs/feature_matching.gif)
   
 - `python ex_02_one_frame_binocular_depth_est.py` shows binocular depth estimation.
-  It looks like this: ![hehe](imgs/binocular_depth_estimation.png)
+  It looks like this: ![binocular_depth_estimation](imgs/binocular_depth_estimation.png)
   The more blue the keypoint color, the deeper it is. The more red it is, the nearer the the camera.
     
