@@ -1,3 +1,5 @@
+from typing import List
+
 from utils.custom_types import BGRColor
 
 
