@@ -86,7 +86,7 @@ def get_triangles_in_sky_scene(
     no_small_triangles: int = 300,
     no_mid_triangles: int = 28,
     no_big_triangles: int = 8,
-    rng: onp.random.RandomState = onp.random.RandomState(23),
+    rng: onp.random.RandomState = onp.random.RandomState(42),
     min_z: float = 0.5,
     max_z: float = 10.5,
     min_x: float = -20.0,

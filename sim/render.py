@@ -261,6 +261,7 @@ def main():
     # triangles = get_cube_scene()
     triangles = get_triangles_in_sky_scene()
 
+    i = 0
     while True:
         with just_time('render'):
             screen = render_scene_pixelwise_depth(
@@ -276,6 +277,7 @@ def main():
             )
 
         cv2.imshow('scene', onp.array(screen))
+        # cv2.imwrite(f'imgs/scene_{i:04d}.png', onp.array(screen))
         key = cv2.waitKey(-1)
 
         # mutate state based on keys
@@ -286,6 +288,8 @@ def main():
 
         if transforms.camera is not None:
             camera_pose = camera_pose @ transforms.camera
+
+        i += 1
 
 
 if __name__ == '__main__':
