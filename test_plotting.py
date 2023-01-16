@@ -39,6 +39,9 @@ def test_integration_text_rendering():
 
 
 def test_generator_expression():
-    layout = Col(Padding(color_name) for color_name in BGRCuteColors.all().keys())
+    layout = Col(Padding(Col(Padding(f"{color_name}_desc"), color_name)) for color_name in BGRCuteColors.all().keys())
     data = {color_name: get_canvas((100, 100, 3), color) for color_name, color in BGRCuteColors.all().items()}
+    data_desc = {f"{color_name}_desc": TextRenderer().render(color_name) for color_name in BGRCuteColors.all().keys()}
+    data.update(data_desc)
+
     layout.render(data)
