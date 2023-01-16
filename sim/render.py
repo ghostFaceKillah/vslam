@@ -6,7 +6,7 @@ import numpy as onp
 from jax import jit
 
 from sim.clipping import ClippingSurfaces, clip_triangles
-from sim.sample_scenes import get_cube_scene
+from sim.sample_scenes import get_triangles_in_sky_scene
 from sim.sim_types import RenderTriangle3d, RenderTrianglesPointsInCam
 from sim.ui import key_to_maybe_transforms
 from utils.colors import BGRCuteColors
@@ -43,16 +43,18 @@ def _get_triangles_colors(
     alphas = ((light_coeffs + 1) / 2)[:, None]
 
     # back color blending
-    from_colors_back = np.tile(np.array(shade_color), (len(cam_points), 1))
-    to_colors_back = back_face_colors
-    colors_back = (alphas * to_colors_back + (1 - alphas) * from_colors_back).astype(np.uint8)
+    # from_colors_back = np.tile(np.array(shade_color), (len(cam_points), 1))
+    # to_colors_back = back_face_colors
+    # colors_back = (alphas * to_colors_back + (1 - alphas) * from_colors_back).astype(np.uint8)
+    #
+    # from_colors_front = front_face_colors
+    # to_colors_front = from_colors_back
+    # colors_front = (alphas * to_colors_front + (1 - alphas) * from_colors_front).astype(np.uint8)
+    #
+    # front_face_filter = unit_surface_normals[:, 2] < 0
+    # colors = np.where(front_face_filter[:, np.newaxis], colors_front, colors_back)
 
-    from_colors_front = front_face_colors
-    to_colors_front = from_colors_back
-    colors_front = (alphas * to_colors_front + (1 - alphas) * from_colors_front).astype(np.uint8)
-
-    front_face_filter = unit_surface_normals[:, 2] < 0
-    colors = np.where(front_face_filter[:, np.newaxis], colors_front, colors_back)
+    colors = front_face_colors
 
     return colors
 
@@ -256,7 +258,8 @@ def main():
     camera_pose: CameraPoseSE3 = get_SE3_pose(x=-2.5)
 
     # triangles = get_two_triangle_scene()
-    triangles = get_cube_scene()
+    # triangles = get_cube_scene()
+    triangles = get_triangles_in_sky_scene()
 
     while True:
         with just_time('render'):

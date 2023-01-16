@@ -15,7 +15,11 @@ class RenderTriangle3d:
 
     def mutate(self, transform: TransformSE3) -> 'RenderTriangle3d':
         result = transform @ self.points.T
-        return RenderTriangle3d(points=result.T)
+        return RenderTriangle3d(
+            points=result.T,
+            front_face_color=self.front_face_color,
+            back_face_color=self.back_face_color,
+        )
 
 
 RenderTrianglesPointsInCam = Array['N,3,4', np.float64]

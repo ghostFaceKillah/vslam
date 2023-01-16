@@ -1,9 +1,11 @@
 import itertools
 from typing import List, Tuple
 
+import numpy as onp
 from jax import numpy as np
 
 from sim.sim_types import RenderTriangle3d
+from utils.colors import BGRCuteColors
 from vslam.transforms import homogenize
 from vslam.types import Vector3d
 
@@ -60,3 +62,55 @@ def get_two_triangle_scene() -> List[RenderTriangle3d]:
             [0.0, -1.0,   1.0, 1.0],
         ], dtype=np.float64)),
     ]
+
+
+def _get_triangle_vertices(
+    rng: onp.random.RandomState,
+    radius: float,
+    min_z: float,
+    max_z: float,
+    min_x: float,
+    max_x: float,
+    min_y: float,
+    max_y: float,
+) -> RenderTriangle3d:
+    center = rng.uniform(low=(min_x, min_y, min_z), high=(max_x, max_y, max_z), size=3)
+    pre_vertices = rng.normal(size=(3, 3))
+
+    normalized_vertices = pre_vertices / np.linalg.norm(pre_vertices, axis=-1)[..., np.newaxis]
+    vertices = (normalized_vertices * radius) + center
+    return homogenize(vertices)
+
+
+def get_triangles_in_sky_scene(
+    no_small_triangles: int = 300,
+    no_mid_triangles: int = 28,
+    no_big_triangles: int = 8,
+    rng: onp.random.RandomState = onp.random.RandomState(23),
+    min_z: float = 0.5,
+    max_z: float = 10.5,
+    min_x: float = -20.0,
+    max_x: float = 20.0,
+    min_y: float = -20.0,
+    max_y: float = 20.0,
+) -> List[RenderTriangle3d]:
+    """ Recommended soundtrack https://unknowndamage.bandcamp.com/album/drumless """
+
+    triangles = []
+
+    colors = list(BGRCuteColors.all().values())
+
+    triangle_sizes = [0.5, 1.5, 15.0]
+
+    for size, no_triangles in zip(triangle_sizes, [no_small_triangles, no_mid_triangles, no_big_triangles]):
+        for _ in range(no_triangles):
+            color_ix = rng.randint(len(colors))
+            triangles.append(
+                RenderTriangle3d(
+                    _get_triangle_vertices(rng, size, min_z, max_z, min_x, max_x, min_y, max_y),
+                    front_face_color=colors[color_ix],
+                    back_face_color=colors[color_ix],
+                )
+            )
+
+    return triangles
