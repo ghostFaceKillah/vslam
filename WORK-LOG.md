@@ -1,10 +1,36 @@
+2023-01-15
+----------
+
+TODO:
+
+- [ ] Spawn the scene!
+  - make it look pretty!
+    - [X] add a background,
+    - [ ] make it brighter
+    - [ ] Hide triangles under the ground
+- [X] Refactor render to make it look nice
+- [X] make some basic README to make it already presentable
+- There's still a bug in lighting - sometimes triangle flips between yellow and red
+- add unit tests, mypy, black and so on
+
+* How to figure out if given pixel is "ground" or "sky"?
+
+We have it's coordinates in camera.
+We need to treat it as a ray going from optical center towards image plane.
+We need to compute this rays coordinates in world frame.
+
+For the orientation coordinates in world frame, if the pitch is zero or higher, it's sky,
+otherwise it's ground.
+
+
 2023-01-14
 ----------
 
 TODO:
+- [ ] Refactor render to make it look nic**e
 - Spawn the scene!
   - make it look pretty! (add a background, make it brighter, etc.)
-- make some basic README to make it already presentable
+- [X] make some basic README to make it already presentable
 - add unit tests, mypy, black and so on
 
 
