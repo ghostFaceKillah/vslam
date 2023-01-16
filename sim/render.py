@@ -15,7 +15,7 @@ from sim.sample_scenes import get_cube_scene
 from sim.sim_types import RenderTriangle3d, RenderTrianglesPointsInCam
 from sim.ui import key_to_maybe_transforms
 from utils.colors import BGRCuteColors
-from utils.custom_types import BGRColor
+from utils.custom_types import BGRColor, Array, ImageArray
 from utils.profiling import just_time
 from vslam.math import normalize_vector
 from vslam.poses import get_SE3_pose
@@ -72,14 +72,15 @@ def get_pixel_center_coordinates(
     return px_center_coords_in_cam
 
 
-@jit
-def true_render(
-    triangle_depths,
-    T,
+def compute_barycentric_coordinates_of_pixels(
     triangles_in_image,
-    px_center_coords_in_cam,
-    colors
+    px_center_coords_in_cam
 ):
+    """
+     For each pixel center, express its coordinates in barycentric coordinates of the all visible triangles.
+     See https://en.wikipedia.org/wiki/Barycentric_coordinate_system#Edge_approach for details of the algorithm.
+      """
+    T = np.zeros(shape=(len(triangles_in_image), 2, 2), dtype=np.float32)
 
     x_1 = triangles_in_image[:, 0, 0]
     y_1 = triangles_in_image[:, 0, 1]
@@ -96,35 +97,62 @@ def true_render(
 
     T_inv = np.linalg.inv(T)
 
-    # 60 ms for 640 x 480
     normalized_px_coords = px_center_coords_in_cam[:, :, np.newaxis, :] - r_3[np.newaxis, np.newaxis, :, :]
-
-    # 0.27 s for 640 x 480
-    # (480, 640, 12, 2)    (12, 2, 2)
     bary_partial = np.einsum('hwnc,nbc->hwnb', normalized_px_coords, T_inv)
     third_coordinate = 1 - bary_partial.sum(axis=-1)
     bary = np.block([bary_partial, third_coordinate[..., np.newaxis]])
 
-    # bary.shape = (480, 640, 12, 3)
-    # triangle_depths.shape = (12, 3)
-    raw_est_depth_per_pixel_per_triangle = (bary * triangle_depths[np.newaxis, np.newaxis, ...]).sum(axis=-1)
-    inside_triangle_pixel_filter = np.all(bary > 0, axis=-1)
-    in_front_of_image_plane = raw_est_depth_per_pixel_per_triangle > 1.0
+    return bary
 
-    # est_depth_per_pixel_per_triangle[~inside_triangle_pixel_filter] = np.inf
-    # est_depth_per_pixel_per_triangle = raw_est_depth_per_pixel_per_triangle.at[~inside_triangle_pixel_filter].set(np.inf)
+
+@jit
+def parallel_z_buffer_render(
+    triangle_depths: Array['N,3', np.float32],   # N x 3  (for each triangle, depths of the 3 vertices in camera coordinates)
+    triangles_in_img_coords: Array['N,3,2', np.float32],  # N x 3 x 2  (for each triangle, 2D coordinates of the 3 vertices in image coordinates)
+    px_center_coords_in_img_coords: Array['H,W,2', np.float32],  # H x W x 2  (for each pixel, 2D coordinates of the pixel center in camera coordinates)
+    lighting_aware_colors: ArrayOfColors  # N x 3 (for each triangle, color of the face with lighting already taken into account)
+) -> ImageArray:
+    """
+    Render triangles using a variant of z-buffer algorithm.
+
+    For each pixel, we express position of the center of this pixel in barycentric coordinates of every triangle.
+    That is, each pixel center is a linear combination of triangle vertices.
+
+    Thanks to that we know if given pixel is inside the triangle and, if yes, at what depth the
+    center-of-pixel ray intersects the triangle. In this way for each pixel we can compute the closest
+    ray-intersecting triangle and take it's lighting-aware color as the pixels color.
+    """
+
+    bary = compute_barycentric_coordinates_of_pixels(triangles_in_img_coords, px_center_coords_in_img_coords)
+
+    # N x H x W x 1, so pretty big
+    # we are butchering the z-buffer implementation a bit - so much memory shouldn't be neccessary, but (!)
+    # the trade-off that we are taking here is that we avoid for loops, which are slow in python
+    depth_per_pixel_per_triangle = (bary * triangle_depths[np.newaxis, np.newaxis, ...]).sum(axis=-1)
+
+    inside_triangle_pixel_filter = np.all(bary > 0, axis=-1)
+
+    # TODO: remove - move to clipping
+    in_front_of_image_plane = depth_per_pixel_per_triangle > 1.0
+
     est_depth_per_pixel_per_triangle = np.where(
         inside_triangle_pixel_filter & in_front_of_image_plane,
-        raw_est_depth_per_pixel_per_triangle,
+        depth_per_pixel_per_triangle,
         np.inf
     )
 
+    # here's the z-buffer for loop that we avoid
     best_triangle_idx = np.argmin(est_depth_per_pixel_per_triangle, axis=-1)
     px_with_any_triangle = np.any(inside_triangle_pixel_filter & in_front_of_image_plane, axis=-1)
 
     bg_color = np.array(BGRCuteColors.DARK_GRAY, dtype=np.uint8)
+    # we could pass horizon image
 
-    image = np.where(px_with_any_triangle[..., np.newaxis], colors[best_triangle_idx], bg_color[np.newaxis, np.newaxis, :])
+    image = np.where(
+        px_with_any_triangle[..., np.newaxis],
+        lighting_aware_colors[best_triangle_idx],
+        bg_color[np.newaxis, np.newaxis, :]
+    )
 
     return image
 
@@ -312,14 +340,13 @@ def render_scene_pixelwise_depth(
         colors = _get_triangles_colors(world_to_cam_flip, camera_pose, triangle_cam_points, front_colors,
                                        back_colors, light_direction, shade_color)
 
-        px_center_coords_in_cam = get_pixel_center_coordinates(screen_h, screen_w, cam_intrinsics)
+        px_center_coords_in_img_coords = get_pixel_center_coordinates(screen_h, screen_w, cam_intrinsics)
 
         unit_depth_cam_points = triangle_cam_points[..., :-1]
         triangle_depths = unit_depth_cam_points[..., -1]
-        triangles_in_image = (unit_depth_cam_points / triangle_depths[..., np.newaxis])[..., :-1]
+        triangles_in_img_coords = (unit_depth_cam_points / triangle_depths[..., np.newaxis])[..., :-1]
 
-        T = np.zeros(shape=(len(triangle_cam_points), 2, 2), dtype=np.float32)
-        return true_render(triangle_depths, T, triangles_in_image, px_center_coords_in_cam, colors)
+        return parallel_z_buffer_render(triangle_depths, triangles_in_img_coords, px_center_coords_in_img_coords, colors)
 
 
 def main():
