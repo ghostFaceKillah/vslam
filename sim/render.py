@@ -1,16 +1,11 @@
-"""
-Small demo of naive rendering
-
-
-"""
-from typing import List, Tuple
+from typing import List
 
 import cv2
 import jax.numpy as np
 import numpy as onp
 from jax import jit
 
-from sim.clipping import ClippingSurfaces
+from sim.clipping import ClippingSurfaces, clip_triangles
 from sim.sample_scenes import get_cube_scene
 from sim.sim_types import RenderTriangle3d, RenderTrianglesPointsInCam
 from sim.ui import key_to_maybe_transforms
@@ -20,7 +15,7 @@ from utils.profiling import just_time
 from vslam.math import normalize_vector
 from vslam.poses import get_SE3_pose
 from vslam.transforms import get_world_to_cam_coord_flip_matrix, SE3_inverse
-from vslam.types import CameraPoseSE3, CameraIntrinsics, Vector3d, TransformSE3, CamCoords3d, ArrayOfColors
+from vslam.types import CameraPoseSE3, CameraIntrinsics, Vector3d, TransformSE3, ArrayOfColors
 
 
 def _get_triangles_colors(
@@ -30,8 +25,9 @@ def _get_triangles_colors(
     front_face_colors: ArrayOfColors,    # in future, it could be even more attributes
     back_face_colors: ArrayOfColors,
     light_direction: Vector3d,
-    shade_color: BGRColor
+    shade_color: BGRColor,
 ):
+    """ Get colors of the triangles in the scene based on basic shading. """
     spanning_vectors_1 = cam_points[:, 1, :] - cam_points[:, 0, :]
     spanning_vectors_2 = cam_points[:, 2, :] - cam_points[:, 0, :]
 
@@ -66,6 +62,7 @@ def get_pixel_center_coordinates(
     screen_w: int,
     cam_intrinsics: CameraIntrinsics,
 ):
+    """ Get coordinates of the center of each pixel in the camera coordinate system """
     ws = (np.arange(0, screen_w) - cam_intrinsics.cx) / cam_intrinsics.fx
     hs = (np.arange(0, screen_h) - cam_intrinsics.cy) / cam_intrinsics.fy
     px_center_coords_in_cam = np.stack(np.meshgrid(ws, hs), axis=-1)
@@ -110,7 +107,8 @@ def parallel_z_buffer_render(
     triangle_depths: Array['N,3', np.float32],   # N x 3  (for each triangle, depths of the 3 vertices in camera coordinates)
     triangles_in_img_coords: Array['N,3,2', np.float32],  # N x 3 x 2  (for each triangle, 2D coordinates of the 3 vertices in image coordinates)
     px_center_coords_in_img_coords: Array['H,W,2', np.float32],  # H x W x 2  (for each pixel, 2D coordinates of the pixel center in camera coordinates)
-    lighting_aware_colors: ArrayOfColors  # N x 3 (for each triangle, color of the face with lighting already taken into account)
+    lighting_aware_colors: ArrayOfColors, # N x 3 (for each triangle, color of the face with lighting already taken into account)
+    bg_img: Array['H,W,3', np.uint8],  # H x W x 3  (background image)
 ) -> ImageArray:
     """
     Render triangles using a variant of z-buffer algorithm.
@@ -145,158 +143,39 @@ def parallel_z_buffer_render(
     best_triangle_idx = np.argmin(est_depth_per_pixel_per_triangle, axis=-1)
     px_with_any_triangle = np.any(inside_triangle_pixel_filter & in_front_of_image_plane, axis=-1)
 
-    bg_color = np.array(BGRCuteColors.DARK_GRAY, dtype=np.uint8)
-    # we could pass horizon image
-
     image = np.where(
         px_with_any_triangle[..., np.newaxis],
         lighting_aware_colors[best_triangle_idx],
-        bg_color[np.newaxis, np.newaxis, :]
+        bg_img
     )
 
     return image
 
 
-def _compute_intersection(
-    starting_points: CamCoords3d,
-    direction_vectors: CamCoords3d,
-    surface_normal: Vector3d
-) -> CamCoords3d:
-    # t = - <N, A> / <N, B-A>
-    # what if <N, B-A> is zero ??
-    # TODO!
-    t = - (starting_points[..., :-1] @ surface_normal) / (direction_vectors[..., :-1] @ surface_normal)
-    return starting_points + t[:, np.newaxis] * direction_vectors
+def _get_background_image(
+    px_center_coords_in_img_coords: Array['H,W,2', np.float32],
+    world_to_cam_flip: Array['4,4', np.float32],
+    camera_pose: CameraPoseSE3,
+    sky_color: BGRColor,
+    ground_color: BGRColor,
+) -> ImageArray:
+    """ Get background image for the scene. """
 
+    px_center_coords_in_world = np.concatenate([px_center_coords_in_img_coords, np.ones_like(px_center_coords_in_img_coords)], axis=-1) @ world_to_cam_flip @ camera_pose.T
+    px_z_in_world = px_center_coords_in_world[..., 2]
+    optical_center_z_in_world = camera_pose[2, 3]
+    px_looks_toward = px_z_in_world - optical_center_z_in_world
 
-def _clip_triangles_with_one_vertex_visible(
-    cam_points: CamCoords3d,
-        front_face_colors: ArrayOfColors,    # in future, it could be even more attributes
-        back_face_colors: ArrayOfColors,
-    clipping_surface_normal: Vector3d,
-    no_vertices_visible,
-    signed_dists
-):
-    # need to put the visible vertex in known place in the array
-    clip_triangles_filter = no_vertices_visible == 1
+    sky_color_arr = np.array(sky_color, dtype=np.uint8)
+    ground_color_arr = np.array(ground_color, dtype=np.uint8)
 
-    wanted_move = (3 - np.argmax(signed_dists[clip_triangles_filter], axis=-1)) % 3
-    ix_array = np.array([[0, 1, 2], [2, 0, 1], [1, 2, 0]])
-    the_glorious_roll = ix_array[wanted_move]
-
-    cam_points_in_need_of_clipping = np.array(
-        [triangle_vertices[right_order]
-         for triangle_vertices, right_order in zip(cam_points[clip_triangles_filter], the_glorious_roll)]
+    bg_image = np.where(
+        px_looks_toward[..., np.newaxis] > 0,
+        sky_color_arr[np.newaxis, np.newaxis, :],
+        ground_color_arr[np.newaxis, np.newaxis, :]
     )
 
-    a = cam_points_in_need_of_clipping[:, 0, :]
-    b_minus_a = cam_points_in_need_of_clipping[:, 1, :] - cam_points_in_need_of_clipping[:, 0, :]
-    c_minus_a = cam_points_in_need_of_clipping[:, 2, :] - cam_points_in_need_of_clipping[:, 0, :]
-
-    b_prime = _compute_intersection(a, b_minus_a, clipping_surface_normal)
-    c_prime = _compute_intersection(a, c_minus_a, clipping_surface_normal)
-
-    clipped_triangles = np.stack([a, b_prime, c_prime], axis=1)
-    new_front_face_colors = front_face_colors[clip_triangles_filter]
-    new_back_face_colors = back_face_colors[clip_triangles_filter]
-
-    return clipped_triangles, new_front_face_colors, new_back_face_colors
-
-
-def clip_two_vertices_visible_triangles(
-        cam_points: CamCoords3d,
-        front_face_colors: ArrayOfColors,    # in future, it could be even more attributes
-        back_face_colors: ArrayOfColors,
-        clipping_surface_normal: Vector3d,
-        no_vertices_visible,
-        signed_dists
-):
-    """ https://gabrielgambetta.com/computer-graphics-from-scratch/11-clipping.html """
-    # need to put the visible vertex in known place in the array
-    clip_triangles_filter = no_vertices_visible == 2
-
-    wanted_move = (2 - np.argmin(signed_dists[clip_triangles_filter], axis=-1))
-    ix_array = np.array([[0, 1, 2], [2, 0, 1], [1, 2, 0]])
-
-    the_glorious_roll = ix_array[wanted_move]
-
-    cam_points_in_need_of_clipping = np.array(
-        [triangle_vertices[right_order]
-         for triangle_vertices, right_order in zip(cam_points[clip_triangles_filter], the_glorious_roll)]
-    )
-
-    a = cam_points_in_need_of_clipping[:, 0, :]
-    b = cam_points_in_need_of_clipping[:, 1, :]
-    c = cam_points_in_need_of_clipping[:, 2, :]
-
-    a_prime = _compute_intersection(a, c - a, clipping_surface_normal)
-    b_prime = _compute_intersection(b, c - b, clipping_surface_normal)
-
-    clipped_triangles_one = np.stack([a, b, a_prime], axis=1)
-    clipped_triangles_two = np.stack([a_prime, b, b_prime], axis=1)
-
-    # [Triangle(A, B, A'), Triangle(A', B, B')]
-    new_front_face_colors = front_face_colors[clip_triangles_filter]
-    new_back_face_colors = back_face_colors[clip_triangles_filter]
-
-    triangles = np.concatenate([clipped_triangles_one, clipped_triangles_two])
-    new_front_face_colors = np.concatenate([new_front_face_colors, new_front_face_colors])
-    new_back_face_colors = np.concatenate([new_back_face_colors, new_back_face_colors])
-
-    return triangles, new_front_face_colors, new_back_face_colors
-
-
-def clip_triangles(
-    cam_points: CamCoords3d,
-    front_face_colors: ArrayOfColors,    # in future, it could be even more attributes
-    back_face_colors: ArrayOfColors,
-    clipping_surface_normal: Vector3d,
-) -> Tuple[CamCoords3d, ArrayOfColors, ArrayOfColors]:
-    """
-    Clip triangles against a plane defined by a normal vector.
-    https://gabrielgambetta.com/computer-graphics-from-scratch/11-clipping.html
-    """
-    signed_dists = np.einsum('ntd,d->nt', cam_points[..., :-1], clipping_surface_normal)
-    no_vertices_visible = (signed_dists > 0).sum(axis=-1)
-
-    resu_triangles = []
-    resu_front_face_colors = []
-    resu_back_face_colors = []
-
-    if (no_vertices_visible == 3).any():
-        # fully visible triangles, no clipping needed
-        triangles_filter = no_vertices_visible == 3
-        resu_triangles.append(cam_points[triangles_filter])
-        resu_front_face_colors.append(front_face_colors[triangles_filter])
-        resu_back_face_colors.append(back_face_colors[triangles_filter])
-
-    if (no_vertices_visible == 1).any():
-        clipped_triangles, clipped_front_face_colors, clipped_back_face_colors = _clip_triangles_with_one_vertex_visible(
-            cam_points, front_face_colors, back_face_colors,
-            clipping_surface_normal, no_vertices_visible, signed_dists
-        )
-        resu_triangles.append(clipped_triangles)
-        resu_front_face_colors.append(clipped_front_face_colors)
-        resu_back_face_colors.append(clipped_back_face_colors)
-
-    if (no_vertices_visible == 2).any():
-        clipped_triangles, clipped_front_face_colors, clipped_back_face_colors = clip_two_vertices_visible_triangles(
-            cam_points, front_face_colors, back_face_colors,
-            clipping_surface_normal, no_vertices_visible, signed_dists
-        )
-        resu_triangles.append(clipped_triangles)
-        resu_front_face_colors.append(clipped_front_face_colors)
-        resu_back_face_colors.append(clipped_back_face_colors)
-
-    if len(resu_triangles) > 0:
-        triangles = np.concatenate(resu_triangles)
-        front_face_colors = np.concatenate(resu_front_face_colors)
-        back_face_colors = np.concatenate(resu_back_face_colors)
-        assert len(triangles) == len(front_face_colors) == len(back_face_colors)
-
-        return triangles, front_face_colors, back_face_colors
-    else:
-        return np.empty((0, 3, 4)), np.empty((0, 3, 3)), np.empty((0, 3, 3))
+    return bg_image
 
 
 def render_scene_pixelwise_depth(
@@ -306,18 +185,19 @@ def render_scene_pixelwise_depth(
     triangles: List[RenderTriangle3d],
     cam_intrinsics: CameraIntrinsics,
     light_direction: Vector3d,
+    sky_color: BGRColor,
+    ground_color: BGRColor,
     shade_color: BGRColor,
     clipping_surfaces: ClippingSurfaces
 ):
     """
-    Next Rendering idea:
+    Render scene using a variant of z-buffer algorithm.
 
-    1) Maybe decide to not render some of the triangles based on visibility
+    1) For each triangle we have all pixels that it fills.
+         For each pixel we have it's depth.
+         We accumulate the depth of each pixel for each triangle.
 
-    2) for each triangle we have all pixels that it fills.
-         For each pixel we have it's depth
-
-    3) for each pixel in the image, we take the nearest depth triangle and we take color from it
+    3) for each pixel in the image, we take the nearest depth triangle and we take color from it.
 
     """
     world_to_cam_flip = get_world_to_cam_coord_flip_matrix()
@@ -334,24 +214,30 @@ def render_scene_pixelwise_depth(
             triangle_cam_points, front_colors, back_colors, clipping_surface
         )
 
-    if len(triangle_cam_points) == 0:
-        return np.ones((screen_h, screen_w, 3), dtype=np.uint8) * np.array(shade_color, dtype=np.uint8)
-    else:
-        colors = _get_triangles_colors(world_to_cam_flip, camera_pose, triangle_cam_points, front_colors,
-                                       back_colors, light_direction, shade_color)
+    px_center_coords_in_img_coords = get_pixel_center_coordinates(screen_h, screen_w, cam_intrinsics)
+    bg_image = _get_background_image(px_center_coords_in_img_coords, world_to_cam_flip, camera_pose, sky_color, ground_color)
 
-        px_center_coords_in_img_coords = get_pixel_center_coordinates(screen_h, screen_w, cam_intrinsics)
+    if len(triangle_cam_points) == 0:
+        return bg_image
+    else:
+        colors = _get_triangles_colors(
+            world_to_cam_flip, camera_pose, triangle_cam_points, front_colors,
+            back_colors, light_direction, shade_color
+        )
 
         unit_depth_cam_points = triangle_cam_points[..., :-1]
         triangle_depths = unit_depth_cam_points[..., -1]
         triangles_in_img_coords = (unit_depth_cam_points / triangle_depths[..., np.newaxis])[..., :-1]
 
-        return parallel_z_buffer_render(triangle_depths, triangles_in_img_coords, px_center_coords_in_img_coords, colors)
+        return parallel_z_buffer_render(triangle_depths, triangles_in_img_coords, px_center_coords_in_img_coords, colors, bg_image)
 
 
 def main():
     screen_h = 480
     screen_w = 640
+
+    sky_color = BGRCuteColors.SKY_BLUE
+    ground_color = tuple(x - 20 for x in BGRCuteColors.CYAN)
 
     # higher f_mod -> less distortion, less field of view
     f_mod = 2.0
@@ -380,6 +266,8 @@ def main():
                 triangles,
                 cam_intrinsics,
                 light_direction,
+                sky_color,
+                ground_color,
                 shade_color,
                 clipping_surfaces
             )
