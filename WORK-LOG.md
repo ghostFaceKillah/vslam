@@ -1,21 +1,57 @@
+2023-01-22
+----------
+
+- [ ] Less triangles, more evenly spaced, better color choices
+  - birdseye renderer for debugging this
+  - make movie maker script to not have to click through it by hand
+  
+- [ ] Make a tutorial video about rendering & geometry of rendering
+- [ ] Make a blogpost about this thing in general
+  
+- [ ] Record a datastructure of the rendering to use as data for VSLAM
+  - choose: msgpack, capnproto, protobuf, sth else?
+  
+- [ ] add unit tests, mypy, black and so on on github
+  
+Later
+- [ ] Render per triangle refactor
+  - [ ] add unit tests for rendering
+
+Which serialization format?
+- msgpack is easy to integrate with dicts
+- msgpack would rely on custom object deserialization
+- protobuf is relatively heavy dependency
+- I wonder how fast protobuf deserialization is ? msgpack deserialized things 
+  might live as typed dicts for now, but in the long run, they tend to need serious deserialization
+  
+
+2023-01-16
+----------
+- [ ] Less triangles, more evenly spaced, better color choices
+- [ ] Record a video of the rendering to use as data for VSLAM
+    msgpack, capnproto, protobuf
+- [ ] add unit tests, mypy, black and so on on github
+
+
 2023-01-15
 ----------
 
 TODO:
 
-- [ ] Spawn the scene!
+- [X] Spawn the scene!
   - make it look pretty!
     - [X] add a background,
-    - [ ] make it brighter
+    - [X] make it brighter
     - [ ] Hide triangles under the ground
 - [X] Refactor render to make it look nice
 - [X] make some basic README to make it already presentable
-- There's still a bug in lighting - sometimes triangle flips between yellow and red
-- add unit tests, mypy, black and so on
+- [X] There's still a bug in lighting - sometimes triangle flips between yellow and red
+  Removed lighting :)
+- [ ] add unit tests, mypy, black and so on on github
 
 * How to figure out if given pixel is "ground" or "sky"?
 
-We have it's coordinates in camera.
+We have its coordinates in camera.
 We need to treat it as a ray going from optical center towards image plane.
 We need to compute this rays coordinates in world frame.
 
