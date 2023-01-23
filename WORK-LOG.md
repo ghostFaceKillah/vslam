@@ -2,8 +2,8 @@
 ----------
 
 - [ ] Less triangles, more evenly spaced, better color choices
-  - birdseye renderer for debugging this
-  - make movie maker script to not have to click through it by hand
+  - [ ] birdseye renderer for debugging this
+  - [ ] make movie maker script to not have to click through it by hand
   
 - [ ] Make a tutorial video about rendering & geometry of rendering
 - [ ] Make a blogpost about this thing in general
@@ -30,8 +30,14 @@ Which serialization format?
 My own triangle rendering situation
 -----------------------------------------
 
-I made my own triangle index finder situation. It takes 0.0045s for one triangle
+I made my own triangle index finder situation.
+I need simple (depth ignoring) rendering of triangles, so taking into account that I had vague 
+hopes of speeding up the main 3d rendering loop by getting rid of the barycentric computation
+for each pixel for each triangle, I did it.
 
+It has super failed, it seems! It takes 0.0045s for one triangle, which is 2 orders of magnitude slower then cv2.
+
+Barycentric computation:
 ```python
 with just_time('inside triangle computation'):
     bary = compute_barycentric_coordinates_of_pixels(triangles_in_img_coords, px_center_coords_in_img_coords)
@@ -40,7 +46,7 @@ with just_time('inside triangle computation'):
 Takes 0.04369s for 12 triangles
 Takes 0.4792s for 100 triangles
 
-In summary, cv2 has super destroyed my 'smart' jax implementation, by two orders of magnitude
+In summary, cv2 has super destroyed my 'smart' jax implementation, by two orders of magnitude.
 
 count  100.000000  100.000000
 mean     0.007035    0.000054
