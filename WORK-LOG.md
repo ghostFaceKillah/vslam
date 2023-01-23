@@ -16,6 +16,8 @@
 Later
 - [ ] Render per triangle refactor
   - [ ] add unit tests for rendering
+  
+- [ ] lacma inspired rainbowy lines
 
 Which serialization format?
 - msgpack is easy to integrate with dicts
