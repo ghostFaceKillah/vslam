@@ -84,13 +84,65 @@ def get_triangle_pixel_indices(triangle_px_coord: PixelCoordArray) -> PixelCoord
     return np.concatenate(scanlines)
 
 
-def get_triangle_mask(screen_h: int, screen_w: int, triangle_px_coord: PixelCoordArray) -> MaskArray:
+def get_screen_pixel_coords(screen_h: int, screen_w: int) -> Array['H,W,2', np.int32]:
+    ws = np.arange(0, screen_w, dtype=np.int32)
+    hs = np.arange(0, screen_h, dtype=np.int32)
+    return np.meshgrid(ws, hs)
+
+
+def _get_triangle_mask_jaxed(
+        screen_h: int,
+        screen_w: int,
+):
+    """ I think it should be possible to jaxify the whole thing by getting rid of the scanlines object
+    """
+    pass
+
+
+def get_triangle_mask(
+        screen_h: int,
+        screen_w: int,
+        triangle_px_coord: PixelCoordArray
+) -> MaskArray:
     """ Similar to cv2.polyfill, but implemented here (TM).
     Based on https://gabrielgambetta.com/computer-graphics-from-scratch/07-filled-triangles.html """
 
     scanlines = _get_triangle_scanline_definitions(triangle_px_coord)
+    xs, ys = get_screen_pixel_coords(screen_h, screen_w)
+
+    pre_array_len = scanlines.min_y
+    post_array_len = int(screen_h - scanlines.min_y - len(scanlines.min_xs))
+    inf = screen_w + 1
+    minf = -1
+
+    well_indexed_max_xs = np.concatenate([
+        minf * np.ones(pre_array_len, dtype=np.int32),
+        np.array(scanlines.max_xs),
+        minf * np.ones(post_array_len, dtype=np.int32),
+    ])
+
+    well_indexed_min_xs = np.concatenate([
+        inf * np.ones(pre_array_len, dtype=np.int32),
+        np.array(scanlines.min_xs),
+        inf * np.ones(post_array_len, dtype=np.int32),
+    ])
+
+    mask = (xs <= well_indexed_max_xs[:, np.newaxis]) & (xs >= well_indexed_min_xs[:, np.newaxis])
+    x = 1
+
+
+    pre_array_len = scanlines.min_y
+
+    # iys >= scanlines.min_y
+    # iys <= scanlines.max_y
+
+    min_xs = np.where()
+    np.arange()
+
+
 
     x = 1
+
 
 
 
@@ -148,5 +200,5 @@ def get_line_pixels(from_px: Pixel, to_px: Pixel) -> Array['K,2', np.int32]:
 
 if __name__ == '__main__':
     triangle_px = np.array([[1, 1], [1, 5], [5, 1]], dtype=np.int32)
-    get_triangle_mask(screen_h=640, screen_w=480, triangle_px_coord=triangle_px)
+    get_triangle_mask(screen_w=640, screen_h=480, triangle_px_coord=triangle_px)
 
