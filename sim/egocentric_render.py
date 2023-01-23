@@ -234,7 +234,7 @@ def render_scene_pixelwise_depth(
         return parallel_z_buffer_render(triangle_depths, triangles_in_img_coords, px_center_coords_in_img_coords, colors, bg_image)
 
 
-def main():
+def run_interactive_render_loop():
     screen_h = 480
     screen_w = 640
 
@@ -293,4 +293,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    run_interactive_render_loop()
