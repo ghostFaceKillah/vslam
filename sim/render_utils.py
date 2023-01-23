@@ -13,6 +13,7 @@ import attr
 import jax.numpy as np
 
 from utils.custom_types import Array, Pixel, PixelCoordArray, MaskArray
+from utils.profiling import just_time
 
 
 @attr.define
@@ -128,22 +129,8 @@ def get_triangle_mask(
     ])
 
     mask = (xs <= well_indexed_max_xs[:, np.newaxis]) & (xs >= well_indexed_min_xs[:, np.newaxis])
-    x = 1
 
-
-    pre_array_len = scanlines.min_y
-
-    # iys >= scanlines.min_y
-    # iys <= scanlines.max_y
-
-    min_xs = np.where()
-    np.arange()
-
-
-
-    x = 1
-
-
+    return mask
 
 
 def _interpolate_worker(from_px: Pixel, to_px: Pixel) -> PixelCoordArray:
@@ -200,5 +187,7 @@ def get_line_pixels(from_px: Pixel, to_px: Pixel) -> Array['K,2', np.int32]:
 
 if __name__ == '__main__':
     triangle_px = np.array([[1, 1], [1, 5], [5, 1]], dtype=np.int32)
-    get_triangle_mask(screen_w=640, screen_h=480, triangle_px_coord=triangle_px)
+    for _ in range(10):
+        with just_time():
+            get_triangle_mask(screen_w=640, screen_h=480, triangle_px_coord=triangle_px)
 
