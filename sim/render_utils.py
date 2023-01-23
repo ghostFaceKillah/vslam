@@ -183,11 +183,41 @@ def get_line_pixels(from_px: Pixel, to_px: Pixel) -> Array['K,2', np.int32]:
         return _interpolate_worker(from_px[::-1], to_px[::-1])[:, ::-1]
 
 
+import numpy as onp
+import cv2
+import pandas as pd
+
+
+def stupid():
+    screen = onp.zeros(shape=(480, 640), dtype=np.uint8)
+
+    triangle_px = onp.array([[1, 1], [1, 5], [5, 1]], dtype=np.int32)
+    pts = triangle_px.reshape((-1, 1, 2))
+    # cv2.polylines(screen, [pts], isClosed=True, color=1)
+
+    # fill it
+    cv2.fillPoly(screen, [pts], color=1)
+    return np.array(screen, dtype=bool)
 
 
 if __name__ == '__main__':
     triangle_px = np.array([[1, 1], [1, 5], [5, 1]], dtype=np.int32)
-    for _ in range(10):
-        with just_time():
+    ours = []
+    for _ in range(100):
+        with just_time('ours', verbose=False) as t:
             get_triangle_mask(screen_w=640, screen_h=480, triangle_px_coord=triangle_px)
+        ours.append(t['elapsed'])
+
+    theirs = []
+    for _ in range(100):
+        with just_time('theirs', verbose=False) as t:
+            stupid()
+        theirs.append(t['elapsed'])
+
+    df = pd.DataFrame({'ours': ours, 'theirs': theirs})
+    print(df.describe())
+
+    mask_1 = get_triangle_mask(screen_w=640, screen_h=480, triangle_px_coord=triangle_px)
+    mask_2 = stupid()
+    assert np.array_equal(mask_1, mask_2)
 
