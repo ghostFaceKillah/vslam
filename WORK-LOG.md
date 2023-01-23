@@ -40,6 +40,11 @@ with just_time('inside triangle computation'):
 Takes 0.04369s for 12 triangles
 Takes 0.4792s for 100 triangles
 
+In summary, cv2 has super destroyed my 'smart' jax implementation, by two orders of magnitude
+
+count  100.000000  100.000000
+mean     0.007035    0.000054
+std      0.024462    0.000037
 
 
 2023-01-16
