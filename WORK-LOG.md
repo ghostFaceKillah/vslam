@@ -27,6 +27,21 @@ Which serialization format?
   might live as typed dicts for now, but in the long run, they tend to need serious deserialization
   
 
+My own triangle rendering situation
+-----------------------------------------
+
+I made my own triangle index finder situation. It takes 0.0045s for one triangle
+
+```python
+with just_time('inside triangle computation'):
+    bary = compute_barycentric_coordinates_of_pixels(triangles_in_img_coords, px_center_coords_in_img_coords)
+    inside_triangle_pixel_filter = np.all(bary > 0, axis=-1)
+```
+Takes 0.04369s for 12 triangles
+Takes 0.4792s for 100 triangles
+
+
+
 2023-01-16
 ----------
 - [ ] Less triangles, more evenly spaced, better color choices
