@@ -71,6 +71,8 @@ def get_view_spcifier_from_scene(
 
 
 def draw_viewport(
+    screen_h: int,
+    screen_w: int,
     view_specifier: BirdseyeViewParams,
     camera_pose: CameraPoseSE3,
     camera_intrinsics: CameraIntrinsics,
@@ -98,6 +100,8 @@ def draw_viewport(
 
 
 def render_birdseye_view(
+        screen_h: int,
+        screen_w: int,
         view_specifier: BirdseyeViewParams,
         camera_pose: CameraPoseSE3,
         camera_intrinsics: CameraIntrinsics,
@@ -116,7 +120,7 @@ def render_birdseye_view(
     for triangle_pts, triangle in zip(pixel_points, triangles):
         cv2_fill_poly(triangle_pts, canvas, color=triangle.front_face_color)
 
-    draw_viewport(view_specifier, camera_pose, camera_intrinsics, canvas)
+    draw_viewport(screen_h, screen_w, view_specifier, camera_pose, camera_intrinsics, canvas)
 
     return canvas
 
