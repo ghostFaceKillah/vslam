@@ -1,8 +1,28 @@
+2023-01-26
+-----------
+
+- [ ] make movie maker script to not have to click through it by hand
+  
+- [ ] Make a tutorial video about rendering & geometry of rendering
+- [ ] Make a blogpost about this thing in general
+
+- [ ] code quality review 
+  - [ ] add unit tests, mypy, black and so on on github
+  - [ ] Clean up the codez
+  
+- [ ] Record a datastructure of the rendering to use as data for VSLAM
+  - choose: msgpack, capnproto, protobuf, sth else?
+
+- [ ] lacma inspired rainbowy lines
+
+- [X] Less triangles, more evenly spaced, better color choices
+- [X] birdseye renderer for debugging this
+
 2023-01-22
 ----------
-
-- [ ] Less triangles, more evenly spaced, better color choices
-  - [ ] birdseye renderer for debugging this
+  
+- [X] Less triangles, more evenly spaced, better color choices
+  - [X] birdseye renderer for debugging this
   - [ ] make movie maker script to not have to click through it by hand
   
 - [ ] Make a tutorial video about rendering & geometry of rendering
@@ -16,6 +36,7 @@
 Later
 - [ ] Render per triangle refactor
   - [ ] add unit tests for rendering
+    this has failed :(
   
 - [ ] lacma inspired rainbowy lines
 
