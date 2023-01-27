@@ -5,8 +5,9 @@ import jax.numpy as np
 import numpy as onp
 from jax import jit
 
+from sim.birds_eye_view_render import get_view_spcifier_from_scene, render_birdseye_view
 from sim.clipping import ClippingSurfaces, clip_triangles
-from sim.sample_scenes import get_triangles_in_sky_scene
+from sim.sample_scenes import get_triangles_in_sky_scene_2
 from sim.sim_types import RenderTriangle3d, RenderTrianglesPointsInCam
 from sim.ui import key_to_maybe_transforms
 from utils.colors import BGRCuteColors
@@ -259,7 +260,9 @@ def run_interactive_render_loop():
 
     # triangles = get_two_triangle_scene()
     # triangles = get_cube_scene()
-    triangles = get_triangles_in_sky_scene()
+    # triangles = get_triangles_in_sky_scene()
+    triangles = get_triangles_in_sky_scene_2()
+    view_specifier = get_view_spcifier_from_scene(triangles)
 
     i = 0
     while True:
@@ -275,6 +278,18 @@ def run_interactive_render_loop():
                 shade_color,
                 clipping_surfaces
             )
+
+        bev = render_birdseye_view(
+            screen_h=screen_h,
+            screen_w=screen_w,
+            view_specifier=view_specifier,
+            camera_pose=camera_pose,
+            camera_intrinsics=cam_intrinsics,
+            triangles=triangles,
+            bg_color=ground_color
+        )
+
+        cv2.imshow('birdseye', onp.array(bev))
 
         cv2.imshow('scene', onp.array(screen))
         # cv2.imwrite(f'imgs/scene_{i:04d}.png', onp.array(screen))
