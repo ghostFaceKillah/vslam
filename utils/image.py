@@ -1,6 +1,7 @@
-import cv2
-import numpy as np
 from typing import Tuple
+
+import cv2
+import numpy as onp
 
 from utils.colors import BGRCuteColors
 from utils.custom_types import BGRImageArray, Channels, WidthPx, HeightPx, BGRColor
@@ -26,11 +27,12 @@ def take_crop_around(
     from_w = max(0, w - crop_w // 2)
     to_w = min(im_w, w + crop_w // 2)
 
-    return np.copy(img[from_h:to_h, from_w:to_w])
+    return onp.copy(img[from_h:to_h, from_w:to_w])
 
 
 def get_canvas(
     shape: Tuple[HeightPx, WidthPx, Channels],
     background_color: BGRColor = BGRCuteColors.DARK_BLUE
-):
-    return np.ones(shape, dtype=np.uint8) * np.array(background_color, dtype=np.uint8)
+) -> BGRImageArray:
+    return onp.ones(shape, dtype=onp.uint8) * onp.array(background_color, dtype=onp.uint8)
+
