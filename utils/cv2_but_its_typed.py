@@ -1,8 +1,10 @@
-import attr
-import cv2
 from typing import Tuple, TypeAlias
 
-from utils.custom_types import BGRImageArray, BGRColor
+import attr
+import cv2
+import numpy as np
+
+from utils.custom_types import BGRImageArray, BGRColor, Array, Pixel
 
 
 def cv2_circle(
@@ -57,3 +59,23 @@ def cv2_get_text_size(
         height_px=text_height,
         baseline=baseline
     )
+
+
+def cv2_fill_poly(
+        polygon_pts: Array['N,2', np.int32],
+        background: BGRImageArray,
+        color: BGRColor
+):
+    cv2.fillPoly(background, [polygon_pts], color=color)
+    return background
+
+
+def cv2_line(
+    image: BGRImageArray,
+    start_point: Pixel,
+    end_point: Pixel,
+    color: BGRColor,
+    thickness: int
+) -> BGRImageArray:
+    cv2.line(image, start_point, end_point, color, thickness)
+    return image
