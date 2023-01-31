@@ -1,20 +1,11 @@
 from typing import List
 
-import cv2
 import jax.numpy as np
-import numpy as onp
 from jax import jit
 
-from sim.birds_eye_view_render import get_view_spcifier_from_scene, render_birdseye_view
 from sim.clipping import ClippingSurfaces, clip_triangles
-from sim.sample_scenes import get_triangles_in_sky_scene_2
 from sim.sim_types import RenderTriangle3d, RenderTrianglesPointsInCam
-from sim.ui import key_to_maybe_transforms
-from utils.colors import BGRCuteColors
 from utils.custom_types import BGRColor, Array, ImageArray
-from utils.profiling import just_time
-from vslam.math import normalize_vector
-from vslam.poses import get_SE3_pose
 from vslam.transforms import get_world_to_cam_coord_flip_matrix, SE3_inverse
 from vslam.types import CameraPoseSE3, CameraIntrinsics, Vector3d, TransformSE3, ArrayOfColors
 
@@ -233,79 +224,3 @@ def render_scene_pixelwise_depth(
         triangles_in_img_coords = (unit_depth_cam_points / triangle_depths[..., np.newaxis])[..., :-1]
 
         return parallel_z_buffer_render(triangle_depths, triangles_in_img_coords, px_center_coords_in_img_coords, colors, bg_image)
-
-
-def run_interactive_render_loop():
-    screen_h = 480
-    screen_w = 640
-
-    sky_color = BGRCuteColors.SKY_BLUE
-    ground_color = tuple(x - 20 for x in BGRCuteColors.CYAN)
-
-    # higher f_mod -> less distortion, less field of view
-    f_mod = 2.0
-
-    shade_color = BGRCuteColors.DARK_GRAY
-    cam_intrinsics = CameraIntrinsics(
-        fx=screen_w / 4 * f_mod,
-        fy=screen_h / 3 * f_mod,
-        cx=screen_w / 2,
-        cy=screen_h / 2,
-    )
-    light_direction = normalize_vector(np.array([1.0, -1.0, -8.0]))
-    clipping_surfaces = ClippingSurfaces.from_screen_dimensions_and_cam_intrinsics(screen_h, screen_w, cam_intrinsics)
-
-    # looking toward +x direction in world frame, +z in camera
-    camera_pose: CameraPoseSE3 = get_SE3_pose(x=-2.5)
-
-    # triangles = get_two_triangle_scene()
-    # triangles = get_cube_scene()
-    # triangles = get_triangles_in_sky_scene()
-    triangles = get_triangles_in_sky_scene_2()
-    view_specifier = get_view_spcifier_from_scene(triangles)
-
-    i = 0
-    while True:
-        with just_time('render'):
-            screen = render_scene_pixelwise_depth(
-                screen_h, screen_w,
-                camera_pose,
-                triangles,
-                cam_intrinsics,
-                light_direction,
-                sky_color,
-                ground_color,
-                shade_color,
-                clipping_surfaces
-            )
-
-        bev = render_birdseye_view(
-            screen_h=screen_h,
-            screen_w=screen_w,
-            view_specifier=view_specifier,
-            camera_pose=camera_pose,
-            camera_intrinsics=cam_intrinsics,
-            triangles=triangles,
-            bg_color=ground_color
-        )
-
-        cv2.imshow('birdseye', onp.array(bev))
-
-        cv2.imshow('scene', onp.array(screen))
-        # cv2.imwrite(f'imgs/scene_{i:04d}.png', onp.array(screen))
-        key = cv2.waitKey(-1)
-
-        # mutate state based on keys
-        transforms = key_to_maybe_transforms(key)
-
-        if transforms.scene is not None:
-            triangles = [triangle.mutate(transforms.scene) for triangle in triangles]
-
-        if transforms.camera is not None:
-            camera_pose = camera_pose @ transforms.camera
-
-        i += 1
-
-
-if __name__ == '__main__':
-    run_interactive_render_loop()

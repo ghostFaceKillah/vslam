@@ -6,7 +6,7 @@
 - [ ] Make a tutorial video about rendering & geometry of rendering
 - [ ] Make a blogpost about this thing in general
 
-- [ ] code quality review 
+- [ ] code quality retrieval
   - [ ] add unit tests, mypy, black and so on on github
   - [ ] Clean up the codez
   
@@ -51,10 +51,10 @@ Which serialization format?
 My own triangle rendering situation
 -----------------------------------------
 
+I needed simple (depth ignoring) rendering of triangles.
+I had vague hopes of speeding up the main 3d rendering loop by getting rid of the barycentric computation
+for each pixel for each triangle.
 I made my own triangle index finder situation.
-I need simple (depth ignoring) rendering of triangles, so taking into account that I had vague 
-hopes of speeding up the main 3d rendering loop by getting rid of the barycentric computation
-for each pixel for each triangle, I did it.
 
 It has super failed, it seems! It takes 0.0045s for one triangle, which is 2 orders of magnitude slower then cv2.
 

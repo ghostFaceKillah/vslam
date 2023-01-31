@@ -154,7 +154,6 @@ if __name__ == '__main__':
 
     view_specifier = get_view_spcifier_from_scene(triangles)
 
-
     while True:
         with just_time('render'):
             screen = render_birdseye_view(
