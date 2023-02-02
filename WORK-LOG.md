@@ -1,3 +1,37 @@
+2023-02-01
+----------
+
+We have added simulation driver - and wrapped the manual interaction loop in ManualActor.
+We will write prerecorded motions actor and record what it sees to msgpack.
+Then we will learn how to VSLAM on top of it!
+
+- [.] make movie maker script to not have to click through it by hand
+  (Doing this, 50% done :) )
+
+- [ ] Make a tutorial video about rendering & geometry of rendering
+- [ ] Make a blogpost about this thing in general
+
+- [ ] code quality retrieval
+  - [ ] add unit tests, mypy, black and so on on github
+  - [ ] Clean up the codez
+
+- [ ] Record a datastructure of the rendering to use as data for VSLAM
+  - choose: msgpack, capnproto, protobuf, sth else?
+
+- [ ] lacma inspired rainbowy lines
+
+
+2023-01-30
+----------
+
+What do we want to save?
+
+- image left, image right
+- pose
+- fake timestamp in ns
+
+
+
 2023-01-26
 -----------
 
