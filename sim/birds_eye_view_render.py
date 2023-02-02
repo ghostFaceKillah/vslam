@@ -40,17 +40,12 @@ def bev_2d_world_to_pixel(
     return discretized
 
 
-
-def bev_pixel_to_2d_world(pixel_coords: PixelCoordArray) -> Points2d:
-    pass
-
-
 def get_view_spcifier_from_scene(
         scene: List[RenderTriangle3d],
         world_origin: Optional[Point2d] = None,
         world_size: Optional[Tuple[float, float]] = None,
         resolution: float = 0.05,
-):
+) -> BirdseyeViewParams:
 
     if world_size is None or world_origin is None:
         all_points = onp.array([triangle.points[:, :2] for triangle in scene]).reshape(-1, 2)
@@ -77,7 +72,8 @@ def draw_viewport(
     camera_pose: CameraPoseSE3,
     camera_intrinsics: CameraIntrinsics,
     image: BGRImageArray,
-    whiskers_length_m: float = 3.0
+    whiskers_length_m: float = 3.0,
+    whiskers_thickness_px: int = 2,
 ):
     # we want to draw viewport etc
     extreme_left = - camera_intrinsics.cx / camera_intrinsics.fx
@@ -95,8 +91,8 @@ def draw_viewport(
     right_px = bev_2d_world_to_pixel(right_homog[:2], view_specifier)
     center_px = bev_2d_world_to_pixel(camera_pose[:2, -1], view_specifier)
 
-    cv2_line(image, left_px, center_px, color=BGRCuteColors.OFF_WHITE, thickness=1)
-    cv2_line(image, right_px, center_px, color=BGRCuteColors.OFF_WHITE, thickness=1)
+    cv2_line(image, left_px, center_px, color=BGRCuteColors.OFF_WHITE, thickness=whiskers_thickness_px)
+    cv2_line(image, right_px, center_px, color=BGRCuteColors.OFF_WHITE, thickness=whiskers_thickness_px)
 
 
 def render_birdseye_view(
