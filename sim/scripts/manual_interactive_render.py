@@ -2,12 +2,15 @@ import cv2
 import numpy as onp
 from jax import numpy as np
 
+from plotting import Col, Padding, Row, TextRenderer
 from sim.birds_eye_view_render import get_view_spcifier_from_scene, render_birdseye_view
 from sim.clipping import ClippingSurfaces
 from sim.egocentric_render import render_scene_pixelwise_depth
 from sim.sample_scenes import get_triangles_in_sky_scene_2
 from sim.ui import key_to_maybe_transforms
 from utils.colors import BGRCuteColors
+from utils.custom_types import BGRImageArray
+from utils.image import magnify
 from utils.profiling import just_time
 from vslam.math import normalize_vector
 from vslam.poses import get_SE3_pose
@@ -22,6 +25,7 @@ if __name__ == '__main__':
 
     # higher f_mod -> less distortion, less field of view
     f_mod = 2.0
+    distance_between_eyes = 2.0
 
     shade_color = BGRCuteColors.DARK_GRAY
     cam_intrinsics = CameraIntrinsics(
@@ -41,23 +45,31 @@ if __name__ == '__main__':
     # triangles = get_triangles_in_sky_scene()
     triangles = get_triangles_in_sky_scene_2()
     view_specifier = get_view_spcifier_from_scene(triangles)
+    text_renderer = TextRenderer()
+
+    layout = Col(
+        Row(Padding("desc")),
+        Row(Padding('left_img'), Padding('right_img')),
+        Row(Padding('birdseye_view')),
+    )
 
     i = 0
-    while True:
-        with just_time('render'):
-            screen = render_scene_pixelwise_depth(
-                screen_h, screen_w,
-                camera_pose,
-                triangles,
-                cam_intrinsics,
-                light_direction,
-                sky_color,
-                ground_color,
-                shade_color,
-                clipping_surfaces
-            )
 
-        bev = render_birdseye_view(
+    # just to make rendering loop prettier
+    def _packed_render_function(camera_pose_: CameraPoseSE3) -> BGRImageArray:
+        return render_scene_pixelwise_depth(
+            screen_h, screen_w, camera_pose_, triangles,
+            cam_intrinsics, light_direction, sky_color,
+            ground_color, shade_color, clipping_surfaces
+        )
+
+
+    while True:
+        with just_time('right render'):
+            right_eye_screen = _packed_render_function(camera_pose @ get_SE3_pose(y=distance_between_eyes / 2))
+            left_eye_screen = _packed_render_function(camera_pose @ get_SE3_pose(y=-distance_between_eyes / 2))
+
+        bev_img = render_birdseye_view(
             screen_h=screen_h,
             screen_w=screen_w,
             view_specifier=view_specifier,
@@ -67,8 +79,14 @@ if __name__ == '__main__':
             bg_color=ground_color
         )
 
-        cv2.imshow('birdseye', onp.array(bev))
-        cv2.imshow('scene', onp.array(screen))
+        img = layout.render({
+            'desc': text_renderer.render(f'frame {i} pose {camera_pose[:3, 3]}'),
+            'left_img': left_eye_screen,
+            'right_img': right_eye_screen,
+            'birdseye_view': magnify(bev_img, 0.5),
+        })
+
+        cv2.imshow('scene', onp.array(img))
         key = cv2.waitKey(-1)
 
         if key == 27:
