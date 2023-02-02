@@ -1,11 +1,11 @@
-from typing import List
+from typing import List, Protocol
 
 import attr
 import cv2
 import numpy as onp
 from jax import numpy as np
 
-from plotting import Col, Padding, Row, TextRenderer
+from plotting import Col, Padding, Row, TextRenderer, Packer
 from sim.birds_eye_view_render import get_view_spcifier_from_scene, render_birdseye_view, BirdseyeViewParams
 from sim.clipping import ClippingSurfaces
 from sim.egocentric_render import render_scene_pixelwise_depth
@@ -110,51 +110,121 @@ class TriangleSceneRenderer:
         return get_SE3_pose(y=self.distance_between_eyes / 2)
 
 
-if __name__ == '__main__':
-    scene_renderer = TriangleSceneRenderer.from_default()
+@attr.define
+class Observation:
+    left_eye_img: BGRImageArray
+    right_eye_img: BGRImageArray
+    bev_img: BGRImageArray   # birdseye view image
+    camera_pose: CameraPoseSE3
+    frame_idx: int
 
-    # looking toward +x direction in world frame, +z in camera
-    camera_pose: CameraPoseSE3 = get_SE3_pose(x=-2.5)
+
+@attr.define
+class Action:
+    transforms: UiRequestedTransforms
+    end: bool
+
+    @classmethod
+    def empty(cls):
+        return cls(transforms=UiRequestedTransforms.empty(), end=False)
 
 
-    text_renderer = TextRenderer()
+class Actor(Protocol):
+    def act(self, obs: Observation) -> Action:
+        ...
 
-    layout = Col(
-        Row(Padding("desc")),
-        Row(Padding('left_img'), Padding('right_img')),
-        Row(Padding('birdseye_view')),
-    )
 
-    i = 0
-    transforms = UiRequestedTransforms.empty()
+class PrerecordedActor:
+    pass
 
-    while True:
-        if transforms.camera is not None:
-            camera_pose = camera_pose @ transforms.camera
+@attr.define
+class ManualActor:
+    layout: Packer
+    text_renderer: TextRenderer = attr.field(factory=TextRenderer)
 
-        with just_time('eyes render'):
-            with just_time('right eye render'):
-                right_eye_screen = scene_renderer.render_first_person_view(camera_pose @ scene_renderer.right_eye_offset())
-            with just_time('left eye render'):
-                left_eye_screen = scene_renderer.render_first_person_view(camera_pose @ scene_renderer.left_eye_offset())
+    @classmethod
+    def from_default(cls):
+        return cls(
+            layout=Col(
+                Row(Padding("desc")),
+                Row(Padding('left_img'), Padding('right_img')),
+                Row(Padding('birdseye_view')),
+            )
+        )
 
-        with just_time('birdseye render'):
-            bev_img = scene_renderer.render_birdseye_view(camera_pose)
-
-        # react
-        img = layout.render({
-            'desc': text_renderer.render(f'frame {i} pose {camera_pose[:3, 3]}'),
-            'left_img': left_eye_screen,
-            'right_img': right_eye_screen,
-            'birdseye_view': magnify(bev_img, 0.5),
+    def act(self, obs: Observation) -> Action:
+        # reacts to images from the environment
+        img = self.layout.render({
+            'desc': self.text_renderer.render(f'frame {obs.frame_idx} pose {obs.camera_pose[:3, 3]}'),
+            'left_img': obs.left_eye_img,
+            'right_img': obs.right_eye_img,
+            'birdseye_view': magnify(obs.bev_img, 0.5),
         })
 
         cv2.imshow('scene', onp.array(img))
         key = cv2.waitKey(-1)
-        transforms = key_to_maybe_transforms(key)
 
-        if key == 27:
+        end = key == 27
+        if end:
             print("caught escape key, exiting")
-            break
 
-        i += 1
+        return Action(
+            transforms=key_to_maybe_transforms(key),
+            end=key == ord('q')
+        )
+
+
+@attr.define
+class Simulation:
+    actor: Actor
+    scene_renderer: TriangleSceneRenderer
+
+    def _get_obs(self, camera_pose: CameraPoseSE3, frame_idx: int) -> Observation:
+        """ Renders what eyes see and constructs observation object """
+        with just_time('right eye render'):
+            right_eye_screen = self.scene_renderer.render_first_person_view(camera_pose @ self.scene_renderer.right_eye_offset())
+        with just_time('left eye render'):
+            left_eye_screen = self.scene_renderer.render_first_person_view(camera_pose @ self.scene_renderer.left_eye_offset())
+
+        with just_time('birdseye render'):
+            bev_img = self.scene_renderer.render_birdseye_view(camera_pose)
+
+        return Observation(
+            left_eye_img=left_eye_screen,
+            right_eye_img=right_eye_screen,
+            bev_img=bev_img,
+            camera_pose=camera_pose,
+            frame_idx=frame_idx,
+        )
+
+    def simulate(
+        self,
+        initial_camera_pose: CameraPoseSE3 = get_SE3_pose(x=-2.5)   # looking toward +x direction in world frame, +z in camera
+    ):
+        """ Simulates the environment. """
+        camera_pose = initial_camera_pose
+
+        i = 0
+        action = Action.empty()
+
+        while True:
+            # mutates environment based on actions
+            camera_pose = camera_pose @ action.transforms.camera
+
+            if action.end:
+                break
+
+            obs = self._get_obs(camera_pose, i)
+            action = self.actor.act(obs)
+
+            # TODO: env recorder
+
+            i += 1
+
+
+if __name__ == '__main__':
+    scene_renderer = TriangleSceneRenderer.from_default()
+    actor = ManualActor.from_default()
+
+    sim = Simulation(actor=actor, scene_renderer=scene_renderer)
+    sim.simulate()
