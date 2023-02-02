@@ -40,6 +40,7 @@ class Packing:
 
 @runtime_checkable
 class Packer(Protocol):
+    # TODO: Rename to ImagePacker
 
     def pack(self, name_to_img: Dict[str, ImageArray]) -> Packing:
         ...
