@@ -1,30 +1,27 @@
 from typing import List, Tuple, Optional
 
 import attr
-import cv2
 import numpy as onp
 
-from sim.sample_scenes import get_triangles_in_sky_scene
 from sim.sim_types import RenderTriangle3d
-from sim.ui import key_to_maybe_transforms
 from utils.colors import BGRCuteColors
 from utils.custom_types import PixelCoordArray, BGRColor, BGRImageArray
 from utils.cv2_but_its_typed import cv2_fill_poly, cv2_line
 from utils.image import get_canvas
-from utils.profiling import just_time
 from vslam.math import normalize_vector
-from vslam.poses import get_SE3_pose
 from vslam.transforms import homogenize
 from vslam.types import CameraPoseSE3, CameraIntrinsics, Point2d, Points2d
 
 
 @attr.define
 class BirdseyeViewParams:
+    """ Parameters for rendering a birdseye view"""
     resolution: float    # how many meters per pixel
     origin: Point2d
     world_size: Tuple[float, float]     # along 2 first coordinates of world coords
 
     def get_pixel_size(self) -> Tuple[int, int]:
+        """ Get the size of the grid in pixels """
         x, y = self.world_size
         r = self.resolution
         return int(x / r),  int(y / r)
@@ -34,6 +31,7 @@ def bev_2d_world_to_pixel(
         world_coords: Points2d,
         view_specifier: BirdseyeViewParams
 ) -> PixelCoordArray:
+    """ Convert 2d world coordinates to pixel coordinates"""
 
     normalized = (world_coords - view_specifier.origin) / view_specifier.resolution
     discretized = normalized.astype(dtype=onp.int32)
@@ -46,6 +44,7 @@ def get_view_spcifier_from_scene(
         world_size: Optional[Tuple[float, float]] = None,
         resolution: float = 0.05,
 ) -> BirdseyeViewParams:
+    """ Get a view specifier from a scene """
 
     if world_size is None or world_origin is None:
         all_points = onp.array([triangle.points[:, :2] for triangle in scene]).reshape(-1, 2)
@@ -75,6 +74,7 @@ def draw_viewport(
     whiskers_length_m: float = 3.0,
     whiskers_thickness_px: int = 2,
 ):
+    """ Draws viewport on the image """
     # we want to draw viewport etc
     extreme_left = - camera_intrinsics.cx / camera_intrinsics.fx
     extreme_right = (screen_w - camera_intrinsics.cx) / camera_intrinsics.fx
@@ -104,72 +104,17 @@ def render_birdseye_view(
         triangles: List[RenderTriangle3d],
         bg_color: BGRColor
 ) -> BGRImageArray:
+    """ Renders birdseye view of the scene"""
 
-    # make appropriate costmap bgr array
     x_size, y_size = view_specifier.get_pixel_size()
     canvas = get_canvas(shape=(x_size, y_size, 3), background_color=bg_color)
 
     all_points = onp.array([triangle.points[:, :2] for triangle in triangles])
     pixel_points = bev_2d_world_to_pixel(all_points, view_specifier)
 
-    # (336, 3, 2)
     for triangle_pts, triangle in zip(pixel_points, triangles):
         cv2_fill_poly(triangle_pts, canvas, color=triangle.front_face_color)
 
     draw_viewport(screen_h, screen_w, view_specifier, camera_pose, camera_intrinsics, canvas)
 
     return canvas
-
-
-if __name__ == '__main__':
-
-    screen_h = 480
-    screen_w = 640
-
-    ground_color = tuple(x - 20 for x in BGRCuteColors.CYAN)
-
-    # higher f_mod -> less distortion, less field of view
-    f_mod = 2.0
-
-    shade_color = BGRCuteColors.DARK_GRAY
-
-    cam_intrinsics = CameraIntrinsics(
-        fx=screen_w / 4 * f_mod,
-        fy=screen_h / 3 * f_mod,
-        cx=screen_w / 2,
-        cy=screen_h / 2,
-    )
-    # clipping_surfaces = ClippingSurfaces.from_screen_dimensions_and_cam_intrinsics(screen_h, screen_w, cam_intrinsics)
-
-    # looking toward +x direction in world frame, +z in camera
-    camera_pose: CameraPoseSE3 = get_SE3_pose(x=-2.5)
-
-    # triangles = get_two_triangle_scene()
-    # triangles = get_cube_scene()
-    triangles = get_triangles_in_sky_scene()
-
-    view_specifier = get_view_spcifier_from_scene(triangles)
-
-    while True:
-        with just_time('render'):
-            screen = render_birdseye_view(
-                view_specifier=view_specifier,
-                camera_pose=camera_pose,
-                camera_intrinsics=cam_intrinsics,
-                triangles=triangles,
-                bg_color=ground_color
-            )
-
-        cv2.imshow('scene', onp.array(screen))
-        # cv2.imwrite(f'imgs/scene_{i:04d}.png', onp.array(screen))
-        key = cv2.waitKey(-1)
-
-        # mutate state based on keys
-        transforms = key_to_maybe_transforms(key)
-
-        if transforms.scene is not None:
-            triangles = [triangle.mutate(transforms.scene) for triangle in triangles]
-
-        if transforms.camera is not None:
-            camera_pose = camera_pose @ transforms.camera
-
