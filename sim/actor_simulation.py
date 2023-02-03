@@ -11,7 +11,7 @@ from sim.clipping import ClippingSurfaces
 from sim.egocentric_render import render_scene_pixelwise_depth
 from sim.sample_scenes import get_triangles_in_sky_scene_2
 from sim.sim_types import RenderTriangle3d
-from sim.ui import key_to_maybe_transforms, UiRequestedTransforms
+from sim.ui import key_to_maybe_transforms, InteractionTransforms
 from utils.colors import BGRCuteColors
 from utils.custom_types import BGRImageArray, BGRColor
 from utils.image import magnify
@@ -117,16 +117,21 @@ class Observation:
     bev_img: BGRImageArray   # birdseye view image
     camera_pose: CameraPoseSE3
     frame_idx: int
+    # TODO: Add fake timestamp
 
 
 @attr.define
 class Action:
-    transforms: UiRequestedTransforms
+    transforms: InteractionTransforms
     end: bool
 
     @classmethod
     def empty(cls):
-        return cls(transforms=UiRequestedTransforms.empty(), end=False)
+        return cls(transforms=InteractionTransforms.empty(), end=False)
+
+    @classmethod
+    def done(cls):
+        return cls(transforms=InteractionTransforms.empty(), end=True)
 
 
 class Actor(Protocol):
@@ -136,6 +141,7 @@ class Actor(Protocol):
 
 class PrerecordedActor:
     pass
+
 
 @attr.define
 class ManualActor:
@@ -222,9 +228,42 @@ class Simulation:
             i += 1
 
 
+@attr.define
+class PreRecordedActor(Actor):
+    """ Plays back a pre-recorded sequence of actions"""
+    actions: List[InteractionTransforms]
+    idx: int = 0
+
+    @classmethod
+    def from_a_nice_trip(cls):
+        """ Returns a nice trip, lol """
+        actions = (
+            [InteractionTransforms.go_straight()] * 200
+            + [InteractionTransforms.turn_right(), InteractionTransforms.go_straight()] * 45
+            + [InteractionTransforms.go_straight()] * 40
+            + [InteractionTransforms.turn_right(), InteractionTransforms.go_straight()] * 45
+            + [InteractionTransforms.go_straight()] * 200
+            + [InteractionTransforms.turn_right(), InteractionTransforms.go_straight()] * 45
+            + [InteractionTransforms.go_straight()] * 250
+            + [InteractionTransforms.turn_left(), InteractionTransforms.go_straight()] * (90 + 22)
+            + [InteractionTransforms.go_straight()] * 300
+        )
+
+        return cls(actions=actions)
+
+    def act(self, obs: Observation) -> Action:
+        """ Plays back a pre-recorded sequence of actions"""
+        if self.idx >= len(self.actions):
+            return Action.done()
+        else:
+            self.idx += 1
+            return Action(transforms=self.actions[self.idx - 1], end=False)
+
+
 if __name__ == '__main__':
     scene_renderer = TriangleSceneRenderer.from_default()
-    actor = ManualActor.from_default()
+    # actor = ManualActor.from_default()
+    actor = PreRecordedActor.from_a_nice_trip()
 
     sim = Simulation(actor=actor, scene_renderer=scene_renderer)
     sim.simulate()

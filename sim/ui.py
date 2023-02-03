@@ -6,7 +6,7 @@ from vslam.types import TransformSE3
 
 
 @attr.s(auto_attribs=True)
-class UiRequestedTransforms:
+class InteractionTransforms:
     camera: TransformSE3 = attr.Factory(get_SE3_pose)
     scene: TransformSE3 = attr.Factory(get_SE3_pose)
 
@@ -14,31 +14,47 @@ class UiRequestedTransforms:
     def empty(cls):
         return cls()
 
+    @classmethod
+    def go_straight(cls):
+        return cls(camera=get_SE3_pose(x=0.1))
 
-def key_to_maybe_transforms(key: int) -> UiRequestedTransforms:
+    @classmethod
+    def go_back(cls):
+        return cls(camera=get_SE3_pose(x=-0.1))
+
+    @classmethod
+    def turn_right(cls):
+        return cls(camera=get_SE3_pose(yaw=np.deg2rad(2)))
+
+    @classmethod
+    def turn_left(cls):
+        return cls(camera=get_SE3_pose(yaw=np.deg2rad(-2)))
+
+
+def key_to_maybe_transforms(key: int) -> InteractionTransforms:
     """ Transform key pressed by the user into camera and scene transformations """
     if key == -1:  # None
-        return UiRequestedTransforms.empty()
+        return InteractionTransforms.empty()
     elif key == 0:   # up arrow key
-        return UiRequestedTransforms(scene=get_SE3_pose(pitch=np.deg2rad(10)))
+        return InteractionTransforms(scene=get_SE3_pose(pitch=np.deg2rad(10)))
     elif key == 1:   # down arrow key
-        return UiRequestedTransforms(scene=get_SE3_pose(pitch=np.deg2rad(-10)))
+        return InteractionTransforms(scene=get_SE3_pose(pitch=np.deg2rad(-10)))
     elif key == 2:   # left arrow key
-        return UiRequestedTransforms(scene=get_SE3_pose(roll=np.deg2rad(10)))
+        return InteractionTransforms(scene=get_SE3_pose(roll=np.deg2rad(10)))
     elif key == 3:   # right arrow key
-        return UiRequestedTransforms(scene=get_SE3_pose(roll=np.deg2rad(-10)))
+        return InteractionTransforms(scene=get_SE3_pose(roll=np.deg2rad(-10)))
     elif key == ord('w'):
-        return UiRequestedTransforms(camera=get_SE3_pose(x=0.1))
+        return InteractionTransforms.go_straight()
     elif key == ord('s'):
-        return UiRequestedTransforms(camera=get_SE3_pose(x=-0.1))
+        return InteractionTransforms.go_back()
     elif key == ord('q'):
-        return UiRequestedTransforms(camera=get_SE3_pose(y=-0.1))
+        return InteractionTransforms(camera=get_SE3_pose(y=-0.1))
     elif key == ord('e'):
-        return UiRequestedTransforms(camera=get_SE3_pose(y=0.1))
+        return InteractionTransforms(camera=get_SE3_pose(y=0.1))
     elif key == ord('a'):
-        return UiRequestedTransforms(camera=get_SE3_pose(yaw=np.deg2rad(-2)))
+        return InteractionTransforms.turn_left()
     elif key == ord('d'):
-        return UiRequestedTransforms(camera=get_SE3_pose(yaw=np.deg2rad(2)))
+        return InteractionTransforms.turn_right()
     else:
         print(f"Unknown keypress {key} {chr(key)}")
-        return UiRequestedTransforms.empty()
+        return InteractionTransforms.empty()
