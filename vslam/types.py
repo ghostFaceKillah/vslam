@@ -32,7 +32,6 @@ class CameraIntrinsics:
             [self.fx, 0, self.cx],
         ], dtype=np.float64)
 
-    # TODO: Probably need a matrix that includes the flip - see coordinate definitions
 
 """
 perception equation in the camera frame
