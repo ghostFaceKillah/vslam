@@ -3,8 +3,24 @@
 
 Need unit tests for stuff not to start falling apart soon
 I have solved serialization :)  Using cattrs, so that's awesome.
-Will 
 
+Likely worth introducing sqlite based recorder to be able to record "big data" ?
+
+- [ ] Record datastruct
+- [X] make movie maker script to not have to click through it by hand
+  (Doing this, 50% done :) )
+
+- [ ] Make a tutorial video about rendering & geometry of rendering
+- [ ] Make a blogpost about this thing in general
+
+- [ ] code quality retrieval
+  - [ ] add unit tests, mypy, black and so on on github
+  - [ ] Clean up the codez
+
+- [X] Record a datastructure of the rendering to use as data for VSLAM
+  - choose: msgpack, capnproto, protobuf, sth else?
+
+- [ ] lacma inspired rainbowy lines
 
 
 2023-02-01
