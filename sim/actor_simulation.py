@@ -16,6 +16,7 @@ from utils.colors import BGRCuteColors
 from utils.custom_types import BGRImageArray, BGRColor
 from utils.image import magnify
 from utils.profiling import just_time
+from utils.serialization import msgpack_dumps, to_native_types
 from vslam.math import normalize_vector
 from vslam.poses import get_SE3_pose
 from vslam.types import CameraIntrinsics, CameraPoseSE3, Vector3d
@@ -23,8 +24,10 @@ from vslam.types import CameraIntrinsics, CameraPoseSE3, Vector3d
 
 @attr.define
 class CameraSpecs:
+    """ Mix of intrinsics and extrinsics """
     screen_h: int
     screen_w: int
+    distance_between_eyes: float
     cam_intrinsics: CameraIntrinsics
     clipping_surfaces: ClippingSurfaces
 
@@ -44,6 +47,7 @@ class CameraSpecs:
         return cls(
             screen_h=screen_h,
             screen_w=screen_w,
+            distance_between_eyes=2.0,
             cam_intrinsics=cam_intrinsics,
             clipping_surfaces=ClippingSurfaces.from_screen_dimensions_and_cam_intrinsics(screen_h, screen_w, cam_intrinsics),
         )
@@ -55,7 +59,6 @@ class TriangleSceneRenderer:
     birdseye_view_specifier: BirdseyeViewParams
 
     camera: CameraSpecs = attr.field(factory=CameraSpecs.from_default)
-    distance_between_eyes: float = 2.0
 
     light_direction_in_world: Vector3d = normalize_vector(np.array([1.0, -1.0, -8.0]))
 
@@ -78,7 +81,7 @@ class TriangleSceneRenderer:
 
     def render_first_person_view(self, camera_pose: CameraPoseSE3) -> BGRImageArray:
         """ Renders the scene from the perspective of the camera """
-        return render_scene_pixelwise_depth(
+        jax_array = render_scene_pixelwise_depth(
             self.camera.screen_h,
             self.camera.screen_w,
             camera_pose,
@@ -90,10 +93,11 @@ class TriangleSceneRenderer:
             self.shade_color,
             self.camera.clipping_surfaces
         )
+        return onp.array(jax_array)
 
     def render_birdseye_view(self, camera_pose: CameraPoseSE3) -> BGRImageArray:
         """ Renders the scene from birdseye view """
-        return render_birdseye_view(
+        jax_array = render_birdseye_view(
             self.camera.screen_h,
             self.camera.screen_w,
             self.birdseye_view_specifier,
@@ -102,12 +106,13 @@ class TriangleSceneRenderer:
             self.scene_triangles,
             self.ground_color
         )
+        return onp.array(jax_array)
 
     def left_eye_offset(self):
-        return get_SE3_pose(y=-self.distance_between_eyes / 2)
+        return get_SE3_pose(y=-self.camera.distance_between_eyes / 2)
 
     def right_eye_offset(self):
-        return get_SE3_pose(y=self.distance_between_eyes / 2)
+        return get_SE3_pose(y=self.camera.distance_between_eyes / 2)
 
 
 @attr.define
@@ -142,6 +147,8 @@ class Actor(Protocol):
 class PrerecordedActor:
     pass
 
+
+import lz4.frame
 
 @attr.define
 class ManualActor:
@@ -181,6 +188,15 @@ class ManualActor:
 
 
 @attr.define
+class Recording:
+    camera_specs: CameraSpecs
+    observations: List[Observation] = attr.ib(factory=list)
+
+    def record_observation(self, obs: Observation):
+        self.observations.append(obs)
+
+
+@attr.define
 class Simulation:
     actor: Actor
     scene_renderer: TriangleSceneRenderer
@@ -205,9 +221,11 @@ class Simulation:
 
     def simulate(
         self,
-        initial_camera_pose: CameraPoseSE3 = get_SE3_pose(x=-2.5)   # looking toward +x direction in world frame, +z in camera
+        initial_camera_pose: CameraPoseSE3 = get_SE3_pose(x=-2.5),   # looking toward +x direction in world frame, +z in camera
     ):
         """ Simulates the environment. """
+        recorder = Recording(self.scene_renderer.camera)
+
         camera_pose = initial_camera_pose
 
         i = 0
@@ -222,10 +240,13 @@ class Simulation:
 
             obs = self._get_obs(camera_pose, i)
             action = self.actor.act(obs)
+            recorder.record_observation(obs)
 
             # TODO: env recorder
 
             i += 1
+
+        return recorder
 
 
 @attr.define
@@ -265,5 +286,22 @@ if __name__ == '__main__':
     # actor = ManualActor.from_default()
     actor = PreRecordedActor.from_a_nice_trip()
 
-    sim = Simulation(actor=actor, scene_renderer=scene_renderer)
-    sim.simulate()
+    sim = Simulation(
+        actor=actor,
+        scene_renderer=scene_renderer,
+    )
+    with just_time('simulating'):
+        recording = sim.simulate()
+
+    native_types_data = to_native_types(recording)
+    data = msgpack_dumps(native_types_data)
+    print(f"size of recording is {len(data)}")
+    print(f"size of compressed recording is {len(lz4.frame.compress(data))}")
+
+    """
+    ... Elapsed 352.4s in: simulating
+    size of recording is 6382121789
+    size of compressed recording is 74317519
+    """
+
+

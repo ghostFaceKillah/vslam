@@ -1,5 +1,6 @@
-from typing import Any
+from typing import Any, Dict
 
+import cattrs
 import msgpack
 import msgpack_numpy as m
 import numpy as onp
@@ -11,6 +12,10 @@ def msgpack_dumps(obj: Any) -> bytes:
 
 def msgpack_loads(data: bytes):
     return msgpack.unpackb(data, raw=False, object_hook=m.decode)
+
+
+def to_native_types(obj: Any) -> Dict[str, Any]:
+    return cattrs.unstructure(obj)
 
 
 def experiment(obj):

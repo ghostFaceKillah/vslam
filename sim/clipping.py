@@ -1,7 +1,7 @@
 from typing import List, Tuple
 
 import attr
-import numpy as np
+import numpy as onp
 from jax import numpy as np
 
 from utils.custom_types import Array
@@ -28,21 +28,21 @@ class ClippingSurfaces:
         extreme_up = - cam_intrinsics.cy / cam_intrinsics.fy
         extreme_down = (screen_h - cam_intrinsics.cy) / cam_intrinsics.fy
 
-        a = normalize_vector(np.array([extreme_right, 0, 1.]))
-        b = np.array([0.0, -1.0, 0.0])
-        right_clipping_surface_normal = np.cross(b, a)
+        a = normalize_vector(onp.array([extreme_right, 0, 1.]))
+        b = onp.array([0.0, -1.0, 0.0])
+        right_clipping_surface_normal = onp.cross(b, a)
 
-        a = normalize_vector(np.array([extreme_left, 0, 1.]))
-        b = np.array([0.0, 1.0, 0.0])
-        left_clipping_surface_normal = np.cross(b, a)
+        a = normalize_vector(onp.array([extreme_left, 0, 1.]))
+        b = onp.array([0.0, 1.0, 0.0])
+        left_clipping_surface_normal = onp.cross(b, a)
 
-        a = normalize_vector(np.array([0., extreme_up, 1.]))
-        b = np.array([-1.0, 0.0, 0.0])
-        upper_clipping_surface_normal = np.cross(b, a)
+        a = normalize_vector(onp.array([0., extreme_up, 1.]))
+        b = onp.array([-1.0, 0.0, 0.0])
+        upper_clipping_surface_normal = onp.cross(b, a)
 
-        a = normalize_vector(np.array([0., extreme_down, 1.]))
-        b = np.array([1.0, 0.0, 0.0])
-        lower_clipping_surface_normal = np.cross(b, a)
+        a = normalize_vector(onp.array([0., extreme_down, 1.]))
+        b = onp.array([1.0, 0.0, 0.0])
+        lower_clipping_surface_normal = onp.cross(b, a)
 
         return cls(
             right_clipping_surface_normal=right_clipping_surface_normal,
