@@ -1,3 +1,12 @@
+2023-02-02
+----------
+
+Need unit tests for stuff not to start falling apart soon
+I have solved serialization :)  Using cattrs, so that's awesome.
+Will 
+
+
+
 2023-02-01
 ----------
 
