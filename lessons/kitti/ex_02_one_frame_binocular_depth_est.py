@@ -1,6 +1,6 @@
+import cv2
 import numpy as np
 import pandas as pd
-import cv2
 
 from plotting import Col, Padding
 from utils.colors import BGRCuteColors
