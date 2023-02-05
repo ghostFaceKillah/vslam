@@ -1,11 +1,10 @@
-import os
 from typing import Iterable
 
 import attr
 
-from defs import ROOT_DIR
 from sim.sim_types import Recording, Observation
 from utils.serialization import msgpack_loads, from_native_types
+from vslam.types import CameraIntrinsics
 
 
 @attr.define
@@ -25,18 +24,11 @@ class SimDataStreamer:
 
         return cls(recorded_data=data)
 
+    def get_cam_intrinsics(self) -> CameraIntrinsics:
+        return self.recorded_data.camera_specs.cam_intrinsics
+
     def stream(self) -> Iterable[Observation]:
 
         for obs in self.recorded_data.observations:
             yield obs
-
-
-if __name__ == '__main__':
-    dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-02-04--17-08-25.msgpack')
-
-    data_streamer = SimDataStreamer.from_dataset_path(dataset_path=dataset_path)
-
-    for obs in data_streamer.stream():
-        print(obs.timestamp)
-
 
