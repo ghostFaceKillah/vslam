@@ -30,8 +30,7 @@ if __name__ == '__main__':
 
         layout = Col(
             Row(Padding("desc")),
-            Row(Padding('left_crop'), Padding('left')),
-            Row(Padding('right_crop'), Padding('right')),
+            Row(Padding('left_crop'), Padding('left'), Padding('right'), Padding('right_crop')),
         )
 
         # draw the matches
