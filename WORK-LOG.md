@@ -1,3 +1,22 @@
+2023-02-04
+----------
+
+- [ ] Implement the actual VSLAM
+
+- [ ] Make a tutorial video about rendering & geometry of rendering
+- [ ] Make a blogpost about this thing in general
+
+- [ ] code quality retrieval
+  - [ ] add unit tests, mypy, black and so on on github
+  - [ ] Clean up the codez
+  
+- [ ] sqlite based recorder and streaming replayer to be able to record "big data" ?
+
+- [ ] lacma inspired rainbowy lines
+  
+- [X] Record datastruct
+
+
 2023-02-02
 ----------
 
