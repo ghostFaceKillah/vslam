@@ -1,7 +1,31 @@
 2023-02-04
 ----------
 
+Started implementing VSLAM.
+
+Feature matching works perfect.
+
+Triangulation seems to be working OK - the depths returned look good, but many times, 
+we get NaNs and failed triangulation. Would be nice to understand why exactly.
+
+Update: Understood failed triangulation well based on equations.
+
+- Scale estimation per dimensions and then averaging can be interpreted as L2 MSE estimation.
+- If scale estimations based on dimensions are too off it means that it's a bad match,
+  so it's a very nice secondary filter.
+- Hardcoding dropping first dimensions is a bad idea, because that assumes that points are coplanar in horizontal 
+  dimension in frame of the reference image (usually left)
+- Excluding s = - b / a  where b or a are close to zero makes sense, because that would introduce very noisy estimates.
+
+Triangulation outputs look very good and at the same time are really brittle wrt to bad features matches.
+Brittle in the sense that for far off points it gives high distance errors.
+This kinda replicates the classic results, so I am not too worried.
+
+
 - [ ] Implement the actual VSLAM
+    - [ ] Understand their code again
+        - [ ] Will need g2o (or reimplementation, lol)
+    
 
 - [ ] Make a tutorial video about rendering & geometry of rendering
 - [ ] Make a blogpost about this thing in general
