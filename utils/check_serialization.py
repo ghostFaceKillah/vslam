@@ -29,7 +29,7 @@ def check_serialization(obj):
     re_obj = ...
 
 
-from sim.actor_simulation import CameraSpecs
+from sim.sim_types import CameraSpecs
 from cattr import GenConverter
 import cattrs
 import numpy as np

@@ -1,4 +1,4 @@
-
+import time
 from typing import List, Protocol
 
 import attr
@@ -8,10 +8,9 @@ from jax import numpy as np
 
 from plotting import Col, Padding, Row, TextRenderer, Packer
 from sim.birds_eye_view_render import get_view_spcifier_from_scene, render_birdseye_view, BirdseyeViewParams
-from sim.clipping import ClippingSurfaces
 from sim.egocentric_render import render_scene_pixelwise_depth
 from sim.sample_scenes import get_triangles_in_sky_scene_2
-from sim.sim_types import RenderTriangle3d
+from sim.sim_types import RenderTriangle3d, CameraSpecs, Observation, Action, Recording
 from sim.ui import key_to_maybe_transforms, InteractionTransforms
 from utils.colors import BGRCuteColors
 from utils.custom_types import BGRImageArray, BGRColor
@@ -19,38 +18,7 @@ from utils.image import magnify
 from utils.profiling import just_time
 from vslam.math import normalize_vector
 from vslam.poses import get_SE3_pose
-from vslam.types import CameraIntrinsics, CameraPoseSE3, Vector3d
-
-
-@attr.define
-class CameraSpecs:
-    """ Mix of intrinsics and extrinsics """
-    screen_h: int
-    screen_w: int
-    distance_between_eyes: float
-    cam_intrinsics: CameraIntrinsics
-    clipping_surfaces: ClippingSurfaces
-
-    @classmethod
-    def from_default(
-        cls,
-        screen_h: int = 480,
-        screen_w: int = 640,
-        f_mod: float = 2.0,   # higher f_mod -> less distortion, less field of view
-    ):
-        cam_intrinsics = CameraIntrinsics(
-            fx=screen_w / 4 * f_mod,
-            fy=screen_h / 3 * f_mod,
-            cx=screen_w / 2,
-            cy=screen_h / 2,
-        )
-        return cls(
-            screen_h=screen_h,
-            screen_w=screen_w,
-            distance_between_eyes=2.0,
-            cam_intrinsics=cam_intrinsics,
-            clipping_surfaces=ClippingSurfaces.from_screen_dimensions_and_cam_intrinsics(screen_h, screen_w, cam_intrinsics),
-        )
+from vslam.types import CameraPoseSE3, Vector3d
 
 
 @attr.define
@@ -115,30 +83,6 @@ class TriangleSceneRenderer:
         return get_SE3_pose(y=self.camera.distance_between_eyes / 2)
 
 
-@attr.define
-class Observation:
-    left_eye_img: BGRImageArray
-    right_eye_img: BGRImageArray
-    bev_img: BGRImageArray   # birdseye view image
-    camera_pose: CameraPoseSE3
-    frame_idx: int
-    # TODO: Add fake timestamp
-
-
-@attr.define
-class Action:
-    transforms: InteractionTransforms
-    end: bool
-
-    @classmethod
-    def empty(cls):
-        return cls(transforms=InteractionTransforms.empty(), end=False)
-
-    @classmethod
-    def done(cls):
-        return cls(transforms=InteractionTransforms.empty(), end=True)
-
-
 class Actor(Protocol):
     def act(self, obs: Observation) -> Action:
         ...
@@ -182,20 +126,12 @@ class ManualActor:
 
 
 @attr.define
-class Recording:
-    camera_specs: CameraSpecs
-    observations: List[Observation] = attr.ib(factory=list)
-
-    def record_observation(self, obs: Observation):
-        self.observations.append(obs)
-
-
-@attr.define
 class Simulation:
     actor: Actor
     scene_renderer: TriangleSceneRenderer
+    dt: float = 0.1
 
-    def _get_obs(self, camera_pose: CameraPoseSE3, frame_idx: int) -> Observation:
+    def _get_obs(self, camera_pose: CameraPoseSE3, frame_idx: int, sim_time_s: float) -> Observation:
         """ Renders what eyes see and constructs observation object """
         with just_time('right eye render'):
             right_eye_screen = self.scene_renderer.render_first_person_view(camera_pose @ self.scene_renderer.right_eye_offset())
@@ -211,6 +147,7 @@ class Simulation:
             bev_img=bev_img,
             camera_pose=camera_pose,
             frame_idx=frame_idx,
+            timestamp=sim_time_s,
         )
 
     def simulate(
@@ -221,6 +158,7 @@ class Simulation:
         recorder = Recording(self.scene_renderer.camera)
 
         camera_pose = initial_camera_pose
+        sim_time = time.time()
 
         i = 0
         action = Action.empty()
@@ -232,13 +170,12 @@ class Simulation:
             if action.end:
                 break
 
-            obs = self._get_obs(camera_pose, i)
+            obs = self._get_obs(camera_pose, i, sim_time)
             action = self.actor.act(obs)
             recorder.record_observation(obs)
 
-            # TODO: env recorder
-
             i += 1
+            sim_time += self.dt
 
         return recorder
 
