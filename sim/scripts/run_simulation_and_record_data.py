@@ -1,8 +1,9 @@
+import lz4.frame
+
 from sim.actor_simulation import TriangleSceneRenderer, PreRecordedActor, Simulation
 from utils.file_utils import easy_filename
 from utils.profiling import just_time
 from utils.serialization import to_native_types, msgpack_dumps
-
 
 if __name__ == '__main__':
     scene_renderer = TriangleSceneRenderer.from_default()
