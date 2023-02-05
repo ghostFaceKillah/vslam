@@ -1,6 +1,4 @@
 import attr
-import msgpack
-import msgpack_numpy as m
 import numpy as onp
 
 from utils.custom_types import BGRImageArray
@@ -21,12 +19,6 @@ class FakeMessage:
         )
 
 
-def check_serialization(obj):
-
-    the_in = msgpack.packb(obj, use_bin_type=True, default=m.encode)
-    the_out = msgpack.unpackb(the_in, raw=False, object_hook=m.decode)
-
-    re_obj = ...
 
 
 from sim.sim_types import CameraSpecs
