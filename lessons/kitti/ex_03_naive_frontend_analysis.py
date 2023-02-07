@@ -1,6 +1,7 @@
 
 """
 
+ MainLoop:
         switch (status_) {
             case FrontendStatus::INITING:
                 BuildInitMap();
@@ -26,7 +27,9 @@
 
  bool Frontend::Track() {
         num_track_last = TrackLastFrame()  // LK flow to est feature matching last <--> current frame (calcOpticalFlowPyrLK)
-        tracking_inliers_ = EstimateCurrentPose()
+        // calculates feature matching against last frame (using LK optical flow)
+
+        tracking_inliers_ = EstimateCurrentPose() // estimates current pose using g2o optimization
 
         if tracking_inliers_ > num_features_tracking_
             status_ = FrontendStatus::TRACKING_GOOD
