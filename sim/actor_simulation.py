@@ -9,7 +9,7 @@ from jax import numpy as np
 from plotting import Col, Padding, Row, TextRenderer, Packer
 from sim.birds_eye_view_render import get_view_spcifier_from_scene, render_birdseye_view, BirdseyeViewParams
 from sim.egocentric_render import render_scene_pixelwise_depth
-from sim.sample_scenes import get_triangles_in_sky_scene_2
+from sim.sample_scenes import get_triangles_in_sky_scene_2, get_two_triangle_scene
 from sim.sim_types import RenderTriangle3d, CameraSpecs, Observation, Action, Recording
 from sim.ui import key_to_maybe_transforms, InteractionTransforms
 from utils.colors import BGRCuteColors
@@ -33,6 +33,11 @@ class TriangleSceneRenderer:
     shade_color = BGRCuteColors.DARK_GRAY
     sky_color: BGRColor = BGRCuteColors.SKY_BLUE
     ground_color: BGRColor = tuple(x - 20 for x in BGRCuteColors.CYAN)
+
+    @classmethod
+    def from_easy_scene(cls):
+        triangles = get_two_triangle_scene()
+        return cls(scene_triangles=triangles, birdseye_view_specifier=get_view_spcifier_from_scene(triangles))
 
     @classmethod
     def from_default(cls):
@@ -75,6 +80,12 @@ class TriangleSceneRenderer:
             self.ground_color
         )
         return onp.array(jax_array)
+
+    def render_left_eye(self, camera_pose: CameraPoseSE3) -> BGRImageArray:
+        return self.render_first_person_view(camera_pose @ self.left_eye_offset())
+
+    def render_right_eye(self, camera_pose: CameraPoseSE3) -> BGRImageArray:
+        return self.render_first_person_view(camera_pose @ self.right_eye_offset())
 
     def left_eye_offset(self):
         return get_SE3_pose(y=-self.camera.distance_between_eyes / 2)
