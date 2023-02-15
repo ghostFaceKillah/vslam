@@ -1,4 +1,5 @@
 from typing import List, Optional
+
 import numpy as np
 
 from vslam.math import vec_hat
@@ -27,11 +28,16 @@ def naive_triangulation(
         b = x2_hat @ t
         # s * a + b = 0
         # s = - b / a
-        s = b / a
+        num_stable_flag = (np.abs(a) > 0.01) & (np.abs(b) > 0.01)
+
+        a = a[num_stable_flag]
+        b = b[num_stable_flag]
+
+        s = -b / a
 
         # very dirty success filtering
-        if np.nanstd(s) < 0.5 and np.nanmean(s) > 0:
-            scales.append(np.nanmean(s))
+        if s.std() < 0.5 and s.mean() > 0:
+            scales.append(s.mean())
         else:
             scales.append(None)
 
