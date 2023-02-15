@@ -1,3 +1,31 @@
+2023-02-14
+----------
+I am "implementing g2o" in the sense of minimizing the reprojection error and it's going well actually.
+I have some errors in the reprojection error minimization.
+These are definitely worth digging into. Cool stuff
+
+
+2023-02-06
+----------
+
+- [ ] Implement the actual VSLAM
+    - [X] Understand their code again
+    - [ ] g2o TrackPose reimplementation
+      - [ ] do I reimplement g2o, lol ?
+    
+- [ ] Make a tutorial video about rendering & geometry of rendering
+- [ ] Make a blogpost about this thing in general
+
+- [ ] code quality retrieval
+  - [ ] add unit tests, mypy, black and so on on github
+  - [ ] Clean up the codez
+  
+- [ ] sqlite based recorder and streaming replayer to be able to record "big data" ?
+
+- [ ] lacma inspired rainbowy lines
+  
+
+
 2023-02-04
 ----------
 
@@ -24,9 +52,8 @@ This kinda replicates the classic results, so I am not too worried.
 
 - [ ] Implement the actual VSLAM
     - [ ] Understand their code again
-        - [ ] Will need g2o (or reimplementation, lol)
+    - [ ] Will need g2o (or reimplementation, lol)
     
-
 - [ ] Make a tutorial video about rendering & geometry of rendering
 - [ ] Make a blogpost about this thing in general
 
