@@ -25,7 +25,7 @@ from sim.actor_simulation import TriangleSceneRenderer
 from sim.sample_scenes import get_two_triangle_scene
 from sim.sim_types import CameraSpecs
 from vslam.poses import get_SE3_pose
-from vslam.transforms import get_world_to_cam_coord_flip_matrix, SE3_inverse
+from vslam.transforms import SE3_inverse
 
 
 def check_intuition_about_data():
@@ -56,12 +56,12 @@ def get_data():
     camera_pose = get_SE3_pose(x=-3.5)
     second_camera_pose = get_SE3_pose(x=-3.0)
 
-    world_to_cam_flip = get_world_to_cam_coord_flip_matrix()
-    cam_pose_inv = SE3_inverse(camera_pose)
+    # world_to_cam_flip = get_world_to_cam_coord_flip_matrix()
+    # cam_pose_inv = SE3_inverse(camera_pose)
     points = onp.concatenate([tri.points for tri in triangles])
-    points_in_cam_one = points @  SE3_inverse(camera_pose).T @ world_to_cam_flip.T
+    points_in_cam_one = points @  SE3_inverse(camera_pose).T
 
-    points_in_cam_two = points @ SE3_inverse(second_camera_pose).T @ world_to_cam_flip.T
+    points_in_cam_two = points @ SE3_inverse(second_camera_pose).T
 
     unit_depth_cam_points = points_in_cam_two[..., :-1]
     triangle_depths = unit_depth_cam_points[..., -1]
@@ -75,11 +75,17 @@ def get_data():
 
     # triangles_in_img_coords = (triangles_in_img_coords - onp.array([cx, cy])) / onp.array([fx, fy])
 
-    return camera_pose, points_in_cam_one, triangles_in_img_coords
+    return SE3_inverse(camera_pose), points_in_cam_one, triangles_in_img_coords
 
 
-if __name__ == '__main__':
+def ok():
     camera_pose, points_3d, points_2d = get_data()
+
+    """
+    ideas:
+
+    1) what is the interpretation of the axes
+    """
 
     # one iteration, do this for many iterations
     camera_specs = CameraSpecs.from_default()
@@ -126,21 +132,112 @@ if __name__ == '__main__':
         print(f"{cost=:.2f}")
 
         a = 1
-        # we need to be very careful about the dimensions - there is difference between book and sophus code
-        # we need to have good intuitive understanding of variables
 
-    # should I look for NaNs ?
 
-    """
-    dx = H.ldlt().solve(b);
+def what_is_meaning_of_the_axes():
+    camera_pose, points_3d, points_2d = get_data()
+    print(camera_pose)
 
-    if (iter > 0 && cost >= lastCost) {
-      // cost increase, update is not good
-      cout << "cost: " << cost << ", last cost: " << lastCost << endl;
-      break;
-    }
+    for i in range(6):
+        dx = np.zeros(6)
+        dx[i] += 0.1
+        diff = SE3Matrix.exp(dx).as_matrix()
+        post_camera_pose = diff @ camera_pose
 
-    // update your estimation
-    pose = Sophus::SE3d::exp(dx) * pose;
-    lastCost = cost;
-    """
+        print(f"{i=}")
+        print(post_camera_pose)
+        print(" ")
+
+    # it is literally the simplest thing
+    # pose: x, y, z
+    # angle: spin around x, y, z axes
+
+
+def compute_reprojection_error(point_3d, point_2d, inv_camera_pose):
+    pc = inv_camera_pose @ point_3d
+    proj = pc[0] / pc[2], pc[1] / pc[2]
+    e = point_2d - proj
+    return e
+
+
+def estimate_J(point_3d, point_2d, inv_camera_pose):
+    def err_eval(inv_camera_pose):
+        return compute_reprojection_error(point_3d, point_2d, inv_camera_pose)
+
+    eps = 0.001
+
+    dfs = []
+
+    for i in range(6):
+        dx = np.zeros(6)
+        dx[i] -= eps
+        pre_camera_pose = SE3Matrix.exp(dx).as_matrix() @ inv_camera_pose
+
+        dx = np.zeros(6)
+        dx[i] += eps
+        post_camera_pose = SE3Matrix.exp(dx).as_matrix() @ inv_camera_pose
+
+        pre_error = err_eval(pre_camera_pose)
+        post_error = err_eval(post_camera_pose)
+
+        df = (post_error - pre_error) / eps / 2.
+        dfs.append(df)
+
+    J = np.array(dfs)
+    return J
+
+
+def overfit_one_point():
+    inv_camera_pose, points_3d, points_2d = get_data()
+
+    # major mess in coordinates again - we are dividing by Z, which in our case is world height
+
+    point_3d = points_3d[0]
+    point_2d = points_2d[0]
+
+    for i in range(100):
+        J = estimate_J(point_3d, point_2d, inv_camera_pose)
+        e = compute_reprojection_error(point_3d, point_2d, inv_camera_pose)
+        dx = J @ e
+        inv_camera_pose = SE3Matrix.exp(-0.01 * dx).as_matrix() @ inv_camera_pose
+        loss = np.sqrt(e @ e)
+
+        print(f"i = {i} loss = {loss}")
+
+
+def solve_points():
+    inv_camera_pose, points_3d, points_2d = get_data()
+
+    for i in range(1000):
+        Js = []
+        errs = []
+        dxs = []
+
+        for point_2d, point_3d in zip(points_2d, points_3d):
+            J = estimate_J(point_3d, point_2d, inv_camera_pose)
+            e = compute_reprojection_error(point_3d, point_2d, inv_camera_pose)
+            dx = J @ e
+            Js.append(J)
+            errs.append(e)
+            dxs.append(dx)
+
+        # that's where you do gauss newton yo
+        dx_est = np.array(dxs).mean(axis=0)
+
+        loss = np.linalg.norm(np.array(errs), axis=1).mean()
+        inv_camera_pose = SE3Matrix.exp(-0.01 * dx_est).as_matrix() @ inv_camera_pose
+
+        print(f"i = {i} mse = {loss:.2f} dx = {dx_est.round(2)}")
+
+    print("final result")
+    print(inv_camera_pose)
+
+
+
+if __name__ == '__main__':
+    # what_is_meaning_of_the_axes()
+    # overfit_one_point()
+    solve_points()
+    # I can do it numerically for fun
+
+
