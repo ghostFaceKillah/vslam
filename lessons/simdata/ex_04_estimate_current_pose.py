@@ -54,8 +54,11 @@ def get_data():
     triangles = get_two_triangle_scene()
     camera_specs = CameraSpecs.from_default()
 
+    # camera_pose = get_SE3_pose(z=-3.5)
+    # second_camera_pose = get_SE3_pose(z=-3.0)
+
     camera_pose = get_SE3_pose(z=-3.5)
-    second_camera_pose = get_SE3_pose(z=-3.0)
+    second_camera_pose = get_SE3_pose(z=-3.0, x=0.3, yaw=0.01)
 
     world_to_cam_flip = get_world_to_cam_coord_flip_matrix()
 
@@ -71,7 +74,7 @@ def get_data():
     triangle_depths = unit_depth_cam_points[..., -1]
     triangles_in_img_coords = (unit_depth_cam_points / triangle_depths[..., onp.newaxis])[..., :-1]
 
-    return SE3_inverse(camera_pose), points, triangles_in_img_coords
+    return SE3_inverse(camera_pose), SE3_inverse(second_camera_pose), points, triangles_in_img_coords
 
 
 def ok():
@@ -257,7 +260,7 @@ def solve_points_first_order(verbose: bool = False):
 
 def solve_points_gauss_newton(verbose: bool = False):
 
-    inv_camera_pose, points_3d, points_2d = get_data()
+    inv_camera_pose, target, points_3d, points_2d = get_data()
 
 
     for i in range(10):
@@ -281,8 +284,12 @@ def solve_points_gauss_newton(verbose: bool = False):
         if verbose:
             print(f"i = {i} mse = {loss:.2f} dx = {dx.round(2)}")
 
+    print(f'mse = {loss}')
     print("final result")
     print(inv_camera_pose)
+
+    print('off target')
+    print(inv_camera_pose - target)
 
 
 if __name__ == '__main__':
