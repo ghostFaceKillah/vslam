@@ -229,6 +229,7 @@ def solve_points_first_order(verbose: bool = False):
         dxs = []
         jac_err = []
 
+
         for point_2d, point_3d in zip(points_2d, points_3d):
             J = estimate_J_numerically(point_3d, point_2d, inv_camera_pose)
             J2 = estimate_J_analytically(point_3d, point_2d, inv_camera_pose)
@@ -254,12 +255,46 @@ def solve_points_first_order(verbose: bool = False):
     print(inv_camera_pose)
 
 
+def solve_points_gauss_newton(verbose: bool = False):
+
+    inv_camera_pose, points_3d, points_2d = get_data()
+
+
+    for i in range(10):
+        errs = []
+
+        H = np.zeros((6,6))
+        b = np.zeros(6)
+
+        for point_2d, point_3d in zip(points_2d, points_3d):
+            J = estimate_J_analytically(point_3d, point_2d, inv_camera_pose)
+            e = compute_reprojection_error(point_3d, point_2d, inv_camera_pose)
+
+            H += J @ J.T
+            b += -J @ e
+
+            errs.append(e)
+
+        dx = np.linalg.solve(H, b)
+        loss = np.linalg.norm(np.array(errs), axis=1).mean()
+        inv_camera_pose = SE3Matrix.exp(dx).as_matrix() @ inv_camera_pose
+        if verbose:
+            print(f"i = {i} mse = {loss:.2f} dx = {dx.round(2)}")
+
+    print("final result")
+    print(inv_camera_pose)
+
 
 if __name__ == '__main__':
     # what_is_meaning_of_the_axes()
     # overfit_one_point()
+
+    # with just_time():
+    #     solve_points_first_order()
+
     with just_time():
-        solve_points_first_order()
+        solve_points_gauss_newton()
+
     # I can do it numerically for fun
     # obvious bug - reprojecting the native camera results in error, wtf
 
