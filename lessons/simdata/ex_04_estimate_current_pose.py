@@ -24,8 +24,9 @@ from liegroups.numpy.se3 import SE3Matrix
 from sim.actor_simulation import TriangleSceneRenderer
 from sim.sample_scenes import get_two_triangle_scene
 from sim.sim_types import CameraSpecs
+from utils.profiling import just_time
 from vslam.poses import get_SE3_pose
-from vslam.transforms import SE3_inverse
+from vslam.transforms import SE3_inverse, get_world_to_cam_coord_flip_matrix
 
 
 def check_intuition_about_data():
@@ -53,29 +54,24 @@ def get_data():
     triangles = get_two_triangle_scene()
     camera_specs = CameraSpecs.from_default()
 
-    camera_pose = get_SE3_pose(x=-3.5)
-    second_camera_pose = get_SE3_pose(x=-3.0)
+    camera_pose = get_SE3_pose(z=-3.5)
+    second_camera_pose = get_SE3_pose(z=-3.0)
 
-    # world_to_cam_flip = get_world_to_cam_coord_flip_matrix()
+    world_to_cam_flip = get_world_to_cam_coord_flip_matrix()
+
+
     # cam_pose_inv = SE3_inverse(camera_pose)
     points = onp.concatenate([tri.points for tri in triangles])
-    points_in_cam_one = points @  SE3_inverse(camera_pose).T
+    points = points @ world_to_cam_flip.T
 
+    points_in_cam_one = points @  SE3_inverse(camera_pose).T
     points_in_cam_two = points @ SE3_inverse(second_camera_pose).T
 
     unit_depth_cam_points = points_in_cam_two[..., :-1]
     triangle_depths = unit_depth_cam_points[..., -1]
     triangles_in_img_coords = (unit_depth_cam_points / triangle_depths[..., onp.newaxis])[..., :-1]
-    # ws = (np.arange(0, screen_w) - cam_intrinsics.cx) / cam_intrinsics.fx
-    # hs = (np.arange(0, screen_h) - cam_intrinsics.cy) / cam_intrinsics.fy
-    cx = camera_specs.cam_intrinsics.cx
-    cy = camera_specs.cam_intrinsics.cy
-    fx = camera_specs.cam_intrinsics.fx
-    fy = camera_specs.cam_intrinsics.fy
 
-    # triangles_in_img_coords = (triangles_in_img_coords - onp.array([cx, cy])) / onp.array([fx, fy])
-
-    return SE3_inverse(camera_pose), points_in_cam_one, triangles_in_img_coords
+    return SE3_inverse(camera_pose), points, triangles_in_img_coords
 
 
 def ok():
@@ -160,7 +156,7 @@ def compute_reprojection_error(point_3d, point_2d, inv_camera_pose):
     return e
 
 
-def estimate_J(point_3d, point_2d, inv_camera_pose):
+def estimate_J_numerically(point_3d, point_2d, inv_camera_pose):
     def err_eval(inv_camera_pose):
         return compute_reprojection_error(point_3d, point_2d, inv_camera_pose)
 
@@ -184,6 +180,24 @@ def estimate_J(point_3d, point_2d, inv_camera_pose):
         dfs.append(df)
 
     J = np.array(dfs)
+
+    return J
+
+
+def estimate_J_analytically(point_3d, point_2d, inv_camera_pose):
+    pc = inv_camera_pose @ point_3d
+    inv_z = 1. / pc[2]
+    inv_z2 = inv_z * inv_z
+
+    J = np.array(([
+        [-inv_z, 0],
+        [0, -inv_z],
+        [pc[0] * inv_z2, pc[1] * inv_z2],
+        [pc[0] * pc[1] * inv_z2, 1 + pc[1] * pc[1] * inv_z2],
+        [-1 - pc[0] * pc[0] * inv_z2, -pc[0] * pc[1] * inv_z2],
+        [pc[1] * inv_z, -pc[0] * inv_z]
+    ]))
+
     return J
 
 
@@ -196,7 +210,7 @@ def overfit_one_point():
     point_2d = points_2d[0]
 
     for i in range(100):
-        J = estimate_J(point_3d, point_2d, inv_camera_pose)
+        J = estimate_J_numerically(point_3d, point_2d, inv_camera_pose)
         e = compute_reprojection_error(point_3d, point_2d, inv_camera_pose)
         dx = J @ e
         inv_camera_pose = SE3Matrix.exp(-0.01 * dx).as_matrix() @ inv_camera_pose
@@ -205,29 +219,36 @@ def overfit_one_point():
         print(f"i = {i} loss = {loss}")
 
 
-def solve_points():
+def solve_points_first_order(verbose: bool = False):
+    """ Naive method: numerical derivative, direct gradient """
     inv_camera_pose, points_3d, points_2d = get_data()
 
-    for i in range(1000):
+    for i in range(100):
         Js = []
         errs = []
         dxs = []
+        jac_err = []
 
         for point_2d, point_3d in zip(points_2d, points_3d):
-            J = estimate_J(point_3d, point_2d, inv_camera_pose)
+            J = estimate_J_numerically(point_3d, point_2d, inv_camera_pose)
+            J2 = estimate_J_analytically(point_3d, point_2d, inv_camera_pose)
+
             e = compute_reprojection_error(point_3d, point_2d, inv_camera_pose)
-            dx = J @ e
+            dx = J2 @ e
+            jac_err.append(np.abs(J - J2).sum())
             Js.append(J)
             errs.append(e)
             dxs.append(dx)
 
         # that's where you do gauss newton yo
         dx_est = np.array(dxs).mean(axis=0)
+        mean_abs_jac_err = np.array(jac_err).mean()
 
         loss = np.linalg.norm(np.array(errs), axis=1).mean()
-        inv_camera_pose = SE3Matrix.exp(-0.01 * dx_est).as_matrix() @ inv_camera_pose
+        inv_camera_pose = SE3Matrix.exp(-1 * dx_est).as_matrix() @ inv_camera_pose
 
-        print(f"i = {i} mse = {loss:.2f} dx = {dx_est.round(2)}")
+        if verbose:
+            print(f"i = {i} mse = {loss:.2f} dx = {dx_est.round(2)} jac_err = {mean_abs_jac_err:.5f}")
 
     print("final result")
     print(inv_camera_pose)
@@ -237,7 +258,9 @@ def solve_points():
 if __name__ == '__main__':
     # what_is_meaning_of_the_axes()
     # overfit_one_point()
-    solve_points()
+    with just_time():
+        solve_points_first_order()
     # I can do it numerically for fun
+    # obvious bug - reprojecting the native camera results in error, wtf
 
 
