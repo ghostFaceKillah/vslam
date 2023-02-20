@@ -18,154 +18,91 @@ bundleAdjustmentGaussNewton
 and
 6.7.3 Solve PnP by minimizing the reprojection error, page 177
 """
-import cv2
 import numpy as np
-import numpy as onp
 
 from liegroups.numpy.se3 import SE3Matrix
-from sim.actor_simulation import TriangleSceneRenderer
 from sim.sample_scenes import get_two_triangle_scene
-from sim.sim_types import CameraSpecs
+from utils.custom_types import Array
 from utils.profiling import just_time
 from vslam.poses import get_SE3_pose
 from vslam.transforms import SE3_inverse, get_world_to_cam_coord_flip_matrix
+from vslam.types import CamFlippedWorldCoords3D, CameraPoseSE3, ImgCoords2d
 
 
-def check_intuition_about_data():
-    """
-    we need to get 3d points and 2d points with matches between them.
-
-    Let's take a scene and compute points based on that
-    """
-    renderer = TriangleSceneRenderer.from_easy_scene()
-    camera_pose = get_SE3_pose(x=-3.5)
-    img = renderer.render_first_person_view(camera_pose)
-
-    cv2.imshow('scene', img)
-    key = cv2.waitKey(-1)
-
-    renderer = TriangleSceneRenderer.from_easy_scene()
-    camera_pose = get_SE3_pose(x=-2.0)
-    img = renderer.render_first_person_view(camera_pose)
-
-    cv2.imshow('scene', img)
-    key = cv2.waitKey(-1)
+# @attr.s
+# class ExamplePoseEstimationData:
+#     inverse_of_camera_pose
 
 
-def get_data():
+def _get_data():
+    """ A bunch of example data to do """
     triangles = get_two_triangle_scene()
-    camera_specs = CameraSpecs.from_default()
-
-    # camera_pose = get_SE3_pose(z=-3.5)
-    # second_camera_pose = get_SE3_pose(z=-3.0)
 
     camera_pose = get_SE3_pose(z=-3.5)
     second_camera_pose = get_SE3_pose(z=-3.0, x=0.3, yaw=0.01)
 
     world_to_cam_flip = get_world_to_cam_coord_flip_matrix()
 
-
-    # cam_pose_inv = SE3_inverse(camera_pose)
-    points = onp.concatenate([tri.points for tri in triangles])
+    points = np.concatenate([tri.points for tri in triangles])
     points = points @ world_to_cam_flip.T
 
-    points_in_cam_one = points @  SE3_inverse(camera_pose).T
     points_in_cam_two = points @ SE3_inverse(second_camera_pose).T
 
     unit_depth_cam_points = points_in_cam_two[..., :-1]
     triangle_depths = unit_depth_cam_points[..., -1]
-    triangles_in_img_coords = (unit_depth_cam_points / triangle_depths[..., onp.newaxis])[..., :-1]
+    triangles_in_img_coords = (unit_depth_cam_points / triangle_depths[..., np.newaxis])[..., :-1]
 
     return SE3_inverse(camera_pose), SE3_inverse(second_camera_pose), points, triangles_in_img_coords
 
 
-def ok():
-    camera_pose, points_3d, points_2d = get_data()
-
-    """
-    ideas:
-
-    1) what is the interpretation of the axes
-    """
-
-    # one iteration, do this for many iterations
-    camera_specs = CameraSpecs.from_default()
-    cx = camera_specs.cam_intrinsics.cx
-    cy = camera_specs.cam_intrinsics.cy
-    fx = camera_specs.cam_intrinsics.fx
-    fy = camera_specs.cam_intrinsics.fy
-
-    # cam flip can be the trouble here ...
-
-    for it in range(100):
-        cost = 0.0
-        H = np.zeros((6, 6))
-        b = np.zeros((1, 6))
-
-        for point_2d, point_3d in zip(points_2d, points_3d):
-            pc = camera_pose @ point_3d
-            inv_z = 1. / pc[2]
-            inv_z2 = inv_z * inv_z
-
-            # proj = fx * pc[0] / pc[2] + cx, fy * pc[1] / pc[2] + cy
-            proj = pc[0] / pc[2], pc[1] / pc[2]
-            e = point_2d - proj
-
-            cost += np.sqrt(e @ e)
-
-            J = np.array([
-                [-inv_z, 0],
-                [pc[0] * inv_z2, pc[0] * pc[1] * inv_z2],
-                [-1 - 1 * pc[0] * pc[0] * inv_z2, pc[1] * inv_z],
-                [0, -inv_z],
-                [pc[1] * inv_z2, 1 + pc[1] * pc[1] * inv_z2],
-                [-pc[0] * pc[1] * inv_z2, -pc[0] * inv_z]
-            ])
-
-            H += J @ J.T
-            b -= J @ e
-
-        dx = np.linalg.solve(H, b[0])
-        diff = SE3Matrix.exp(dx).as_matrix()
-        camera_pose = diff @ camera_pose
-
-        print(f"dx={dx.round(4)}")
-        print(f"{cost=:.2f}")
-
-        a = 1
-
-
-def what_is_meaning_of_the_axes():
-    camera_pose, points_3d, points_2d = get_data()
-    print(camera_pose)
+def experiment_what_is_the_meaning_of_the_axes():
+    """ Check if `liegroups` has the same conventions around coordinates as we do. """
+    inv_camera_pose, ground_truth_pose, points_3d, points_2d = _get_data()
+    print(inv_camera_pose)
 
     for i in range(6):
         dx = np.zeros(6)
         dx[i] += 0.1
         diff = SE3Matrix.exp(dx).as_matrix()
-        post_camera_pose = diff @ camera_pose
+        post_camera_pose = diff @ inv_camera_pose
 
         print(f"{i=}")
         print(post_camera_pose)
         print(" ")
 
-    # it is literally the simplest thing
+    # it is as in the book / as in the "canonical" of SE(3)
     # pose: x, y, z
     # angle: spin around x, y, z axes
 
 
-def compute_reprojection_error(point_3d, point_2d, inv_camera_pose):
+ErrorVector = Array['2', np.float64]
+
+def _compute_reprojection_error(
+        point_3d: CamFlippedWorldCoords3D,
+        point_2d: ImgCoords2d,
+        inv_camera_pose: CameraPoseSE3
+) -> ErrorVector:
     pc = inv_camera_pose @ point_3d
     proj = pc[0] / pc[2], pc[1] / pc[2]
     e = point_2d - proj
     return e
 
 
-def estimate_J_numerically(point_3d, point_2d, inv_camera_pose):
-    def err_eval(inv_camera_pose):
-        return compute_reprojection_error(point_3d, point_2d, inv_camera_pose)
+ErrorSe3PoseJacobian = Array['6,2', np.float64]
 
-    eps = 0.001
+
+def estimate_J_numerically(
+        point_3d: CamFlippedWorldCoords3D,
+        point_2d: ImgCoords2d,
+        inv_camera_pose: CameraPoseSE3,
+        eps: float = 0.001
+) -> ErrorSe3PoseJacobian:
+    """ Estimate the Jacobian of pose to reprojection error function.
+    We figure out the differential, which maps small change in one of 6 camera pose degrees of freedom
+    to how much the error along 2 dimensions changes.
+    """
+    def err_eval(inv_camera_pose: CameraPoseSE3) -> ErrorVector:
+        return _compute_reprojection_error(point_3d, point_2d, inv_camera_pose)
 
     dfs = []
 
@@ -189,7 +126,13 @@ def estimate_J_numerically(point_3d, point_2d, inv_camera_pose):
     return J
 
 
-def estimate_J_analytically(point_3d, point_2d, inv_camera_pose):
+def estimate_J_analytically(
+        point_3d: CamFlippedWorldCoords3D,
+        inv_camera_pose: CameraPoseSE3
+) -> ErrorSe3PoseJacobian:
+    """
+
+    """
     pc = inv_camera_pose @ point_3d
     inv_z = 1. / pc[2]
     inv_z2 = inv_z * inv_z
@@ -207,16 +150,14 @@ def estimate_J_analytically(point_3d, point_2d, inv_camera_pose):
 
 
 def overfit_one_point():
-    inv_camera_pose, points_3d, points_2d = get_data()
-
-    # major mess in coordinates again - we are dividing by Z, which in our case is world height
+    inv_camera_pose, ground_truth_pose, points_3d, points_2d = _get_data()
 
     point_3d = points_3d[0]
     point_2d = points_2d[0]
 
     for i in range(100):
         J = estimate_J_numerically(point_3d, point_2d, inv_camera_pose)
-        e = compute_reprojection_error(point_3d, point_2d, inv_camera_pose)
+        e = _compute_reprojection_error(point_3d, point_2d, inv_camera_pose)
         dx = J @ e
         inv_camera_pose = SE3Matrix.exp(-0.01 * dx).as_matrix() @ inv_camera_pose
         loss = np.sqrt(e @ e)
@@ -226,7 +167,7 @@ def overfit_one_point():
 
 def solve_points_first_order(verbose: bool = False):
     """ Naive method: numerical derivative, direct gradient """
-    inv_camera_pose, points_3d, points_2d = get_data()
+    inv_camera_pose, ground_truth_pose, points_3d, points_2d = _get_data()
 
     for i in range(100):
         Js = []
@@ -234,12 +175,11 @@ def solve_points_first_order(verbose: bool = False):
         dxs = []
         jac_err = []
 
-
         for point_2d, point_3d in zip(points_2d, points_3d):
             J = estimate_J_numerically(point_3d, point_2d, inv_camera_pose)
-            J2 = estimate_J_analytically(point_3d, point_2d, inv_camera_pose)
+            J2 = estimate_J_analytically(point_3d, inv_camera_pose)
 
-            e = compute_reprojection_error(point_3d, point_2d, inv_camera_pose)
+            e = _compute_reprojection_error(point_3d, point_2d, inv_camera_pose)
             dx = J2 @ e
             jac_err.append(np.abs(J - J2).sum())
             Js.append(J)
@@ -262,7 +202,7 @@ def solve_points_first_order(verbose: bool = False):
 
 def solve_points_gauss_newton(verbose: bool = False):
 
-    inv_camera_pose, target, points_3d, points_2d = get_data()
+    inv_camera_pose, ground_truth_pose, points_3d, points_2d = _get_data()
 
 
     for i in range(10):
@@ -272,8 +212,8 @@ def solve_points_gauss_newton(verbose: bool = False):
         b = np.zeros(6)
 
         for point_2d, point_3d in zip(points_2d, points_3d):
-            J = estimate_J_analytically(point_3d, point_2d, inv_camera_pose)
-            e = compute_reprojection_error(point_3d, point_2d, inv_camera_pose)
+            J = estimate_J_analytically(point_3d, inv_camera_pose)
+            e = _compute_reprojection_error(point_3d, point_2d, inv_camera_pose)
 
             H += J @ J.T
             b += -J @ e
@@ -291,7 +231,7 @@ def solve_points_gauss_newton(verbose: bool = False):
     print(inv_camera_pose)
 
     print('off target')
-    print(inv_camera_pose - target)
+    print(inv_camera_pose - ground_truth_pose)
 
 
 if __name__ == '__main__':
