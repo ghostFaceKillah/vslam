@@ -1,13 +1,15 @@
 """
 We are going to learn go PnP = perspective and point.
-Algorithm that computes pose differnce based on matching between 3d point cloud to 2d oints
+This algorithm computes pose of camera based on matching between 3d point cloud to 2d points on an image.
 
-We are going to take 3 pictures
-- left eye, right eye
-- next frame from left eye
+We take 3d point cloud from simulation and 2d points projected onto image plane.
+We treat the pose as unknown.
 
-we are going to match 3d points and 2d points
-by minimizing reprojection error using manual Gauss-Newton implementation.
+It is a simplified setup that allows us to focus on the algorithm itself and completely debug it.
+In reality:
+- depth of a point (and thus its 3d position) is not known and has to be read from a noisy sensor or triangulated
+  from stereo
+- depth of a point is often treated as an optimization variable
 
 see this https://github.com/gaoxiang12/slambook2/blob/master/ch7/pose_estimation_3d2d.cpp#L172
 bundleAdjustmentGaussNewton
