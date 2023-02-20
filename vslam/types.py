@@ -64,17 +64,18 @@ Vector3dHomogenous = Array['4', np.float64]   # TODO: nomenclature difference be
 ArrayOfColors = Array['N,3', np.uint8]
 
 WorldCoords3D = Array['N,3', np.float64]      # x away from us, y to right, z up, starts at world origin
+CamFlippedWorldCoords3D = Array['N,3', np.float64]   # x right, y down, z out, starts at world origin
 CamCoords3d = Array['N,3', np.float64]        # x goes right, y down, z out, looking out of cam, origin is optical center
 CamCoords3dHomog = Array['N,3', np.float64]   # X/Z Y/Z 1
 ImgCoords2d = Array['N,2', np.float64]        # x goes right, y down, homogenous without z,
-PxCoords2d = Array['N,2', np.int64]           # int, x goes down, y goes right
+PxCoords2d = Array['N,2', np.int64]           # int, x goes down, y goes right, divided by fx/fy, subtracted cx, cy
 Cv2PxCoords2d = Array['N,2', np.int64]        # int, x goes right (todo left ?), y goes down
 
 """
 WorldCoords3D
     -[coordinate flip, x = y, y = -z, z = x] -> 
         CamFlippedWorldCoords3D
-            -[CameraPoseSE3 * point coords]->
+            -[inv(CameraPoseSE3) * point coords]->
                 CamCoords3d
                     -[/Z] -> 
                         CamCoords3dHomog 
