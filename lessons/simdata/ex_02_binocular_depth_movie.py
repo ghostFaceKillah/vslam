@@ -31,8 +31,6 @@ if __name__ == '__main__':
     cam_intrinsics = data_streamer.get_cam_intrinsics()
     matcher = OrbBasedFeatureMatcher.build()
 
-    # data_streamer.recorded_data.camera_specs.distance_between_eyes
-
     distance_between_eyes = data_streamer.recorded_data.camera_specs.distance_between_eyes
 
     T2 = np.array([
