@@ -1,3 +1,28 @@
+2024-02-20
+----------
+
+I have solved all the problems in the reprojection error minimization.
+It all works well now!
+I am now working on the frontend.
+I think I know how to do backend as well. The sparse g2o part is a bit annoying to do, but in the end doable.
+
+- [ ] Implement the actual VSLAM
+  - [ ] Implement frontend
+  - [ ] Implement backend (remember, don't overcomplicate!)
+  - [X] g2o TrackPose reimplementation
+
+- [ ] Make a tutorial video about rendering & geometry of rendering
+- [ ] Make a blogpost about this thing in general
+
+- [ ] code quality retrieval
+  - [ ] add unit tests, mypy, black and so on on github
+  - [ ] Clean up the codez
+  - [ ] Expose `to_native` and `from_native`
+
+- [N] sqlite based recorder and streaming replayer to be able to record "big data" ?
+- [ ] lacma inspired rainbowy lines
+
+
 2023-02-14
 ----------
 I am "implementing g2o" in the sense of minimizing the reprojection error and it's going well actually.
