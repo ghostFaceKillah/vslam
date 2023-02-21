@@ -296,7 +296,6 @@ def _solve_many_points_gauss_newton(verbose: bool = False):
     print((SE3_inverse(inv_camera_pose) - SE3_inverse(data.inverse_of_camera_pose)).round(2))
 
 
-
 if __name__ == '__main__':
     # _experiment_what_is_the_meaning_of_the_axes()
     # _overfit_one_point()
