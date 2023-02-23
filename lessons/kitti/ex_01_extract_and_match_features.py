@@ -15,7 +15,7 @@ if __name__ == '__main__':
     im_right = dataset.get_right_image(image_no=0)
 
     matcher = OrbBasedFeatureMatcher.build()
-    feature_matches = matcher.detect_and_match(im_left, im_right)
+    feature_matches = matcher.detect_and_match_binocular(im_left, im_right)
 
     print(f"Found {len(feature_matches)} feature matches")
 

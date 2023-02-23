@@ -30,7 +30,7 @@ if __name__ == '__main__':
 
     matcher = OrbBasedFeatureMatcher.build()
     # TODO: Ugly flip, gotta get back to this - we need this because of Kitti calibration format (right cam is the 0, 0)
-    feature_matches = matcher.detect_and_match(im_left, im_right)
+    feature_matches = matcher.detect_and_match_binocular(im_left, im_right)
 
     # feature matches are in PxCoords. We need to bring them to CamCoords3dHomog
 
@@ -50,9 +50,9 @@ if __name__ == '__main__':
     ])
 
     depths = naive_triangulation(
-        pts_1=from_kp_cam_coords_3d_homo,
-        pts_2=to_kp_cam_coords_3d_homo,
-        T2=T2
+        points_in_cam_one=from_kp_cam_coords_3d_homo,
+        points_in_cam_two=to_kp_cam_coords_3d_homo,
+        cam_two_in_cam_one=T2
     )
 
     depths_df = pd.Series(depths)

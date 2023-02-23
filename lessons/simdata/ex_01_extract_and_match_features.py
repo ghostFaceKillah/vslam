@@ -24,7 +24,7 @@ if __name__ == '__main__':
         im_left = obs.left_eye_img
         im_right = obs.right_eye_img
 
-        feature_matches = matcher.detect_and_match(im_left, im_right)
+        feature_matches = matcher.detect_and_match_binocular(im_left, im_right)
 
         print(f"Found {len(feature_matches)} feature matches")
 

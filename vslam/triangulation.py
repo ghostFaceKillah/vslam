@@ -7,20 +7,20 @@ from vslam.types import CameraPoseSE3, CamCoords3dHomog
 
 
 def naive_triangulation(
-    pts_1: CamCoords3dHomog,
-    pts_2: CamCoords3dHomog,
-    T2: CameraPoseSE3     # SE3 pose of the second camera in cam one frame
+    points_in_cam_one: CamCoords3dHomog,
+    points_in_cam_two: CamCoords3dHomog,
+    cam_two_in_cam_one: CameraPoseSE3     # TODO: Make sure it's like that, I think it should be opposite ?
 ) -> List[Optional[float]]:
     """ We assume T1 to be identity (we compute everything in image frame of camera 1) """
 
-    R = T2[:3, :3]
-    t = T2[:3, 3]
+    R = cam_two_in_cam_one[:3, :3]
+    t = cam_two_in_cam_one[:3, 3]
 
     scales = []
 
-    for i in range(len(pts_1)):
-        x1 = pts_1[i]
-        x2 = pts_2[i]
+    for i in range(len(points_in_cam_one)):
+        x1 = points_in_cam_one[i]
+        x2 = points_in_cam_two[i]
 
         x2_hat = vec_hat(x2)
 
@@ -35,7 +35,7 @@ def naive_triangulation(
 
         s = -b / a
 
-        # very dirty success filtering
+        # dirty success filtering
         if s.std() < 0.5 and s.mean() > 0:
             scales.append(s.mean())
         else:

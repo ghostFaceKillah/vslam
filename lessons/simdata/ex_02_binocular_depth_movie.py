@@ -11,6 +11,7 @@ from utils.cv2_but_its_typed import cv2_circle
 from utils.image import take_crop_around, magnify
 from vslam.datasets.simdata import SimDataStreamer
 from vslam.features import OrbBasedFeatureMatcher
+from vslam.poses import get_SE3_pose
 from vslam.transforms import px_2d_to_cam_coords_3d_homo
 from vslam.triangulation import naive_triangulation
 
@@ -26,20 +27,14 @@ def depth_to_color(depth: float, min_depth: float, max_depth: float) -> BGRColor
 if __name__ == '__main__':
 
     dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-02-04--17-08-25.msgpack')
-
     data_streamer = SimDataStreamer.from_dataset_path(dataset_path=dataset_path)
+
     cam_intrinsics = data_streamer.get_cam_intrinsics()
     matcher = OrbBasedFeatureMatcher.build()
 
     distance_between_eyes = data_streamer.recorded_data.camera_specs.distance_between_eyes
 
-    T2 = np.array([
-        [1.0, 0.0, 0.0, -distance_between_eyes],
-        [0.0, 1.0, 0.0, 0.],
-        [0.0, 0.0, 1.0, 0.],
-        [0.0, 0.0, 0.0, 1.],
-    ])
-
+    T2 = get_SE3_pose(x=-distance_between_eyes)
 
     layout = Col(
         Row(Padding("desc")),
@@ -50,7 +45,7 @@ if __name__ == '__main__':
         im_left = obs.left_eye_img
         im_right = obs.right_eye_img
 
-        feature_matches = matcher.detect_and_match(im_left, im_right)
+        feature_matches = matcher.detect_and_match_binocular(im_left, im_right)
 
         # feature matches are in PxCoords. We need to bring them to CamCoords3dHomog
 
@@ -61,9 +56,9 @@ if __name__ == '__main__':
         to_kp_cam_coords_3d_homo = px_2d_to_cam_coords_3d_homo(to_kp_px_coords_2d, cam_intrinsics)
 
         depths = naive_triangulation(
-            pts_1=from_kp_cam_coords_3d_homo,
-            pts_2=to_kp_cam_coords_3d_homo,
-            T2=T2
+            points_in_cam_one=from_kp_cam_coords_3d_homo,
+            points_in_cam_two=to_kp_cam_coords_3d_homo,
+            cam_two_in_cam_one=T2
         )
 
         depths_df = pd.Series(depths)

@@ -7,6 +7,7 @@ from sim.clipping import ClippingSurfaces
 from sim.ui import InteractionTransforms
 from utils.colors import BGRCuteColors
 from utils.custom_types import Array, BGRColor, BGRImageArray
+from vslam.poses import get_SE3_pose
 from vslam.types import TransformSE3, CameraIntrinsics, CameraPoseSE3
 
 
@@ -58,6 +59,9 @@ class CameraSpecs:
             cam_intrinsics=cam_intrinsics,
             clipping_surfaces=ClippingSurfaces.from_screen_dimensions_and_cam_intrinsics(screen_h, screen_w, cam_intrinsics),
         )
+
+    def get_pose_of_right_cam_in_left_cam(self) -> CameraPoseSE3:
+        return get_SE3_pose(y=self.distance_between_eyes)
 
 
 @attr.define

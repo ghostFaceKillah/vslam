@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from utils.custom_types import Array, BinaryFeature, BGRImageArray
+from utils.custom_types import BinaryFeature, BGRImageArray
 from utils.profiling import just_time
 
 
@@ -14,8 +14,8 @@ class FeatureMatch:
     raw_match: cv2.DMatch    # trainIdx, queryIdx, distance # I am assuming hamming distance
     from_keypoint: cv2.KeyPoint   # pt, size, angle, octave, class_id, response
     to_keypoint: cv2.KeyPoint
-    from_feature: Array['N', np.uint8]   # binary feature
-    to_feature: Array['N', np.uint8]    # binary feature
+    from_feature: BinaryFeature  # binary feature
+    to_feature: BinaryFeature   # binary feature
 
     @classmethod
     def from_cv2_match_and_keypoints(
@@ -61,6 +61,12 @@ def analyze_orb_feature_matches(matches: List[FeatureMatch]):
     print(df.quantile(np.linspace(0, 1, num=21)))
 
 
+@attr.define
+class OrbFeatureDetections:
+    descriptors: List[BinaryFeature]   # visual features associated with those points
+    keypoints: List[cv2.KeyPoint]
+
+
 @attr.s(auto_attribs=True)
 class OrbBasedFeatureMatcher:
     orb_feature_detector: cv2.ORB
@@ -85,26 +91,24 @@ class OrbBasedFeatureMatcher:
             max_hamming_distance=max_hamming_distance
         )
 
-    def detect_and_match(
-        self,
-        img_left: BGRImageArray,
-        img_right: BGRImageArray,
-    ) -> List[FeatureMatch]:
+    def detect(self, img: BGRImageArray) -> OrbFeatureDetections:
+        keypoints, descriptors = self.orb_feature_detector.detectAndCompute(img, None)
+        return OrbFeatureDetections(
+            feature_descriptors=descriptors,
+            keypoints=keypoints
+        )
 
-        with just_time('detecting'):
-            img_left_kp, img_left_desc = self.orb_feature_detector.detectAndCompute(img_left, None)
-            img_right_kp, img_right_desc = self.orb_feature_detector.detectAndCompute(img_right, None)
-
+    def match(self, left_detections: OrbFeatureDetections, right_detections: OrbFeatureDetections)-> List[FeatureMatch]:
         with just_time('matching'):
-            raw_matches = self.feature_matcher.match(img_left_desc, img_right_desc)
+            raw_matches = self.feature_matcher.match(right_detections.descriptors, left_detections.descriptors)
 
         matches = [
             FeatureMatch.from_cv2_match_and_keypoints(
                 match=match,
-                from_keypoints=img_left_kp,
-                to_keypoints=img_right_kp,
-                from_features=img_left_desc,
-                to_features=img_right_desc
+                from_keypoints=left_detections.keypoints,
+                to_keypoints=right_detections.keypoints,
+                from_features=left_detections.descriptors,
+                to_features=right_detections.descriptors
             )
             for match in raw_matches
         ]
@@ -117,4 +121,17 @@ class OrbBasedFeatureMatcher:
 
         sorted_matches = sorted(filtered_matches, key=lambda match: match.get_hamming_distance())
         return sorted_matches
+
+    def detect_and_match_binocular(
+        self,
+        img_left: BGRImageArray,
+        img_right: BGRImageArray,
+    ) -> List[FeatureMatch]:
+
+        with just_time('detecting'):
+            left_detections = self.detect(img_left)
+            right_detections = self.detect(img_right)
+
+        return self.match(left_detections, right_detections)
+
 

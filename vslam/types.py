@@ -86,3 +86,5 @@ WorldCoords3D
                                                 -[-center, *px scale and focal (intrinsics), flip (!)]
                                                     -> PxCoords2d
 """
+
+ReprojectionErrorVector = Array['2', np.float64]

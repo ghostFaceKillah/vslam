@@ -2,7 +2,7 @@ from typing import Iterable
 
 import attr
 
-from sim.sim_types import Recording, Observation
+from sim.sim_types import Recording, Observation, CameraSpecs
 from utils.serialization import msgpack_loads, from_native_types
 from vslam.types import CameraIntrinsics
 
@@ -26,6 +26,9 @@ class SimDataStreamer:
 
     def get_cam_intrinsics(self) -> CameraIntrinsics:
         return self.recorded_data.camera_specs.cam_intrinsics
+
+    def get_cam_specs(self) -> CameraSpecs:
+        return self.recorded_data.camera_specs
 
     def stream(self) -> Iterable[Observation]:
 
