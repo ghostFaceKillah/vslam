@@ -94,10 +94,9 @@ def estimate_pose_wrt_keyframe(
     left_detections = matcher.detect(obs.left_eye_img)
     matches = matcher.match(left_detections, keyframe.feature_detections)
 
-    # 1) move stuff from ex_03_estimate_current_pose into functions
-    # 2) apply it here
+    # make matches debugger
 
-    # make some kind of debug of this stuff
+    # resolve List[FeatureMatch] into 2d points that match a subset of keyframe.points_3d_est
     x = 1
     pass
 

@@ -18,16 +18,17 @@ bundleAdjustmentGaussNewton
 and
 6.7.3 Solve PnP by minimizing the reprojection error, page 177
 """
+
 import attr
 import numpy as np
 
 from liegroups.numpy.se3 import SE3Matrix
 from sim.sample_scenes import get_two_triangle_scene
-from utils.custom_types import Array
 from utils.profiling import just_time
+from vslam.pnp import estimate_J_numerically, estimate_J_analytically, gauss_netwon_pnp, _compute_reprojection_error
 from vslam.poses import get_SE3_pose
 from vslam.transforms import SE3_inverse, get_world_to_cam_coord_flip_matrix
-from vslam.types import CamFlippedWorldCoords3D, CameraPoseSE3, ImgCoords2d, TransformSE3, ReprojectionErrorVector
+from vslam.types import CamFlippedWorldCoords3D, CameraPoseSE3, ImgCoords2d, TransformSE3
 
 
 @attr.define
@@ -111,79 +112,6 @@ def _experiment_what_is_the_meaning_of_the_axes():
     # pose: (x, y, z) and then, angle: spin around x, y, z axes
 
 
-def _compute_reprojection_error(
-        point_3d: CamFlippedWorldCoords3D,
-        point_2d: ImgCoords2d,
-        inv_camera_pose: CameraPoseSE3
-) -> ReprojectionErrorVector:
-    """ Compute the reprojection error for a single point."""
-    pc = inv_camera_pose @ point_3d
-    proj = pc[0] / pc[2], pc[1] / pc[2]
-    e = point_2d - proj
-    return e
-
-
-ErrorSe3PoseJacobian = Array['6,2', np.float64]
-
-
-def estimate_J_numerically(
-        point_3d: CamFlippedWorldCoords3D,
-        point_2d: ImgCoords2d,
-        inv_camera_pose: CameraPoseSE3,
-        eps: float = 0.001
-) -> ErrorSe3PoseJacobian:
-    """ Estimate the Jacobian of pose to reprojection error function.
-    We figure out the differential, which maps small change in one of 6 camera pose degrees of freedom
-    to how much the error along 2 dimensions changes.
-    """
-    def err_eval(inv_camera_pose: CameraPoseSE3) -> ReprojectionErrorVector:
-        return _compute_reprojection_error(point_3d, point_2d, inv_camera_pose)
-
-    dfs = []
-
-    for i in range(6):
-        dx = np.zeros(6)
-        dx[i] -= eps
-        pre_camera_pose = SE3Matrix.exp(dx).as_matrix() @ inv_camera_pose
-
-        dx = np.zeros(6)
-        dx[i] += eps
-        post_camera_pose = SE3Matrix.exp(dx).as_matrix() @ inv_camera_pose
-
-        pre_error = err_eval(pre_camera_pose)
-        post_error = err_eval(post_camera_pose)
-
-        df = (post_error - pre_error) / eps / 2.
-        dfs.append(df)
-
-    J = np.array(dfs)
-
-    return J
-
-
-def estimate_J_analytically(
-        point_3d: CamFlippedWorldCoords3D,
-        inv_camera_pose: CameraPoseSE3
-) -> ErrorSe3PoseJacobian:
-    """
-
-    """
-    pc = inv_camera_pose @ point_3d
-    inv_z = 1. / pc[2]
-    inv_z2 = inv_z * inv_z
-
-    J = np.array(([
-        [-inv_z, 0],
-        [0, -inv_z],
-        [pc[0] * inv_z2, pc[1] * inv_z2],
-        [pc[0] * pc[1] * inv_z2, 1 + pc[1] * pc[1] * inv_z2],
-        [-1 - pc[0] * pc[0] * inv_z2, -pc[0] * pc[1] * inv_z2],
-        [pc[1] * inv_z, -pc[0] * inv_z]
-    ]))
-
-    return J
-
-
 def _overfit_one_point():
     """ Make sure whether Jacobian is useful at all (doesn't contain obvious bugs).
     We consider a drastically simplified setting of minimizing reprojection error for one point only.
@@ -260,32 +188,13 @@ def _solve_many_points_gauss_newton(verbose: bool = False):
     """
 
     data = _PoseEstimationData.example()
-    inv_camera_pose = data.inverse_of_camera_pose_initial_guess
-    points_2d = data.points_2d_in_img
-    points_3d = data.points_3d_in_flipped_keyframe
 
-    for i in range(10):
-        errs = []
-
-        H = np.zeros((6,6))
-        b = np.zeros(6)
-
-        for point_2d, point_3d in zip(points_2d, points_3d):
-            J = estimate_J_analytically(point_3d, inv_camera_pose)
-            e = _compute_reprojection_error(point_3d, point_2d, inv_camera_pose)
-
-            H += J @ J.T
-            b += -J @ e
-
-            errs.append(e)
-
-        dx = np.linalg.solve(H, b)
-        loss = np.linalg.norm(np.array(errs), axis=1).mean()
-        inv_camera_pose = SE3Matrix.exp(dx).as_matrix() @ inv_camera_pose
-        if verbose:
-            print(f"i = {i} mse = {loss:.2f} dx = {dx.round(2)}")
-
-    print(f'Final reprojection MSE = {loss}')
+    inv_camera_pose = gauss_netwon_pnp(
+        data.inverse_of_camera_pose_initial_guess,
+        data.points_3d_in_flipped_keyframe,
+        data.points_2d_in_img,
+        verbose=True
+    )
 
     print("Final pose estimate is")
     print(SE3_inverse(inv_camera_pose).round(2))
