@@ -1,4 +1,13 @@
-2024-02-20
+2023-02-24
+----------
+
+I am doing end-to-end frontend for our data.
+The first pose is super-diverged, it must be a bug.
+As always, careful debug of each step is required.
+
+
+
+2023-02-20
 ----------
 
 I have solved all the problems in the reprojection error minimization.
