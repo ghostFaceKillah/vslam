@@ -21,7 +21,7 @@ HeightPx = int
 WidthPx = int
 Channels = int
 
-Pixel = Tuple[int, int]    # height, width, non-negative
+Pixel = Tuple[int, int]    # down, right, non-negative
 PixelCoordArray = Array['N,2', np.int32]
 
-OpenCVPixel = Tuple[int, int]   # width, height, non-negative
+OpenCVPixel = Tuple[int, int]   # right, down, non-negative
