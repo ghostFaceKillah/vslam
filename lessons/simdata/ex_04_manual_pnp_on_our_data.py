@@ -19,9 +19,10 @@ from vslam.datasets.simdata import SimDataStreamer
 from vslam.features import OrbBasedFeatureMatcher, OrbFeatureDetections
 from vslam.pnp import gauss_netwon_pnp
 from vslam.poses import get_SE3_pose
-from vslam.transforms import px_2d_to_cam_coords_3d_homo, SE3_inverse
+from vslam.transforms import px_2d_to_cam_coords_3d_homo, SE3_inverse, px_2d_to_img_coords_2d, \
+    get_world_to_cam_coord_flip_matrix, homogenize, dehomogenize
 from vslam.triangulation import naive_triangulation
-from vslam.types import WorldCoords3D, CameraPoseSE3, CameraIntrinsics
+from vslam.types import WorldCoords3D, CameraPoseSE3, CameraIntrinsics, TransformSE3
 
 
 @attr.define
@@ -89,11 +90,12 @@ def estimate_pose_wrt_keyframe(
         obs: Observation,
         matcher: OrbBasedFeatureMatcher,
         cam_intrinsics: CameraIntrinsics,
-        left_cam_pose: CameraPoseSE3,
+        world_to_cam_flip: TransformSE3,
+        camera_pose_guess: CameraPoseSE3,
         keyframe: _Keyframe
 ):
     left_detections = matcher.detect(obs.left_eye_img)
-    matches = matcher.match(left_detections, keyframe.feature_detections)
+    matches = matcher.match(keyframe.feature_detections, left_detections)
 
     # make matches debugger
 
@@ -105,25 +107,20 @@ def estimate_pose_wrt_keyframe(
         from_idx = match.raw_match.queryIdx
         to_idx = match.raw_match.trainIdx
 
-        points_3d.append(keyframe.points_3d_est[to_idx])
+        points_3d.append(keyframe.points_3d_est[from_idx])
         point_2d = np.array(match.get_to_keypoint_px()).astype(np.float64)
         points_2d.append(point_2d)
 
     points_3d = np.array(points_3d)
-    points_2d = np.array(points_2d)
 
-    # TODO: dimensions
-    # move to function
-    cam_ = (points_2d - np.array([cam_intrinsics.cy, cam_intrinsics.cx])) / np.array([cam_intrinsics.fx, cam_intrinsics.fy])
-
-    points_3d_in_flipped_keyframe = points_3d_in_world @ SE3_inverse(keyframe_pose).T @ world_to_cam_flip
-    gauss_netwon_pnp(
-        inverse_of_camera_pose_initial_guess=SE3_inverse(left_cam_pose),
-        points_3d_in_flipped_keyframe=,
-        points_2d_in_img=cam_,
+    new_pose_estimate = gauss_netwon_pnp(
+        inverse_of_camera_pose_initial_guess=SE3_inverse(camera_pose_guess),
+        points_3d_in_flipped_keyframe=homogenize(points_3d) @ SE3_inverse(keyframe.pose).T @ world_to_cam_flip,
+        points_2d_in_img = px_2d_to_img_coords_2d(np.array(points_2d), cam_intrinsics),
+        verbose=True
     )
-    x = 1
-    pass
+
+    return new_pose_estimate
 
 
 
@@ -149,14 +146,15 @@ def run_couple_first_frames():
             keyframe = estimate_keyframe(obs, matcher, cam_intrinsics, initial_cam_pose, pose_of_right_cam_in_left_cam)
         else:
             # TODO: probably need some kind of pose tracker ?
-            estimate_pose_wrt_keyframe(
+            new_pose_estimate = estimate_pose_wrt_keyframe(
                 obs,
                 matcher,
                 cam_intrinsics,
+                get_world_to_cam_coord_flip_matrix(),
                 pose,
                 keyframe
             )
-            ...
+            x = 1
 
 
 
