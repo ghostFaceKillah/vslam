@@ -7,7 +7,7 @@ from vslam.types import CameraIntrinsics, PxCoords2d, ImgCoords2d, CamCoords3dHo
 # return (px - cx) / fx, (py - cy) / fy
 
 
-def px_2d_to_cam_coords_2d(
+def px_2d_to_img_coords_2d(
     x: PxCoords2d,
     cam_intrinsics: CameraIntrinsics
 ) -> ImgCoords2d:
@@ -23,7 +23,7 @@ def px_2d_to_cam_coords_3d_homo(
     cam_intrinsics: CameraIntrinsics
 ) -> CamCoords3dHomog:
     # Warning! We assume no undistortion
-    x_img_coords_2d = px_2d_to_cam_coords_2d(x, cam_intrinsics)
+    x_img_coords_2d = px_2d_to_img_coords_2d(x, cam_intrinsics)
     ones = np.ones(shape=(x_img_coords_2d.shape[0], 1), dtype=np.float64)
     return np.column_stack([x_img_coords_2d, ones])
 
@@ -61,3 +61,6 @@ def the_cv_flip(px_coords):
 
 def homogenize(x):
     return np.concatenate([x, np.ones(x.shape[:-1] + (1,))], axis=-1)
+
+def dehomogenize(x):
+    return x[..., :-1]
