@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from utils.custom_types import BinaryFeature, BGRImageArray, Array
+from utils.custom_types import BinaryFeature, BGRImageArray, Array, Pixel
 from utils.profiling import just_time
 
 
@@ -42,13 +42,13 @@ class FeatureMatch:
         to_pt = self.to_keypoint.pt
         return np.sqrt((from_pt[0] - to_pt[0])**2 + (from_pt[1] - to_pt[1])**2)
 
-    def get_from_keypoint_px(self) -> Tuple[int, int]:
+    def get_from_keypoint_px(self) -> Pixel:
         fw, fh = self.from_keypoint.pt    # mind the opencv coord flip
         # mildly buggy :) something something rounding
         return int(fh), int(fw)
 
-    def get_to_keypoint_px(self) -> Tuple[int, int]:
-        fw, fh = self.to_keypoint.pt    # mind the opencv coord flippendo
+    def get_to_keypoint_px(self) -> Pixel:
+        fw, fh = self.to_keypoint.pt    # watch out: we go from OpenCVPixel to Pixel
         # mildly buggy :) something something rounding
         return int(fh), int(fw)
 
