@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from utils.custom_types import BinaryFeature, BGRImageArray
+from utils.custom_types import BinaryFeature, BGRImageArray, Array
 from utils.profiling import just_time
 
 
@@ -63,7 +63,7 @@ def analyze_orb_feature_matches(matches: List[FeatureMatch]):
 
 @attr.define
 class OrbFeatureDetections:
-    descriptors: List[BinaryFeature]   # visual features associated with those points
+    descriptors: Array['N,32', np.uint8]
     keypoints: List[cv2.KeyPoint]
 
 
@@ -94,13 +94,13 @@ class OrbBasedFeatureMatcher:
     def detect(self, img: BGRImageArray) -> OrbFeatureDetections:
         keypoints, descriptors = self.orb_feature_detector.detectAndCompute(img, None)
         return OrbFeatureDetections(
-            feature_descriptors=descriptors,
+            descriptors=descriptors,
             keypoints=keypoints
         )
 
     def match(self, left_detections: OrbFeatureDetections, right_detections: OrbFeatureDetections)-> List[FeatureMatch]:
         with just_time('matching'):
-            raw_matches = self.feature_matcher.match(right_detections.descriptors, left_detections.descriptors)
+            raw_matches = self.feature_matcher.match(left_detections.descriptors, np.array(right_detections.descriptors))
 
         matches = [
             FeatureMatch.from_cv2_match_and_keypoints(

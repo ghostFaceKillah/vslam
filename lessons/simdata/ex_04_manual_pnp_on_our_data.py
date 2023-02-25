@@ -17,8 +17,9 @@ from defs import ROOT_DIR
 from sim.sim_types import Observation
 from vslam.datasets.simdata import SimDataStreamer
 from vslam.features import OrbBasedFeatureMatcher, OrbFeatureDetections
+from vslam.pnp import gauss_netwon_pnp
 from vslam.poses import get_SE3_pose
-from vslam.transforms import px_2d_to_cam_coords_3d_homo
+from vslam.transforms import px_2d_to_cam_coords_3d_homo, SE3_inverse
 from vslam.triangulation import naive_triangulation
 from vslam.types import WorldCoords3D, CameraPoseSE3, CameraIntrinsics
 
@@ -66,13 +67,13 @@ def estimate_keyframe(
             continue
 
         points_3d_est.append(point_homo * depth)
-        feature_descriptors.append(feature_match.to_feature)
+        feature_descriptors.append(feature_match.from_feature)
         keypoints.append(feature_match.from_keypoint)
 
     return _Keyframe(
         pose=left_cam_pose,
         points_3d_est=points_3d_est,
-        feature_detections=left_detections
+        feature_detections=OrbFeatureDetections(np.array(feature_descriptors), keypoints)
     )
 
 
@@ -96,7 +97,31 @@ def estimate_pose_wrt_keyframe(
 
     # make matches debugger
 
+    points_2d = []
+    points_3d = []
+
     # resolve List[FeatureMatch] into 2d points that match a subset of keyframe.points_3d_est
+    for match in matches:
+        from_idx = match.raw_match.queryIdx
+        to_idx = match.raw_match.trainIdx
+
+        points_3d.append(keyframe.points_3d_est[to_idx])
+        point_2d = np.array(match.get_to_keypoint_px()).astype(np.float64)
+        points_2d.append(point_2d)
+
+    points_3d = np.array(points_3d)
+    points_2d = np.array(points_2d)
+
+    # TODO: dimensions
+    # move to function
+    cam_ = (points_2d - np.array([cam_intrinsics.cy, cam_intrinsics.cx])) / np.array([cam_intrinsics.fx, cam_intrinsics.fy])
+
+    points_3d_in_flipped_keyframe = points_3d_in_world @ SE3_inverse(keyframe_pose).T @ world_to_cam_flip
+    gauss_netwon_pnp(
+        inverse_of_camera_pose_initial_guess=SE3_inverse(left_cam_pose),
+        points_3d_in_flipped_keyframe=,
+        points_2d_in_img=cam_,
+    )
     x = 1
     pass
 
