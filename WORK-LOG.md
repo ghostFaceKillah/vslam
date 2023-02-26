@@ -5,6 +5,9 @@ I am doing end-to-end frontend for our data.
 The first pose is super-diverged, it must be a bug.
 As always, careful debug of each step is required.
 
+If we run `overfit_one_point` with keyframe pose as target, we get division by zero depth
+type of situation. We should become resilient to those.
+
 
 
 2023-02-20
