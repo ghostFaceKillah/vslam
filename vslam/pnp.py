@@ -68,7 +68,7 @@ def estimate_J_analytically(
 
 
 def gauss_netwon_pnp(
-    inverse_of_camera_pose_initial_guess: Optional[CameraPoseSE3],
+    inverse_of_camera_pose_initial_guess: Optional[CameraPoseSE3],     # it  has to be in cam flipped keyframe !!
     points_3d_in_flipped_keyframe: CamFlippedWorldCoords3D,
     points_2d_in_img: ImgCoords2d,
     iterations: int = 10,   # convergence is quadratic, so 10 should be plenty

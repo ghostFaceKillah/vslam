@@ -11,16 +11,18 @@ then we will do the full nice frontend implementation.
 import os
 
 import attr
+import cv2
 import numpy as np
 
 from defs import ROOT_DIR
 from sim.sim_types import Observation
+from utils.custom_types import BGRImageArray
 from vslam.datasets.simdata import SimDataStreamer
-from vslam.features import OrbBasedFeatureMatcher, OrbFeatureDetections
+from vslam.features import OrbBasedFeatureMatcher, OrbFeatureDetections, FeatureMatchDebugger
 from vslam.pnp import gauss_netwon_pnp
 from vslam.poses import get_SE3_pose
 from vslam.transforms import px_2d_to_cam_coords_3d_homo, SE3_inverse, px_2d_to_img_coords_2d, \
-    get_world_to_cam_coord_flip_matrix, homogenize, dehomogenize
+    get_world_to_cam_coord_flip_matrix, homogenize
 from vslam.triangulation import naive_triangulation
 from vslam.types import WorldCoords3D, CameraPoseSE3, CameraIntrinsics, TransformSE3
 
@@ -32,6 +34,7 @@ class _Keyframe:
 
     points_3d_est: WorldCoords3D
     feature_detections: OrbFeatureDetections
+    image: BGRImageArray
 
 
 def estimate_keyframe(
@@ -72,6 +75,7 @@ def estimate_keyframe(
         keypoints.append(feature_match.from_keypoint)
 
     return _Keyframe(
+        image=obs.left_eye_img,
         pose=left_cam_pose,
         points_3d_est=points_3d_est,
         feature_detections=OrbFeatureDetections(np.array(feature_descriptors), keypoints)
@@ -92,22 +96,25 @@ def estimate_pose_wrt_keyframe(
         cam_intrinsics: CameraIntrinsics,
         world_to_cam_flip: TransformSE3,
         camera_pose_guess: CameraPoseSE3,
-        keyframe: _Keyframe
+        keyframe: _Keyframe,
+        debug_feature_matches: bool = True
 ):
     left_detections = matcher.detect(obs.left_eye_img)
     matches = matcher.match(keyframe.feature_detections, left_detections)
 
-    # make matches debugger
+    if debug_feature_matches:
+        debugger = FeatureMatchDebugger.from_defaults()
+
+        for img in debugger.render(keyframe.image, obs.left_eye_img, matches):
+            cv2.imshow('wow', img)
+            cv2.waitKey(-1)
 
     points_2d = []
     points_3d = []
 
     # resolve List[FeatureMatch] into 2d points that match a subset of keyframe.points_3d_est
     for match in matches:
-        from_idx = match.raw_match.queryIdx
-        to_idx = match.raw_match.trainIdx
-
-        points_3d.append(keyframe.points_3d_est[from_idx])
+        points_3d.append(keyframe.points_3d_est[match.raw_match.queryIdx])
         point_2d = np.array(match.get_to_keypoint_px()).astype(np.float64)
         points_2d.append(point_2d)
 
