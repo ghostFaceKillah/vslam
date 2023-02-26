@@ -4,7 +4,7 @@ import numpy as np
 
 from liegroups.numpy.se3 import SE3Matrix
 from utils.custom_types import Array
-from vslam.transforms import SE3_inverse, get_world_to_cam_coord_flip_matrix, WORLD_TO_CAM_FLIP
+from vslam.transforms import SE3_inverse, WORLD_TO_CAM_FLIP
 from vslam.types import CamFlippedWorldCoords3D, ImgCoords2d, CameraPoseSE3, ReprojectionErrorVector, WorldCoords3D
 
 ErrorSe3PoseJacobian = Array['6,2', np.float64]
@@ -95,7 +95,9 @@ def gauss_netwon_pnp(
             errs.append(e)
 
         dx = np.linalg.solve(H, b)
-        loss = np.linalg.norm(np.array(errs), axis=1).mean()
+        errs = np.array(errs)   # reprojection error per axix
+        euc_errs = np.linalg.norm(errs, axis=1)   # how much off on both axes
+        loss = euc_errs.mean()
         camera_pose = camera_pose @ SE3Matrix.exp(dx).as_matrix()
         if verbose:
             print(f"i = {i} mse = {loss:.2f} dx = {dx.round(2)}")

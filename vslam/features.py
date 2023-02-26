@@ -1,4 +1,4 @@
-from typing import List, Iterable
+from typing import List, Iterable, Optional
 
 import attr
 import cv2
@@ -75,8 +75,8 @@ class OrbFeatureDetections:
 class OrbBasedFeatureMatcher:
     orb_feature_detector: cv2.ORB
     feature_matcher: cv2.BFMatcher
-    max_px_distance: float = 100.0
-    max_hamming_distance: float = 3
+    max_px_distance: float
+    max_hamming_distance: float
 
     @classmethod
     def build(
@@ -102,9 +102,28 @@ class OrbBasedFeatureMatcher:
             keypoints=keypoints
         )
 
-    def match(self, left_detections: OrbFeatureDetections, right_detections: OrbFeatureDetections)-> List[FeatureMatch]:
+    def _describe_match_quality_distribution(self, matches: List[FeatureMatch]):
+        # don't do this at home
+        import pandas as pd
+
+        px_dists = []
+        hamming_dists = []
+
+        for match in matches:
+            px_dists.append(match.get_pixel_distance())
+            hamming_dists.append(match.get_hamming_distance())
+
+        df = pd.DataFrame({'px_dists': px_dists, 'hamming_dists': hamming_dists})
+        print(df.describe())
+
+    def match(
+            self,
+            left_detections: OrbFeatureDetections,
+            right_detections: OrbFeatureDetections,
+            debug_matches: bool = False
+        ) -> List[FeatureMatch]:
         with just_time('matching'):
-            raw_matches = self.feature_matcher.match(left_detections.descriptors, np.array(right_detections.descriptors))
+            raw_cv_matches = self.feature_matcher.match(left_detections.descriptors, np.array(right_detections.descriptors))
 
         matches = [
             FeatureMatch.from_cv2_match_and_keypoints(
@@ -114,8 +133,11 @@ class OrbBasedFeatureMatcher:
                 from_features=left_detections.descriptors,
                 to_features=right_detections.descriptors
             )
-            for match in raw_matches
+            for match in raw_cv_matches
         ]
+
+        if debug_matches:
+            self._describe_match_quality_distribution(matches)
 
         filtered_matches = [
             match for match in matches
@@ -156,11 +178,19 @@ class FeatureMatchDebugger:
         self,
         from_img: BGRImageArray,
         to_img: BGRImageArray,
-        matches: List[FeatureMatch]
+        matches: List[FeatureMatch],
+        depths: Optional[List[float]] = None
     ) -> Iterable[BGRImageArray]:
         # draw the matches
         from_canvas_img = np.copy(from_img)
         to_canvas_img = np.copy(to_img)
+
+        assert depths is None or len(depths) == len(matches), f'{len(depths)=} != {len(matches)=}'
+
+        if depths is None:
+            depth_txts = [''] * len(matches)
+        else:
+            depth_txts = ['diverged' if depth is None else f'depth: {depth:.2f}' for depth in depths]
 
         for match in matches:
             cv2_circle(from_canvas_img, match.get_from_keypoint_px()[::-1], color=BGRCuteColors.GRASS_GREEN, radius=1,
@@ -168,7 +198,7 @@ class FeatureMatchDebugger:
             cv2_circle(to_canvas_img, match.get_to_keypoint_px()[::-1], color=BGRCuteColors.GRASS_GREEN, radius=1,
                        thickness=1)
 
-        for i, match in enumerate(matches):
+        for i, (match, depth_txt) in enumerate(zip(matches, depth_txts)):
             from_img_ = np.copy(from_canvas_img)
             to_img_ = np.copy(to_canvas_img)
 
@@ -179,7 +209,7 @@ class FeatureMatchDebugger:
             cv2_circle(to_img_, match.get_to_keypoint_px()[::-1], color=BGRCuteColors.ORANGE, radius=10, thickness=4)
 
             desc = f"Match {i} out of {len(matches)}. Euc dist = {match.get_pixel_distance():.2f} " \
-                   f"Hamming dist = {match.get_hamming_distance():.2f}"
+                   f"Hamming dist = {match.get_hamming_distance():.2f} " + depth_txt
 
             img = self.ui_layout.render({
                 'desc': TextRenderer().render(desc),

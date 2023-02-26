@@ -2,9 +2,17 @@
 ----------
 
 Further debugging!
-depths look incorrect - they are far too much.
+depths look incorrect - they are far too far.
 Let us debug this.
 
+ Moved to simpler scene.
+A lot of bad matches!
+Hamming distance / feature descriptors seem to be not great.
+They tend to get a lot of false matches along the diagonal of the square,
+which is the longer edge of the triangle.
+
+Another debugging idea - compare against ground truth depth.
+Another debugging idea tool - reprojection error visualizer.
 
 2023-02-24
 ----------

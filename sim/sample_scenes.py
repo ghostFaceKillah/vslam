@@ -51,16 +51,22 @@ def get_cube_scene() -> List[RenderTriangle3d]:
 
 def get_two_triangle_scene() -> List[RenderTriangle3d]:
     return [
-        RenderTriangle3d(np.array([
-            [0.0, -1.0, -1.0, 1.0],
-            [0.0,  1.0, -1.0, 1.0],
-            [0.0, -1.0, 1.0, 1.0],
-        ], dtype=np.float64)),
-        RenderTriangle3d(np.array([
-            [0.0,  1.0,  -1.0, 1.0],
-            [0.0,  1.0,   1.0, 1.0],
-            [0.0, -1.0,   1.0, 1.0],
-        ], dtype=np.float64)),
+        RenderTriangle3d(
+            points=np.array([
+                [0.0, -1.0, -1.0, 1.0],
+                [0.0,  1.0, -1.0, 1.0],
+                [0.0, -1.0, 1.0, 1.0],
+            ], dtype=np.float64),
+            front_face_color=BGRCuteColors.ORANGE,
+        ),
+        RenderTriangle3d(
+            points=np.array([
+                [0.0,  1.0,  -1.0, 1.0],
+                [0.0,  1.0,   1.0, 1.0],
+                [0.0, -1.0,   1.0, 1.0],
+            ], dtype=np.float64),
+            front_face_color=BGRCuteColors.OFF_WHITE,
+        ),
     ]
 
 

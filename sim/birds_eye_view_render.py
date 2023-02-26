@@ -57,6 +57,9 @@ def get_view_spcifier_from_scene(
         if world_origin is None:
             world_origin = (min_x, min_y)
 
+    assert world_size[0] > 0
+    assert world_size[1] > 0
+
     return BirdseyeViewParams(
         resolution=resolution,
         origin=world_origin,

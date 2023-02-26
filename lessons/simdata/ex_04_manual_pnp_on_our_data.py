@@ -22,7 +22,7 @@ from vslam.features import OrbBasedFeatureMatcher, OrbFeatureDetections, Feature
 from vslam.pnp import gauss_netwon_pnp
 from vslam.poses import get_SE3_pose
 from vslam.transforms import px_2d_to_cam_coords_3d_homo, SE3_inverse, px_2d_to_img_coords_2d, \
-    get_world_to_cam_coord_flip_matrix, homogenize
+    get_world_to_cam_coord_flip_matrix, homogenize, CAM_TO_WORLD_FLIP, dehomogenize
 from vslam.triangulation import naive_triangulation
 from vslam.types import WorldCoords3D, CameraPoseSE3, CameraIntrinsics, TransformSE3
 
@@ -43,6 +43,7 @@ def estimate_keyframe(
         cam_intrinsics: CameraIntrinsics,
         left_cam_pose: CameraPoseSE3,
         pose_of_right_cam_in_left_cam: CameraPoseSE3,
+        debug_feature_matches: bool = False
 ):
     left_detections = matcher.detect(obs.left_eye_img)
     right_detections = matcher.detect(obs.right_eye_img)
@@ -59,7 +60,15 @@ def estimate_keyframe(
         points_in_cam_two=to_kp_cam_coords_3d_homo,
         cam_two_in_cam_one=pose_of_right_cam_in_left_cam
     )
+    # looks waaay to much
     # what is this depth measured in ?
+
+    if debug_feature_matches:
+        debugger = FeatureMatchDebugger.from_defaults()
+
+        for img in debugger.render(obs.left_eye_img, obs.right_eye_img, feature_matches, depths):
+            cv2.imshow('wow', img)
+            cv2.waitKey(-1)
 
     points_3d_est = []
     feature_descriptors = []
@@ -71,7 +80,8 @@ def estimate_keyframe(
         if depth is None:
             continue
 
-        points_3d_est.append(point_homo * depth)
+        # OK need to flip back to world frame here
+        points_3d_est.append(dehomogenize(CAM_TO_WORLD_FLIP @ homogenize(point_homo * depth)))
         feature_descriptors.append(feature_match.from_feature)
         keypoints.append(feature_match.from_keypoint)
 
@@ -107,7 +117,7 @@ def estimate_pose_wrt_keyframe(
         debugger = FeatureMatchDebugger.from_defaults()
 
         for img in debugger.render(keyframe.image, obs.left_eye_img, matches):
-            cv2.imshow('wow', img)
+            cv2.imshow('matches-keypoint-to-new-frame', img)
             cv2.waitKey(-1)
 
     points_2d = []
@@ -128,10 +138,6 @@ def estimate_pose_wrt_keyframe(
 
     camera_pose_guess_in_keyframe = SE3_inverse(keyframe.pose) @ camera_pose_guess_in_world
 
-    x = 1
-
-    # the depths look completely wrong !
-
     new_pose_estimate = gauss_netwon_pnp(
         camera_pose_initial_guess_in_keyframe=camera_pose_guess_in_keyframe,
         points_3d_in_keyframe=homogenize(points_3d),
@@ -142,9 +148,8 @@ def estimate_pose_wrt_keyframe(
     return new_pose_estimate
 
 
-
-
 def run_couple_first_frames():
+    # dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-02-26--13-41-16.msgpack')
     dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-02-04--17-08-25.msgpack')
     data_streamer = SimDataStreamer.from_dataset_path(dataset_path=dataset_path)
 
@@ -174,9 +179,6 @@ def run_couple_first_frames():
                 keyframe
             )
             x = 1
-
-
-
 
 
 if __name__ == '__main__':

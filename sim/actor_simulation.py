@@ -37,15 +37,19 @@ class TriangleSceneRenderer:
     @classmethod
     def from_easy_scene(cls):
         triangles = get_two_triangle_scene()
-        return cls(scene_triangles=triangles, birdseye_view_specifier=get_view_spcifier_from_scene(triangles))
+        return cls(
+            scene_triangles=triangles,
+            birdseye_view_specifier=get_view_spcifier_from_scene(
+                triangles,
+                world_size=(10., 10.),
+                world_origin=(-5., -5.)
+            )
+        )
 
     @classmethod
     def from_default(cls):
 
-        triangles = get_two_triangle_scene()
-        # triangles = get_cube_scene()
-        # triangles = get_triangles_in_sky_scene()
-        # triangles = get_triangles_in_sky_scene_2()
+        triangles = get_triangles_in_sky_scene_2()
 
         return cls(
             scene_triangles=triangles,
@@ -219,6 +223,17 @@ class PreRecordedActor(Actor):
                 + [InteractionTransforms.go_straight()] * 300
             )
 
+        return cls(actions=actions)
+
+    @classmethod
+    def from_tiny_trip(cls):
+        actions = (
+            [InteractionTransforms.go_straight()] * 10,
+            [InteractionTransforms.go_back()] * 10,
+            [InteractionTransforms.turn_left()] * 10,
+            [InteractionTransforms.turn_right()] * 20,
+            [InteractionTransforms.turn_left()] * 10,
+        )
         return cls(actions=actions)
 
     def act(self, obs: Observation) -> Action:

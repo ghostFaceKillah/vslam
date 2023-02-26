@@ -41,9 +41,6 @@ def get_world_to_cam_coord_flip_matrix() -> TransformSE3:
     ], dtype=np.float64)
 
 
-WORLD_TO_CAM_FLIP = get_world_to_cam_coord_flip_matrix()
-
-
 def SO3_inverse(R: CameraRotationSO3) -> CameraRotationSO3:
     """Inverts the rotation."""
     return R.T
@@ -57,6 +54,10 @@ def SE3_inverse(T: TransformSE3) -> TransformSE3:
     tf[0:3, 0:3] = R_inv
     tf[0:3, 3] = - R_inv @ t
     return tf
+
+
+WORLD_TO_CAM_FLIP = get_world_to_cam_coord_flip_matrix()
+CAM_TO_WORLD_FLIP = SE3_inverse(WORLD_TO_CAM_FLIP)
 
 
 def the_cv_flip(px_coords):
