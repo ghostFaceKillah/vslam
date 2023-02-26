@@ -4,12 +4,34 @@
 Further debugging!
 depths look incorrect - they are far too far.
 Let us debug this.
+SOLVED!
+the coordinates were flipped again :)
 
  Moved to simpler scene.
 A lot of bad matches!
 Hamming distance / feature descriptors seem to be not great.
 They tend to get a lot of false matches along the diagonal of the square,
 which is the longer edge of the triangle.
+
+
+Now the pose is better, but still off. Hardcore debug continues.
+
+```
+> # our current estimate
+> (keyframe.pose @ new_pose_estimate).round(2)
+array([[ 1.  , -0.  , -0.01, -2.19],
+       [ 0.  ,  1.  , -0.02, -0.95],
+       [ 0.01,  0.02,  1.  ,  0.1 ],
+       [ 0.  ,  0.  ,  0.  ,  1.  ]])
+
+> # ground truth
+> obs.camera_pose   
+array([[ 1. ,  0. ,  0. , -2.4],
+       [ 0. ,  1. ,  0. ,  0. ],
+       [ 0. ,  0. ,  1. ,  0. ],
+       [ 0. ,  0. ,  0. ,  1. ]])
+```
+
 
 Another debugging idea - compare against ground truth depth.
 Another debugging idea tool - reprojection error visualizer.
