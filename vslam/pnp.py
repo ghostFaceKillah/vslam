@@ -70,13 +70,13 @@ def estimate_J_analytically(
 
 
 def gauss_netwon_pnp(
-    camera_pose_initial_guess: Optional[CameraPoseSE3],     # initial guess has to be relative to keyframe!
+    camera_pose_initial_guess_in_keyframe: Optional[CameraPoseSE3],     # initial guess has to be relative to keyframe!
     points_3d_in_keyframe: WorldCoords3D,   # if those are in keyframe, the pose estimate will be relative to keyframe
     points_2d_in_img: ImgCoords2d,
     iterations: int = 20,   # convergence is quadratic, so 10 should be plenty
     verbose: bool = False
 ):
-    camera_pose = camera_pose_initial_guess
+    camera_pose = camera_pose_initial_guess_in_keyframe
 
     for i in range(iterations):
         errs = []

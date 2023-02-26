@@ -59,6 +59,7 @@ def estimate_keyframe(
         points_in_cam_two=to_kp_cam_coords_3d_homo,
         cam_two_in_cam_one=pose_of_right_cam_in_left_cam
     )
+    # what is this depth measured in ?
 
     points_3d_est = []
     feature_descriptors = []
@@ -95,9 +96,9 @@ def estimate_pose_wrt_keyframe(
         matcher: OrbBasedFeatureMatcher,
         cam_intrinsics: CameraIntrinsics,
         world_to_cam_flip: TransformSE3,
-        camera_pose_guess: CameraPoseSE3,
+        camera_pose_guess_in_world: CameraPoseSE3,
         keyframe: _Keyframe,
-        debug_feature_matches: bool = True
+        debug_feature_matches: bool = False
 ):
     left_detections = matcher.detect(obs.left_eye_img)
     matches = matcher.match(keyframe.feature_detections, left_detections)
@@ -119,11 +120,22 @@ def estimate_pose_wrt_keyframe(
         points_2d.append(point_2d)
 
     points_3d = np.array(points_3d)
+    """
+    camera_pose_initial_guess: Optional[CameraPoseSE3],     # initial guess has to be relative to keyframe!
+    points_3d_in_keyframe: WorldCoords3D,   # if those are in keyframe, the pose estimate will be relative to keyframe
+    points_2d_in_img: ImgCoords2d,
+    """
+
+    camera_pose_guess_in_keyframe = SE3_inverse(keyframe.pose) @ camera_pose_guess_in_world
+
+    x = 1
+
+    # the depths look completely wrong !
 
     new_pose_estimate = gauss_netwon_pnp(
-        inverse_of_camera_pose_initial_guess=SE3_inverse(camera_pose_guess),
-        points_3d_in_flipped_keyframe=homogenize(points_3d) @ SE3_inverse(keyframe.pose).T @ world_to_cam_flip,
-        points_2d_in_img = px_2d_to_img_coords_2d(np.array(points_2d), cam_intrinsics),
+        camera_pose_initial_guess_in_keyframe=camera_pose_guess_in_keyframe,
+        points_3d_in_keyframe=homogenize(points_3d),
+        points_2d_in_img=px_2d_to_img_coords_2d(np.array(points_2d), cam_intrinsics),
         verbose=True
     )
 

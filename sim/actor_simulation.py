@@ -42,10 +42,10 @@ class TriangleSceneRenderer:
     @classmethod
     def from_default(cls):
 
-        # triangles = get_two_triangle_scene()
+        triangles = get_two_triangle_scene()
         # triangles = get_cube_scene()
         # triangles = get_triangles_in_sky_scene()
-        triangles = get_triangles_in_sky_scene_2()
+        # triangles = get_triangles_in_sky_scene_2()
 
         return cls(
             scene_triangles=triangles,
