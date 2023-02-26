@@ -36,6 +36,9 @@ array([[ 1. ,  0. ,  0. , -2.4],
 Another debugging idea - compare against ground truth depth.
 Another debugging idea tool - reprojection error visualizer.
 
+Thing to make sure about: 
+depth estimates from naive triangulation: are those in cam one or cam two ?
+
 2023-02-24
 ----------
 
