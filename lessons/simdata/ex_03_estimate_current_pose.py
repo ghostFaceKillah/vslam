@@ -44,8 +44,12 @@ class _PoseEstimationData:
     def example(cls) -> '_PoseEstimationData':
         triangles = get_two_triangle_scene()
 
+        # our initial, incorrect guess
         cam_pose_initial_guess = get_SE3_pose(z=-3.5)
+        # the ground truth - we want to find this
         true_camera_pose = get_SE3_pose(z=-3.0, x=0.3, yaw=0.01)
+
+        # we are comparing against points at this pose
         keyframe_pose = get_SE3_pose()
 
         world_to_cam_flip = get_world_to_cam_coord_flip_matrix()

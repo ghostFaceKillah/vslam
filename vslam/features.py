@@ -1,11 +1,15 @@
-from typing import List, Tuple
+from typing import List, Iterable
 
 import attr
 import cv2
 import numpy as np
 import pandas as pd
 
+from plotting import Packer, Col, Row, Padding, TextRenderer
+from utils.colors import BGRCuteColors
 from utils.custom_types import BinaryFeature, BGRImageArray, Array, Pixel
+from utils.cv2_but_its_typed import cv2_circle
+from utils.image import take_crop_around, magnify
 from utils.profiling import just_time
 
 
@@ -135,3 +139,54 @@ class OrbBasedFeatureMatcher:
         return self.match(left_detections, right_detections)
 
 
+@attr.define
+class FeatureMatchDebugger:
+    ui_layout: Packer
+
+    @classmethod
+    def from_defaults(cls):
+        layout = Col(
+            Row(Padding("desc")),
+            Row(Padding('left_crop'), Padding('left'), Padding('right'), Padding('right_crop')),
+        )
+
+        return cls(ui_layout=layout)
+
+    def render(
+        self,
+        from_img: BGRImageArray,
+        to_img: BGRImageArray,
+        matches: List[FeatureMatch]
+    ) -> Iterable[BGRImageArray]:
+        # draw the matches
+        from_canvas_img = np.copy(from_img)
+        to_canvas_img = np.copy(to_img)
+
+        for match in matches:
+            cv2_circle(from_canvas_img, match.get_from_keypoint_px()[::-1], color=BGRCuteColors.GRASS_GREEN, radius=1,
+                       thickness=1)
+            cv2_circle(to_canvas_img, match.get_to_keypoint_px()[::-1], color=BGRCuteColors.GRASS_GREEN, radius=1,
+                       thickness=1)
+
+        for i, match in enumerate(matches):
+            from_img_ = np.copy(from_canvas_img)
+            to_img_ = np.copy(to_canvas_img)
+
+            crop_from = take_crop_around(from_canvas_img, around_point=match.get_from_keypoint_px(), crop_size=(32, 32))
+            crop_to = take_crop_around(to_canvas_img, around_point=match.get_to_keypoint_px(), crop_size=(32, 32))
+
+            cv2_circle(from_img_, match.get_from_keypoint_px()[::-1], color=BGRCuteColors.ORANGE, radius=10, thickness=4)
+            cv2_circle(to_img_, match.get_to_keypoint_px()[::-1], color=BGRCuteColors.ORANGE, radius=10, thickness=4)
+
+            desc = f"Match {i} out of {len(matches)}. Euc dist = {match.get_pixel_distance():.2f} " \
+                   f"Hamming dist = {match.get_hamming_distance():.2f}"
+
+            img = self.ui_layout.render({
+                'desc': TextRenderer().render(desc),
+                'left': from_img_,
+                'right': to_img_,
+                'left_crop': magnify(crop_from, factor=4.0),
+                'right_crop': magnify(crop_to, factor=4.0),
+            })
+
+            yield img
