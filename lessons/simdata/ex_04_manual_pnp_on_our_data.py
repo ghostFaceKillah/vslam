@@ -15,6 +15,7 @@ import cv2
 import numpy as np
 
 from defs import ROOT_DIR
+from sim.sample_scenes import get_triangles_in_sky_scene_2
 from sim.sim_types import Observation
 from utils.custom_types import BGRImageArray
 from vslam.datasets.simdata import SimDataStreamer
@@ -148,10 +149,32 @@ def estimate_pose_wrt_keyframe(
     return new_pose_estimate
 
 
+def fake_estimate_pose_wrt_keyframe(
+        obs: Observation,
+        matcher: OrbBasedFeatureMatcher,
+        cam_intrinsics: CameraIntrinsics,
+        world_to_cam_flip: TransformSE3,
+        camera_pose_guess_in_world: CameraPoseSE3,
+        keyframe: _Keyframe,
+        debug_feature_matches: bool = False
+
+):
+    """ Use access to priveliged data to diagnose the relative pose estimation """
+    # compute 3d points in keyframe
+    # compute 2d points in new camera pose
+
+
+
+    pass
+
+
+
+
 def run_couple_first_frames():
     # dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-02-26--13-41-16.msgpack')
     dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-02-04--17-08-25.msgpack')
     data_streamer = SimDataStreamer.from_dataset_path(dataset_path=dataset_path)
+    scene = get_triangles_in_sky_scene_2()
 
     cam_intrinsics = data_streamer.get_cam_intrinsics()
     matcher = OrbBasedFeatureMatcher.build()
@@ -167,10 +190,16 @@ def run_couple_first_frames():
 
     for i, obs in enumerate(data_streamer.stream()):
         if i == 0:
-            keyframe = estimate_keyframe(obs, matcher, cam_intrinsics, initial_cam_pose, pose_of_right_cam_in_left_cam)
+            keyframe = estimate_keyframe(
+                obs,
+                matcher,
+                cam_intrinsics,
+                initial_cam_pose,
+                pose_of_right_cam_in_left_cam
+            )
         else:
             # TODO: probably need some kind of pose tracker ?
-            new_pose_estimate = estimate_pose_wrt_keyframe(
+            new_pose_estimate = fake_estimate_pose_wrt_keyframe(
                 obs,
                 matcher,
                 cam_intrinsics,
