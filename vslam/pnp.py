@@ -57,13 +57,18 @@ def estimate_J_analytically(
     inv_z = 1. / pc[2]
     inv_z2 = inv_z * inv_z
 
+    # J = np.array(([
+    #     [-pc[0] * inv_z2, -pc[1] * inv_z2],
+    #     [inv_z, 0],
+    #     [0, -inv_z],
+    #     [pc[1] * inv_z, -pc[0] * inv_z],
+    #     [pc[0] * pc[1] * inv_z2, 1 + pc[1] * pc[1] * inv_z2],
+    #     [1 + pc[0] * pc[0] * inv_z2, pc[0] * pc[1] * inv_z2],
+    # ]))
     J = np.array(([
-        [-pc[0] * inv_z2, -pc[1] * inv_z2],
         [inv_z, 0],
         [0, -inv_z],
         [pc[1] * inv_z, -pc[0] * inv_z],
-        [pc[0] * pc[1] * inv_z2, 1 + pc[1] * pc[1] * inv_z2],
-        [1 + pc[0] * pc[0] * inv_z2, pc[0] * pc[1] * inv_z2],
     ]))
 
     return J
@@ -81,11 +86,12 @@ def gauss_netwon_pnp(
     for i in range(iterations):
         errs = []
 
-        H = np.zeros((6, 6))
-        b = np.zeros(6)
+        H = np.zeros((3, 3))
+        b = np.zeros(3)
 
         # this for loop is a bit naive, but it's fast enough, so I'm not going to touch it
         for point_2d, point_3d in zip(points_2d_in_img, points_3d_in_keyframe):
+            J_num = estimate_J_numerically(point_3d, point_2d, camera_pose)
             J = estimate_J_analytically(point_3d, camera_pose)
             e = _compute_reprojection_error(point_3d, point_2d, camera_pose)
 
@@ -98,7 +104,8 @@ def gauss_netwon_pnp(
         errs = np.array(errs)   # reprojection error per axix
         euc_errs = np.linalg.norm(errs, axis=1)   # how much off on both axes
         loss = euc_errs.mean()
-        camera_pose = camera_pose @ SE3Matrix.exp(dx).as_matrix()
+        real_dx = np.array([0, dx[0], dx[1], dx[2], 0, 0])
+        camera_pose = camera_pose @ SE3Matrix.exp(real_dx).as_matrix()
         if verbose:
             print(f"i = {i} mse = {loss:.2f} dx = {dx.round(2)}")
 
