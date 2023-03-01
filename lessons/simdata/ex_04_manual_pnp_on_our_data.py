@@ -143,7 +143,7 @@ def estimate_pose_wrt_keyframe(
         camera_pose_initial_guess_in_keyframe=camera_pose_guess_in_keyframe,
         points_3d_in_keyframe=homogenize(points_3d),
         points_2d_in_img=px_2d_to_img_coords_2d(np.array(points_2d), cam_intrinsics),
-        verbose=True
+        verbose=False
     )
 
     return new_pose_estimate
@@ -165,8 +165,6 @@ def fake_estimate_pose_wrt_keyframe(
 
 
     x = 1
-
-
 
     pass
 
@@ -210,10 +208,11 @@ def run_couple_first_frames():
                 pose,
                 keyframe
             )
-            print(f"{new_pose_estimate=}")
-            print(f"{keyframe.pose @ new_pose_estimate=}")
+            np.set_printoptions(suppress=True)
+            print(i)
+            print(f"{new_pose_estimate.round(2)=}")
+            print(f"{(keyframe.pose @ new_pose_estimate).round(2)=}")
             print(f"{obs.baselink_pose=}")
-            assert False
             x = 1
 
 

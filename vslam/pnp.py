@@ -65,10 +65,11 @@ def estimate_J_analytically(
     #     [pc[0] * pc[1] * inv_z2, 1 + pc[1] * pc[1] * inv_z2],
     #     [1 + pc[0] * pc[0] * inv_z2, pc[0] * pc[1] * inv_z2],
     # ]))
+
     J = np.array(([
+        [-pc[0] * inv_z2, -pc[1] * inv_z2],
         [inv_z, 0],
-        [0, -inv_z],
-        [pc[1] * inv_z, -pc[0] * inv_z],
+        [1 + pc[0] * pc[0] * inv_z2, pc[0] * pc[1] * inv_z2],
     ]))
 
     return J
@@ -104,7 +105,7 @@ def gauss_netwon_pnp(
         errs = np.array(errs)   # reprojection error per axix
         euc_errs = np.linalg.norm(errs, axis=1)   # how much off on both axes
         loss = euc_errs.mean()
-        real_dx = np.array([0, dx[0], dx[1], dx[2], 0, 0])
+        real_dx = np.array([dx[0], dx[1], 0, 0, 0, dx[2]])
         camera_pose = camera_pose @ SE3Matrix.exp(real_dx).as_matrix()
         if verbose:
             print(f"i = {i} mse = {loss:.2f} dx = {dx.round(2)}")
