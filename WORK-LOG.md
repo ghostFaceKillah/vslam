@@ -10,6 +10,7 @@ Now I need to plot it on some kind of overhead plotting
 
 - [ ] Implement the actual VSLAM
   - [.] Implement frontend
+      - [ ] do tracking inliers etc
   - [ ] Implement backend (remember, don't overcomplicate!)
   - [X] g2o TrackPose reimplementation
 
