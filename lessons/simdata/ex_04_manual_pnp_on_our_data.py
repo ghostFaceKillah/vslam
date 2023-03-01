@@ -210,6 +210,10 @@ def run_couple_first_frames():
                 pose,
                 keyframe
             )
+            print(f"{new_pose_estimate=}")
+            print(f"{keyframe.pose @ new_pose_estimate=}")
+            print(f"{obs.baselink_pose=}")
+            assert False
             x = 1
 
 
