@@ -164,6 +164,9 @@ def fake_estimate_pose_wrt_keyframe(
     # compute 2d points in new camera pose
 
 
+    x = 1
+
+
 
     pass
 
@@ -172,7 +175,7 @@ def fake_estimate_pose_wrt_keyframe(
 
 def run_couple_first_frames():
     # dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-02-26--13-41-16.msgpack')
-    dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-02-04--17-08-25.msgpack')
+    dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-02-28--08-45-26.msgpack')
     data_streamer = SimDataStreamer.from_dataset_path(dataset_path=dataset_path)
     scene = get_triangles_in_sky_scene_2()
 
@@ -199,7 +202,7 @@ def run_couple_first_frames():
             )
         else:
             # TODO: probably need some kind of pose tracker ?
-            new_pose_estimate = fake_estimate_pose_wrt_keyframe(
+            new_pose_estimate = estimate_pose_wrt_keyframe(
                 obs,
                 matcher,
                 cam_intrinsics,

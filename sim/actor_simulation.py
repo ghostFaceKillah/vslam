@@ -146,33 +146,33 @@ class Simulation:
     scene_renderer: TriangleSceneRenderer
     dt: float = 0.1
 
-    def _get_obs(self, camera_pose: CameraPoseSE3, frame_idx: int, sim_time_s: float) -> Observation:
+    def _get_obs(self, baselink_pose: CameraPoseSE3, frame_idx: int, sim_time_s: float) -> Observation:
         """ Renders what eyes see and constructs observation object """
         with just_time('right eye render'):
-            right_eye_screen = self.scene_renderer.render_first_person_view(camera_pose @ self.scene_renderer.right_eye_offset())
+            right_eye_screen = self.scene_renderer.render_first_person_view(baselink_pose @ self.scene_renderer.right_eye_offset())
         with just_time('left eye render'):
-            left_eye_screen = self.scene_renderer.render_first_person_view(camera_pose @ self.scene_renderer.left_eye_offset())
+            left_eye_screen = self.scene_renderer.render_first_person_view(baselink_pose @ self.scene_renderer.left_eye_offset())
 
         with just_time('birdseye render'):
-            bev_img = self.scene_renderer.render_birdseye_view(camera_pose)
+            bev_img = self.scene_renderer.render_birdseye_view(baselink_pose)
 
         return Observation(
             left_eye_img=left_eye_screen,
             right_eye_img=right_eye_screen,
             bev_img=bev_img,
-            camera_pose=camera_pose,
+            baselink_pose=baselink_pose,
             frame_idx=frame_idx,
             timestamp=sim_time_s,
         )
 
     def simulate(
         self,
-        initial_camera_pose: CameraPoseSE3 = get_SE3_pose(x=-2.5),   # looking toward +x direction in world frame, +z in camera
+        initial_baselink_pose: CameraPoseSE3 = get_SE3_pose(x=-2.5),   # looking toward +x direction in world frame, +z in camera
     ) -> Recording:
         """ Simulates the environment. """
         recorder = Recording(self.scene_renderer.camera)
 
-        camera_pose = initial_camera_pose
+        baselink_pose = initial_baselink_pose
         sim_time = time.time()
 
         i = 0
@@ -180,12 +180,12 @@ class Simulation:
 
         while True:
             # mutates environment based on actions
-            camera_pose = camera_pose @ action.transforms.camera
+            baselink_pose = baselink_pose @ action.transforms.camera
 
             if action.end:
                 break
 
-            obs = self._get_obs(camera_pose, i, sim_time)
+            obs = self._get_obs(baselink_pose, i, sim_time)
             action = self.actor.act(obs)
             recorder.record_observation(obs)
 

@@ -69,7 +69,7 @@ class Observation:
     left_eye_img: BGRImageArray
     right_eye_img: BGRImageArray
     bev_img: BGRImageArray   # birdseye view image
-    camera_pose: CameraPoseSE3
+    baselink_pose: CameraPoseSE3   # left eye to the left of this, right eye to the right of this
     frame_idx: int
     timestamp: float   # in seconds since epoch, as per python convention
 

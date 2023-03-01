@@ -6,7 +6,7 @@ from utils.profiling import just_time
 from utils.serialization import to_native_types, msgpack_dumps
 
 if __name__ == '__main__':
-    scene_renderer = TriangleSceneRenderer.from_easy_scene()
+    scene_renderer = TriangleSceneRenderer.from_default()
 
     # actor = ManualActor.from_default()
     actor = PreRecordedActor.from_a_nice_trip()
