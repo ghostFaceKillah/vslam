@@ -1,3 +1,32 @@
+2023-02-28
+-----------
+Ok, it seems to work!
+
+Now I need to plot it on some kind of overhead plotting
+
+- [ ] Debugger for past poses
+- [ ] Debugger for Gaussian optimization
+- [ ] parametrize x y theta Gauss Newton instead of blindly overriding it
+
+- [ ] Implement the actual VSLAM
+  - [.] Implement frontend
+  - [ ] Implement backend (remember, don't overcomplicate!)
+  - [X] g2o TrackPose reimplementation
+
+- [ ] Make a tutorial video about rendering & geometry of rendering
+- [ ] Make a blogpost about this thing in general
+
+- [ ] code quality retrieval
+  - [ ] add unit tests, mypy, black and so on on github
+  - [ ] Clean up the codez
+  - [ ] Expose `to_native` and `from_native`
+
+- [N] sqlite based recorder and streaming replayer to be able to record "big data" ?
+- [ ] lacma inspired rainbowy lines
+
+
+
+
 2023-02-26
 ----------
 
