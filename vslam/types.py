@@ -57,6 +57,7 @@ ZP_uv =  Z *  [v]  = K(R P_w + T) = KTP
 
 CameraPoseSE3 = Array['4,4', np.float64]
 TransformSE3 = Array['4,4', np.float64]
+Pose2DArray = Array['3', np.float64]   # x, y, theta in a plane
 CameraRotationSO3 = Array['3,3', np.float64]
 CameraTranslationVector = Array['3', np.float64]
 Vector3dHomogenous = Array['4', np.float64]   # TODO: nomenclature difference between having 0 on last coordinate or not

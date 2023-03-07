@@ -21,7 +21,7 @@ from utils.custom_types import BGRImageArray
 from vslam.datasets.simdata import SimDataStreamer
 from vslam.features import OrbBasedFeatureMatcher, OrbFeatureDetections, FeatureMatchDebugger
 from vslam.pnp import gauss_netwon_pnp
-from vslam.poses import get_SE3_pose
+from vslam.poses import get_SE3_pose, SE3_pose_to_xytheta
 from vslam.transforms import px_2d_to_cam_coords_3d_homo, SE3_inverse, px_2d_to_img_coords_2d, \
     get_world_to_cam_coord_flip_matrix, homogenize, CAM_TO_WORLD_FLIP, dehomogenize
 from vslam.triangulation import naive_triangulation
@@ -210,9 +210,12 @@ def run_couple_first_frames():
             )
             np.set_printoptions(suppress=True)
             print(i)
-            print(f"{new_pose_estimate.round(2)=}")
-            print(f"{(keyframe.pose @ new_pose_estimate).round(2)=}")
-            print(f"{obs.baselink_pose=}")
+            SE3_pose_to_xytheta(new_pose_estimate)
+            # print(f"{new_pose_estimate.round(2)=}")
+            # print(f"{(keyframe.pose @ new_pose_estimate).round(2)=}")
+            # print(f"{obs.baselink_pose=}")
+            print(f"est pose = {SE3_pose_to_xytheta(keyframe.pose @ new_pose_estimate)}")
+            print(f"gt  pose = {SE3_pose_to_xytheta(obs.baselink_pose)}")
             x = 1
 
 

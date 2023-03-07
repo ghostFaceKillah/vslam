@@ -1,5 +1,6 @@
 import numpy as np
-from vslam.types import CameraRotationSO3, TransformSE3
+
+from vslam.types import CameraRotationSO3, TransformSE3, Pose2DArray
 
 
 def identity_rotation() -> CameraRotationSO3:
@@ -46,3 +47,9 @@ def get_SE3_pose(
     pose[0:3, 3] = np.array([x, y, z], dtype=np.float64)
 
     return pose
+
+
+def SE3_pose_to_xytheta(pose: TransformSE3) -> Pose2DArray:
+    yaw = np.arcsin(pose[1, 0])
+    out_pose = np.array([pose[0, 3], pose[1, 3], yaw])
+    return out_pose
