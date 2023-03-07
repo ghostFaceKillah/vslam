@@ -106,7 +106,6 @@ def estimate_pose_wrt_keyframe(
         obs: Observation,
         matcher: OrbBasedFeatureMatcher,
         cam_intrinsics: CameraIntrinsics,
-        world_to_cam_flip: TransformSE3,
         camera_pose_guess_in_world: CameraPoseSE3,
         keyframe: _Keyframe,
         debug_feature_matches: bool = False
@@ -175,7 +174,6 @@ def run_couple_first_frames():
     # dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-02-26--13-41-16.msgpack')
     dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-02-28--08-45-26.msgpack')
     data_streamer = SimDataStreamer.from_dataset_path(dataset_path=dataset_path)
-    scene = get_triangles_in_sky_scene_2()
 
     cam_intrinsics = data_streamer.get_cam_intrinsics()
     matcher = OrbBasedFeatureMatcher.build()
@@ -186,36 +184,35 @@ def run_couple_first_frames():
 
     # pose_tracker = PoseTracker()
     pose = initial_cam_pose
-
-    pose_of_right_cam_in_left_cam = data_streamer.get_cam_specs().get_pose_of_right_cam_in_left_cam()
+    pose_of_left_cam_in_baselink = data_streamer.get_cam_specs().get_pose_of_left_cam_in_baselink()
 
     for i, obs in enumerate(data_streamer.stream()):
         if i == 0:
             keyframe = estimate_keyframe(
-                obs,
-                matcher,
-                cam_intrinsics,
-                initial_cam_pose,
-                pose_of_right_cam_in_left_cam
+                obs=obs,
+                matcher=matcher,
+                cam_intrinsics=cam_intrinsics,
+                left_cam_pose=initial_cam_pose,
+                pose_of_right_cam_in_left_cam= data_streamer.get_cam_specs().get_pose_of_right_cam_in_left_cam()
             )
         else:
             # TODO: probably need some kind of pose tracker ?
             new_pose_estimate = estimate_pose_wrt_keyframe(
-                obs,
-                matcher,
-                cam_intrinsics,
-                get_world_to_cam_coord_flip_matrix(),
-                pose,
-                keyframe
+                obs=obs,
+                matcher=matcher,
+                cam_intrinsics=cam_intrinsics,
+                camera_pose_guess_in_world=pose,
+                keyframe=keyframe
             )
             np.set_printoptions(suppress=True)
             print(i)
-            SE3_pose_to_xytheta(new_pose_estimate)
             # print(f"{new_pose_estimate.round(2)=}")
             # print(f"{(keyframe.pose @ new_pose_estimate).round(2)=}")
             # print(f"{obs.baselink_pose=}")
-            print(f"est pose = {SE3_pose_to_xytheta(keyframe.pose @ new_pose_estimate)}")
-            print(f"gt  pose = {SE3_pose_to_xytheta(obs.baselink_pose)}")
+            print(f"est pose = {SE3_pose_to_xytheta(keyframe.pose @ new_pose_estimate).round(2)}")
+            print(f"gt  pose = {SE3_pose_to_xytheta(pose_of_left_cam_in_baselink @ obs.baselink_pose).round(2)}")
+
+            pose = keyframe.pose @ new_pose_estimate
             x = 1
 
 

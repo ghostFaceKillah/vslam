@@ -63,6 +63,9 @@ class CameraSpecs:
     def get_pose_of_right_cam_in_left_cam(self) -> CameraPoseSE3:
         return get_SE3_pose(y=self.distance_between_eyes)
 
+    def get_pose_of_left_cam_in_baselink(self) -> CameraPoseSE3:
+        return get_SE3_pose(y=-self.distance_between_eyes / 2)
+
 
 @attr.define
 class Observation:
