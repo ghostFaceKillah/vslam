@@ -4,9 +4,13 @@ Ok, it seems to work!
 
 Now I need to plot it on some kind of overhead plotting
 
-- [ ] Debugger for past poses
+- [ ] For the sake of good quality optimization, simulate the feature matches
+- [ ] Visual Debugger for past poses 
+    - Birdseye view of past poses, as figured out by optimization
 - [ ] Debugger for Gaussian optimization
+    - reprojection errors, etc visualization
 - [ ] parametrize x y theta Gauss Newton instead of blindly overriding it
+  - Charles has mentioned something called conjugate gradient method
 
 - [ ] Implement the actual VSLAM
   - [.] Implement frontend
@@ -23,7 +27,7 @@ Now I need to plot it on some kind of overhead plotting
   - [ ] Expose `to_native` and `from_native`
 
 - [N] sqlite based recorder and streaming replayer to be able to record "big data" ?
-- [ ] lacma inspired rainbowy lines
+- [ ] lacma inspired rainbowy lines as features
 
 
 
