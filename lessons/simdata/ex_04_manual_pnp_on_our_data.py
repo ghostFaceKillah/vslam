@@ -14,9 +14,11 @@ import attr
 import cv2
 import numpy as np
 
+from typing import Optional
+
 from defs import ROOT_DIR
 from sim.sample_scenes import get_triangles_in_sky_scene_2
-from sim.sim_types import Observation
+from sim.sim_types import Observation, CameraSpecs
 from utils.custom_types import BGRImageArray
 from vslam.datasets.simdata import SimDataStreamer
 from vslam.features import OrbBasedFeatureMatcher, OrbFeatureDetections, FeatureMatchDebugger
@@ -170,6 +172,44 @@ def fake_estimate_pose_wrt_keyframe(
 
 
 
+class VelocityPoseTracker:
+    # it predicts the next pose
+    current_pose_estimate: CameraPoseSE3
+
+    def track(self, new_pose: CameraPoseSE3):
+        # will
+        self.current_pose_estimate = new_pose
+        pass
+
+    def get_next_baselink_in_world_pose_estimate(self) -> CameraPoseSE3:
+        ...
+
+
+@attr.s(auto_attribs=True)
+class FrontEnd:
+    """ At this point, it just groups up stuff related to Frontend """
+    matcher: OrbBasedFeatureMatcher
+    cam_specs: CameraSpecs
+
+    # stateful
+    pose_tracker: VelocityPoseTracker
+    keyframe: Optional[_Keyframe] = None
+
+    def track(self, obs: Observation) -> CameraPoseSE3:
+        if self.keyframe is None:
+            pose_guess = self.pose_tracker.get_next_baselink_in_world_pose_estimate()
+            keyframe = estimate_keyframe(
+                obs=obs,
+                matcher=self.matcher,
+                cam_intrinsics=self.cam_specs.cam_intrinsics,
+                left_cam_pose=self.pose_tracker.get_next_baselink_in_world_pose_estimate() @ self.cam_specs.get_pose_of_left_cam_in_baselink(),
+                pose_of_right_cam_in_left_cam=self.cam_specs.get_pose_of_right_cam_in_left_cam()
+            )
+            ...
+            # ?
+        else:
+            ...
+
 def run_couple_first_frames():
     # dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-02-26--13-41-16.msgpack')
     dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-02-28--08-45-26.msgpack')
@@ -187,6 +227,7 @@ def run_couple_first_frames():
     pose_of_left_cam_in_baselink = data_streamer.get_cam_specs().get_pose_of_left_cam_in_baselink()
 
     for i, obs in enumerate(data_streamer.stream()):
+        # off by one error I think
         if i == 0:
             keyframe = estimate_keyframe(
                 obs=obs,
@@ -195,6 +236,7 @@ def run_couple_first_frames():
                 left_cam_pose=initial_cam_pose,
                 pose_of_right_cam_in_left_cam= data_streamer.get_cam_specs().get_pose_of_right_cam_in_left_cam()
             )
+            x = 1
         else:
             # TODO: probably need some kind of pose tracker ?
             new_pose_estimate = estimate_pose_wrt_keyframe(
@@ -210,7 +252,7 @@ def run_couple_first_frames():
             # print(f"{(keyframe.pose @ new_pose_estimate).round(2)=}")
             # print(f"{obs.baselink_pose=}")
             print(f"est pose = {SE3_pose_to_xytheta(keyframe.pose @ new_pose_estimate).round(2)}")
-            print(f"gt  pose = {SE3_pose_to_xytheta(pose_of_left_cam_in_baselink @ obs.baselink_pose).round(2)}")
+            print(f"gt  pose = {SE3_pose_to_xytheta(obs.baselink_pose @ pose_of_left_cam_in_baselink).round(2)}")
 
             pose = keyframe.pose @ new_pose_estimate
             x = 1
