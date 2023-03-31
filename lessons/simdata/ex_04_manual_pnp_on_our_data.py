@@ -184,6 +184,29 @@ class VelocityPoseTracker:
     def get_next_baselink_in_world_pose_estimate(self) -> CameraPoseSE3:
         ...
 
+"""
+
+
+track
+   if state == NO_KEYFRAME
+      keyframe = makekeyframe
+      new_pose = 000
+      transition to TRACKING
+   elif state == TRACKING(sus=k)
+      new_pose, matching_result = estimate pose by scan matching
+      
+      if matching_result == weird (bad matches)
+         state.sus += 1
+         if state.sus > limit:
+            transition to LOST
+      check how it's going
+   elif state == LOST
+      keyframe = makekeyframe
+      new_pose = ?
+      
+   
+
+"""
 
 @attr.s(auto_attribs=True)
 class FrontEnd:
@@ -196,6 +219,8 @@ class FrontEnd:
     keyframe: Optional[_Keyframe] = None
 
     def track(self, obs: Observation) -> CameraPoseSE3:
+
+
         if self.keyframe is None:
             pose_guess = self.pose_tracker.get_next_baselink_in_world_pose_estimate()
             keyframe = estimate_keyframe(
