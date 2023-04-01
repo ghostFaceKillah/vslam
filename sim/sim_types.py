@@ -30,14 +30,30 @@ class RenderTriangle3d:
 RenderTrianglesPointsInCam = Array['N,3,4', np.float64]
 
 
+@attr.s(auto_attribs=True)
+class CameraExtrinsics:
+    """ as you can see, it kinda hardcodes existence of two cameras, which is totally not nececssary. """
+    distance_between_eyes: float
+
+    def get_pose_of_right_cam_in_left_cam(self) -> CameraPoseSE3:
+        return get_SE3_pose(y=self.distance_between_eyes)
+
+    def get_pose_of_left_cam_in_baselink(self) -> CameraPoseSE3:
+        return get_SE3_pose(y=-self.distance_between_eyes / 2)
+
+    def get_pose_of_right_cam_in_baselink(self) -> CameraPoseSE3:
+        return get_SE3_pose(y=self.distance_between_eyes / 2)
+
+
 @attr.define
 class CameraSpecs:
     """ Mix of intrinsics and extrinsics """
-    screen_h: int
+    screen_h: int  # TODO: fold into intrinsics ?
     screen_w: int
-    distance_between_eyes: float
-    cam_intrinsics: CameraIntrinsics
+    intrinsics: CameraIntrinsics
+    extrinsics: CameraExtrinsics
     clipping_surfaces: ClippingSurfaces
+
 
     @classmethod
     def from_default(
@@ -52,19 +68,15 @@ class CameraSpecs:
             cx=screen_w / 2,
             cy=screen_h / 2,
         )
+
         return cls(
             screen_h=screen_h,
             screen_w=screen_w,
-            distance_between_eyes=2.0,
-            cam_intrinsics=cam_intrinsics,
+            intrinsics=cam_intrinsics,
+            extrinsics=CameraExtrinsics(distance_between_eyes=2.0),
             clipping_surfaces=ClippingSurfaces.from_screen_dimensions_and_cam_intrinsics(screen_h, screen_w, cam_intrinsics),
         )
 
-    def get_pose_of_right_cam_in_left_cam(self) -> CameraPoseSE3:
-        return get_SE3_pose(y=self.distance_between_eyes)
-
-    def get_pose_of_left_cam_in_baselink(self) -> CameraPoseSE3:
-        return get_SE3_pose(y=-self.distance_between_eyes / 2)
 
 
 @attr.define

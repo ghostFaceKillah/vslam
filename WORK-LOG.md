@@ -1,3 +1,19 @@
+2023-03-31
+----------
+I see a bunch of interesting ways to debug
+
+1) keyframe making debug
+   a) draw birds eye view of depth estimation, etc
+
+
+2023-03-30
+----------
+
+I had really a lot of changes in my life! That was pretty crazy.
+Let me try this back again.
+
+
+
 2023-02-28
 -----------
 Ok, it seems to work!

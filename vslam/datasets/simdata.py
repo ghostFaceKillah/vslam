@@ -25,7 +25,7 @@ class SimDataStreamer:
         return cls(recorded_data=data)
 
     def get_cam_intrinsics(self) -> CameraIntrinsics:
-        return self.recorded_data.camera_specs.cam_intrinsics
+        return self.recorded_data.camera_specs.intrinsics
 
     def get_cam_specs(self) -> CameraSpecs:
         return self.recorded_data.camera_specs

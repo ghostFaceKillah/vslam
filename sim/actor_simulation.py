@@ -63,7 +63,7 @@ class TriangleSceneRenderer:
             self.camera.screen_w,
             camera_pose,
             self.scene_triangles,
-            self.camera.cam_intrinsics,
+            self.camera.intrinsics,
             self.light_direction_in_world,
             self.sky_color,
             self.ground_color,
@@ -79,7 +79,7 @@ class TriangleSceneRenderer:
             self.camera.screen_w,
             self.birdseye_view_specifier,
             camera_pose,
-            self.camera.cam_intrinsics,
+            self.camera.intrinsics,
             self.scene_triangles,
             self.ground_color
         )
@@ -92,10 +92,10 @@ class TriangleSceneRenderer:
         return self.render_first_person_view(camera_pose @ self.right_eye_offset())
 
     def left_eye_offset(self):
-        return get_SE3_pose(y=-self.camera.distance_between_eyes / 2)
+        return get_SE3_pose(y=-self.camera.extrinsics.distance_between_eyes / 2)
 
     def right_eye_offset(self):
-        return get_SE3_pose(y=self.camera.distance_between_eyes / 2)
+        return get_SE3_pose(y=self.camera.extrinsics.distance_between_eyes / 2)
 
 
 class Actor(Protocol):

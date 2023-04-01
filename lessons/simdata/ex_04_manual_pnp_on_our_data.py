@@ -9,25 +9,24 @@ Let us reimplement by hand, in an explicit way:
 then we will do the full nice frontend implementation.
 """
 import os
+from dataclasses import dataclass
+from typing import Optional
 
 import attr
 import cv2
 import numpy as np
 
-from typing import Optional
-
 from defs import ROOT_DIR
-from sim.sample_scenes import get_triangles_in_sky_scene_2
-from sim.sim_types import Observation, CameraSpecs
+from sim.sim_types import Observation, CameraSpecs, CameraExtrinsics
 from utils.custom_types import BGRImageArray
 from vslam.datasets.simdata import SimDataStreamer
 from vslam.features import OrbBasedFeatureMatcher, OrbFeatureDetections, FeatureMatchDebugger
 from vslam.pnp import gauss_netwon_pnp
 from vslam.poses import get_SE3_pose, SE3_pose_to_xytheta
 from vslam.transforms import px_2d_to_cam_coords_3d_homo, SE3_inverse, px_2d_to_img_coords_2d, \
-    get_world_to_cam_coord_flip_matrix, homogenize, CAM_TO_WORLD_FLIP, dehomogenize
+    homogenize, CAM_TO_WORLD_FLIP, dehomogenize
 from vslam.triangulation import naive_triangulation
-from vslam.types import WorldCoords3D, CameraPoseSE3, CameraIntrinsics, TransformSE3
+from vslam.types import WorldCoords3D, CameraPoseSE3, CameraIntrinsics
 
 
 @attr.define
@@ -43,11 +42,13 @@ class _Keyframe:
 def estimate_keyframe(
         obs: Observation,
         matcher: OrbBasedFeatureMatcher,
+        current_pose: CameraPoseSE3,
         cam_intrinsics: CameraIntrinsics,
-        left_cam_pose: CameraPoseSE3,
-        pose_of_right_cam_in_left_cam: CameraPoseSE3,
+        cam_extrinsics: CameraExtrinsics,
         debug_feature_matches: bool = False
 ):
+    left_cam_pose = current_pose @ cam_extrinsics.get_pose_of_left_cam_in_baselink()
+
     left_detections = matcher.detect(obs.left_eye_img)
     right_detections = matcher.detect(obs.right_eye_img)
     feature_matches = matcher.match(left_detections, right_detections)
@@ -61,7 +62,7 @@ def estimate_keyframe(
     depths = naive_triangulation(
         points_in_cam_one=from_kp_cam_coords_3d_homo,
         points_in_cam_two=to_kp_cam_coords_3d_homo,
-        cam_two_in_cam_one=pose_of_right_cam_in_left_cam
+        cam_two_in_cam_one=cam_extrinsics.get_pose_of_right_cam_in_left_cam()
     )
     # looks waaay to much
     # what is this depth measured in ?
@@ -72,6 +73,7 @@ def estimate_keyframe(
         for img in debugger.render(obs.left_eye_img, obs.right_eye_img, feature_matches, depths):
             cv2.imshow('wow', img)
             cv2.waitKey(-1)
+
 
     points_3d_est = []
     feature_descriptors = []
@@ -87,6 +89,9 @@ def estimate_keyframe(
         points_3d_est.append(dehomogenize(CAM_TO_WORLD_FLIP @ homogenize(point_homo * depth)))
         feature_descriptors.append(feature_match.from_feature)
         keypoints.append(feature_match.from_keypoint)
+
+    # TODO: debug depths
+    # let's do it now!
 
     return _Keyframe(
         image=obs.left_eye_img,
@@ -104,6 +109,12 @@ class PoseTracker:
         return pose
 
 
+@attr.define
+class KeyframeMatchPoseTrackingResult:
+    pose_estimate: CameraPoseSE3
+    tracking_quality_info: ...
+
+
 def estimate_pose_wrt_keyframe(
         obs: Observation,
         matcher: OrbBasedFeatureMatcher,
@@ -111,7 +122,7 @@ def estimate_pose_wrt_keyframe(
         camera_pose_guess_in_world: CameraPoseSE3,
         keyframe: _Keyframe,
         debug_feature_matches: bool = False
-):
+) -> KeyframeMatchPoseTrackingResult:
     left_detections = matcher.detect(obs.left_eye_img)
     matches = matcher.match(keyframe.feature_detections, left_detections)
 
@@ -150,45 +161,22 @@ def estimate_pose_wrt_keyframe(
     return new_pose_estimate
 
 
-def fake_estimate_pose_wrt_keyframe(
-        obs: Observation,
-        matcher: OrbBasedFeatureMatcher,
-        cam_intrinsics: CameraIntrinsics,
-        world_to_cam_flip: TransformSE3,
-        camera_pose_guess_in_world: CameraPoseSE3,
-        keyframe: _Keyframe,
-        debug_feature_matches: bool = False
-
-):
-    """ Use access to priveliged data to diagnose the relative pose estimation """
-    # compute 3d points in keyframe
-    # compute 2d points in new camera pose
-
-
-    x = 1
-
-    pass
-
-
-
-
 class VelocityPoseTracker:
     # it predicts the next pose
     current_pose_estimate: CameraPoseSE3
 
     def track(self, new_pose: CameraPoseSE3):
-        # will
+        # TODO: propagate it forward by one step
         self.current_pose_estimate = new_pose
-        pass
 
     def get_next_baselink_in_world_pose_estimate(self) -> CameraPoseSE3:
-        ...
+        return self.current_pose_estimate
 
 """
 
 
 track
-   if state == NO_KEYFRAME
+   if state == INIT
       keyframe = makekeyframe
       new_pose = 000
       transition to TRACKING
@@ -203,13 +191,27 @@ track
    elif state == LOST
       keyframe = makekeyframe
       new_pose = ?
-      
-   
-
 """
 
+
+class FrontendState:
+    class Init:
+        """ Just initialized, need a keyframe. """
+        ...
+
+    @dataclass
+    class Tracking:
+        """ We are tracking, but maybe some iterations we have suspicions as not enough  """
+        suspicion_level: int
+        frames_since_keyframe: int
+
+    class Lost:
+        """ Ooops! Doesn't look like anything else we have seen so far... """
+        ...
+
+
 @attr.s(auto_attribs=True)
-class FrontEnd:
+class Frontend:
     """ At this point, it just groups up stuff related to Frontend """
     matcher: OrbBasedFeatureMatcher
     cam_specs: CameraSpecs
@@ -217,27 +219,43 @@ class FrontEnd:
     # stateful
     pose_tracker: VelocityPoseTracker
     keyframe: Optional[_Keyframe] = None
+    state: FrontendState = attr.Factory(FrontendState.Init)
 
     def track(self, obs: Observation) -> CameraPoseSE3:
+        pose_estimate = self.pose_tracker.get_next_baselink_in_world_pose_estimate()
+        match self.state:
+            case FrontendState.Init() | FrontendState.Lost():
+                keyframe = estimate_keyframe(
+                    obs=obs,
+                    matcher=self.matcher,
+                    current_pose=pose_estimate,
+                    cam_intrinsics=self.cam_specs.cam_intrinsics,
+                    cam_extrinsics=self.cam_specs.cam_extrinsics,
+                )
+                self.keyframe = keyframe
+                self.state = FrontendState.Tracking(suspicion_level=0, frames_since_keyframe=0)
+            case FrontendState.Tracking(suspicion_level, frames_since_keyframe):
 
+                new_pose_estimate, tracking_result = estimate_pose_wrt_keyframe(
+                    obs=obs,
+                    matcher=self.matcher,
+                    cam_intrinsics=self.cam_intrinsics,
+                    camera_pose_guess_in_world=pose_estimate,
+                    keyframe=self.keyframe
+                )
+
+                ...
+            case _:
+                raise ValueError("Unhandled state", self.state)
 
         if self.keyframe is None:
-            pose_guess = self.pose_tracker.get_next_baselink_in_world_pose_estimate()
-            keyframe = estimate_keyframe(
-                obs=obs,
-                matcher=self.matcher,
-                cam_intrinsics=self.cam_specs.cam_intrinsics,
-                left_cam_pose=self.pose_tracker.get_next_baselink_in_world_pose_estimate() @ self.cam_specs.get_pose_of_left_cam_in_baselink(),
-                pose_of_right_cam_in_left_cam=self.cam_specs.get_pose_of_right_cam_in_left_cam()
-            )
             ...
             # ?
         else:
             ...
 
 def run_couple_first_frames():
-    # dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-02-26--13-41-16.msgpack')
-    dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-02-28--08-45-26.msgpack')
+    dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-03-31--20-27-03.msgpack')
     data_streamer = SimDataStreamer.from_dataset_path(dataset_path=dataset_path)
 
     cam_intrinsics = data_streamer.get_cam_intrinsics()
@@ -249,7 +267,6 @@ def run_couple_first_frames():
 
     # pose_tracker = PoseTracker()
     pose = initial_cam_pose
-    pose_of_left_cam_in_baselink = data_streamer.get_cam_specs().get_pose_of_left_cam_in_baselink()
 
     for i, obs in enumerate(data_streamer.stream()):
         # off by one error I think
@@ -257,9 +274,9 @@ def run_couple_first_frames():
             keyframe = estimate_keyframe(
                 obs=obs,
                 matcher=matcher,
-                cam_intrinsics=cam_intrinsics,
-                left_cam_pose=initial_cam_pose,
-                pose_of_right_cam_in_left_cam= data_streamer.get_cam_specs().get_pose_of_right_cam_in_left_cam()
+                current_pose=pose,
+                cam_intrinsics=data_streamer.get_cam_specs().intrinsics,
+                cam_extrinsics=data_streamer.get_cam_specs().extrinsics,
             )
             x = 1
         else:
@@ -277,6 +294,7 @@ def run_couple_first_frames():
             # print(f"{(keyframe.pose @ new_pose_estimate).round(2)=}")
             # print(f"{obs.baselink_pose=}")
             print(f"est pose = {SE3_pose_to_xytheta(keyframe.pose @ new_pose_estimate).round(2)}")
+            pose_of_left_cam_in_baselink = data_streamer.get_cam_specs().extrinsics.get_pose_of_left_cam_in_baselink()
             print(f"gt  pose = {SE3_pose_to_xytheta(obs.baselink_pose @ pose_of_left_cam_in_baselink).round(2)}")
 
             pose = keyframe.pose @ new_pose_estimate
