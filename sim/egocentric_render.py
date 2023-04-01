@@ -5,9 +5,10 @@ from jax import jit
 
 from sim.clipping import ClippingSurfaces, clip_triangles
 from sim.sim_types import RenderTriangle3d, RenderTrianglesPointsInCam
-from utils.custom_types import BGRColor, Array, ImageArray
+from utils.custom_types import BGRColor, Array, JaxImageArray
+from vslam.cam import CameraIntrinsics
 from vslam.transforms import get_world_to_cam_coord_flip_matrix, SE3_inverse
-from vslam.types import CameraPoseSE3, CameraIntrinsics, Vector3d, TransformSE3, ArrayOfColors
+from vslam.types import CameraPoseSE3, Vector3d, TransformSE3, ArrayOfColors
 
 
 def _get_triangles_colors(
@@ -103,7 +104,7 @@ def parallel_z_buffer_render(
     px_center_coords_in_img_coords: Array['H,W,2', np.float32],  # H x W x 2  (for each pixel, 2D coordinates of the pixel center in camera coordinates)
     lighting_aware_colors: ArrayOfColors, # N x 3 (for each triangle, color of the face with lighting already taken into account)
     bg_img: Array['H,W,3', np.uint8],  # H x W x 3  (background image)
-) -> ImageArray:
+) -> JaxImageArray:
     """
     Render triangles using a variant of z-buffer algorithm.
 
@@ -152,7 +153,7 @@ def _get_background_image(
     camera_pose: CameraPoseSE3,
     sky_color: BGRColor,
     ground_color: BGRColor,
-) -> ImageArray:
+) -> JaxImageArray:
     """ Get background image for the scene. """
 
     px_center_coords_in_world = np.concatenate([px_center_coords_in_img_coords, np.ones_like(px_center_coords_in_img_coords)], axis=-1) @ world_to_cam_flip @ camera_pose.T
@@ -183,7 +184,7 @@ def render_scene_pixelwise_depth(
     ground_color: BGRColor,
     shade_color: BGRColor,
     clipping_surfaces: ClippingSurfaces
-):
+) -> JaxImageArray:
     """
     Render scene using a variant of z-buffer algorithm.
 

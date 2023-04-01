@@ -5,8 +5,9 @@ import numpy as onp
 from jax import numpy as np
 
 from utils.custom_types import Array
+from vslam.cam import CameraIntrinsics
 from vslam.math import normalize_vector
-from vslam.types import CameraIntrinsics, Vector3d, CamCoords3d, ArrayOfColors
+from vslam.types import Vector3d, CamCoords3d, ArrayOfColors
 
 
 @attr.define

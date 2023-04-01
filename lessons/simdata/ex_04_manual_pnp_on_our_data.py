@@ -19,6 +19,7 @@ import numpy as np
 from defs import ROOT_DIR
 from sim.sim_types import Observation, CameraSpecs, CameraExtrinsics
 from utils.custom_types import BGRImageArray
+from vslam.cam import CameraIntrinsics
 from vslam.datasets.simdata import SimDataStreamer
 from vslam.features import OrbBasedFeatureMatcher, OrbFeatureDetections, FeatureMatchDebugger
 from vslam.pnp import gauss_netwon_pnp
@@ -26,7 +27,7 @@ from vslam.poses import get_SE3_pose, SE3_pose_to_xytheta
 from vslam.transforms import px_2d_to_cam_coords_3d_homo, SE3_inverse, px_2d_to_img_coords_2d, \
     homogenize, CAM_TO_WORLD_FLIP, dehomogenize
 from vslam.triangulation import naive_triangulation
-from vslam.types import WorldCoords3D, CameraPoseSE3, CameraIntrinsics
+from vslam.types import WorldCoords3D, CameraPoseSE3
 
 
 @attr.define
@@ -45,7 +46,8 @@ def estimate_keyframe(
         current_pose: CameraPoseSE3,
         cam_intrinsics: CameraIntrinsics,
         cam_extrinsics: CameraExtrinsics,
-        debug_feature_matches: bool = False
+        debug_feature_matches: bool = True,
+        debug_depth_estimation: bool = True
 ):
     left_cam_pose = current_pose @ cam_extrinsics.get_pose_of_left_cam_in_baselink()
 
@@ -92,6 +94,16 @@ def estimate_keyframe(
 
     # TODO: debug depths
     # let's do it now!
+
+    if debug_depth_estimation:
+        """
+        what do we want to draw ...
+        
+        Same thing as feature match debugger, but additionally:
+        - birdseye view
+        - 
+        """
+        ...
 
     return _Keyframe(
         image=obs.left_eye_img,

@@ -1,10 +1,12 @@
+import os
+
 import attr
 import cv2
 import numpy as np
-import os
 
 from utils.custom_types import DirPath, FilePath
-from vslam.types import CameraPoseSE3, CameraIntrinsics
+from vslam.cam import CameraIntrinsics
+from vslam.types import CameraPoseSE3
 
 
 def _get_im_path(

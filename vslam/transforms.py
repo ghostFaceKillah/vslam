@@ -1,6 +1,7 @@
 import numpy as np
 
-from vslam.types import CameraIntrinsics, PxCoords2d, ImgCoords2d, CamCoords3dHomog, TransformSE3, CameraRotationSO3
+from vslam.cam import CameraIntrinsics
+from vslam.types import PxCoords2d, ImgCoords2d, CamCoords3dHomog, TransformSE3, CameraRotationSO3
 
 
 # poor man's (me) mapping from PxCoords2d to CamCoords2d

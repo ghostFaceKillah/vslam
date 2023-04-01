@@ -4,6 +4,9 @@ I see a bunch of interesting ways to debug
 
 1) keyframe making debug
    a) draw birds eye view of depth estimation, etc
+2) pose tracking debugging
+
+After making these debuggers, I should make blogpost finally.
 
 
 2023-03-30

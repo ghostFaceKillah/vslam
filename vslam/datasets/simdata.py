@@ -4,7 +4,7 @@ import attr
 
 from sim.sim_types import Recording, Observation, CameraSpecs
 from utils.serialization import msgpack_loads, from_native_types
-from vslam.types import CameraIntrinsics
+from vslam.cam import CameraIntrinsics
 
 
 @attr.define

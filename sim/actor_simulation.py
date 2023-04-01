@@ -7,7 +7,8 @@ import numpy as onp
 from jax import numpy as np
 
 from plotting import Col, Padding, Row, TextRenderer, Packer
-from sim.birds_eye_view_render import get_view_spcifier_from_scene, render_birdseye_view, BirdseyeViewSpecifier
+from sim.birds_eye_view_render import get_view_specifier_from_scene, BirdseyeViewSpecifier, \
+    DisplayBirdseyeView
 from sim.egocentric_render import render_scene_pixelwise_depth
 from sim.sample_scenes import get_triangles_in_sky_scene_2, get_two_triangle_scene
 from sim.sim_types import RenderTriangle3d, CameraSpecs, Observation, Action, Recording
@@ -39,7 +40,7 @@ class TriangleSceneRenderer:
         triangles = get_two_triangle_scene()
         return cls(
             scene_triangles=triangles,
-            birdseye_view_specifier=get_view_spcifier_from_scene(
+            birdseye_view_specifier=get_view_specifier_from_scene(
                 triangles,
                 world_size=(10., 10.),
                 world_origin=(-5., -5.)
@@ -51,16 +52,18 @@ class TriangleSceneRenderer:
 
         triangles = get_triangles_in_sky_scene_2()
 
+        birdseye_view_specifier = get_view_specifier_from_scene(triangles)
+
         return cls(
             scene_triangles=triangles,
-            birdseye_view_specifier=get_view_spcifier_from_scene(triangles),
+            birdseye_view_specifier=birdseye_view_specifier
         )
 
     def render_first_person_view(self, camera_pose: CameraPoseSE3) -> BGRImageArray:
         """ Renders the scene from the perspective of the camera """
         jax_array = render_scene_pixelwise_depth(
-            self.camera.screen_h,
-            self.camera.screen_w,
+            self.camera.intrinsics.screen_h,
+            self.camera.intrinsics.screen_w,
             camera_pose,
             self.scene_triangles,
             self.camera.intrinsics,
@@ -72,18 +75,27 @@ class TriangleSceneRenderer:
         )
         return onp.array(jax_array)
 
-    def render_birdseye_view(self, camera_pose: CameraPoseSE3) -> BGRImageArray:
+    def render_birdseye_view(
+            self,
+            baselink_pose: CameraPoseSE3,
+
+    ) -> BGRImageArray:
         """ Renders the scene from birdseye view """
-        jax_array = render_birdseye_view(
-            self.camera.screen_h,
-            self.camera.screen_w,
-            self.birdseye_view_specifier,
-            camera_pose,
-            self.camera.intrinsics,
-            self.scene_triangles,
-            self.ground_color
+
+        display = DisplayBirdseyeView.from_view_specifier(view_specifier=self.birdseye_view_specifier)
+        display.draw_triangles(self.scene_triangles)
+
+        display.draw_viewport(
+            at_pose=baselink_pose @ self.left_eye_offset(),
+            camera_intrinsics=self.camera.intrinsics
         )
-        return onp.array(jax_array)
+
+        display.draw_viewport(
+            at_pose=baselink_pose @ self.right_eye_offset(),
+            camera_intrinsics=self.camera.intrinsics
+        )
+
+        return display.get_image()
 
     def render_left_eye(self, camera_pose: CameraPoseSE3) -> BGRImageArray:
         return self.render_first_person_view(camera_pose @ self.left_eye_offset())
@@ -121,10 +133,10 @@ class ManualActor:
     def act(self, obs: Observation) -> Action:
         # reacts to images from the environment
         img = self.layout.render({
-            'desc': self.text_renderer.render(f'frame {obs.frame_idx} pose {obs.camera_pose[:3, 3]}'),
+            'desc': self.text_renderer.render(f'frame {obs.frame_idx} pose {obs.baselink_pose[:3, 3]}'),
             'left_img': obs.left_eye_img,
             'right_img': obs.right_eye_img,
-            'birdseye_view': magnify(obs.bev_img, 0.5),
+            'birdseye_view': magnify(obs.bev_img, 1.0),
         })
 
         cv2.imshow('scene', onp.array(img))

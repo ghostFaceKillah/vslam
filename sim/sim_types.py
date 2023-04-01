@@ -7,8 +7,9 @@ from sim.clipping import ClippingSurfaces
 from sim.ui import InteractionTransforms
 from utils.colors import BGRCuteColors
 from utils.custom_types import Array, BGRColor, BGRImageArray
+from vslam.cam import CameraIntrinsics
 from vslam.poses import get_SE3_pose
-from vslam.types import TransformSE3, CameraIntrinsics, CameraPoseSE3
+from vslam.types import TransformSE3, CameraPoseSE3
 
 
 @attr.define
@@ -67,6 +68,8 @@ class CameraSpecs:
             fy=screen_h / 3 * f_mod,
             cx=screen_w / 2,
             cy=screen_h / 2,
+            screen_h=screen_h,
+            screen_w=screen_w
         )
 
         return cls(

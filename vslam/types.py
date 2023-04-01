@@ -1,4 +1,3 @@
-import attr
 import numpy as np
 
 from utils.custom_types import Array
@@ -9,8 +8,6 @@ Points2d = Array['N,2', np.float64]
 
 CameraIntrinsicMatrix = Array['3,3', np.float64]
 Cam3dHomogToPxMatrix = Array['3,2', np.float64]
-
-
 
 
 """
@@ -36,7 +33,7 @@ ZP_uv =  Z *  [v]  = K(R P_w + T) = KTP
 
 
 CameraPoseSE3 = Array['4,4', np.float64]
-TransformSE3 = Array['4,4', np.float64]
+TransformSE3 = Array['4,4', np.float64]   # TODO: Unify Camera pose and transform
 Pose2DArray = Array['3', np.float64]   # x, y, theta in a plane
 CameraRotationSO3 = Array['3,3', np.float64]
 CameraTranslationVector = Array['3', np.float64]
@@ -69,27 +66,3 @@ WorldCoords3D
 """
 
 ReprojectionErrorVector = Array['2', np.float64]
-
-
-@attr.s(auto_attribs=True)
-class CameraIntrinsics:
-    fx: float
-    fy: float
-    cx: float
-    cy: float
-
-    def to_matrix(self) -> CameraIntrinsicMatrix:
-        return np.array([
-            [self.fx, 0, self.cx],
-            [0, self.fy, self.cy],
-            [0, 0, 1]
-        ], dtype=np.float64)
-
-    def get_homo_cam_coords_to_px_coords_matrix(self):
-        # CamCoords3dHomog to PxCoords2d matrix
-        return np.array([
-            [0, self.fy, self.cy],
-            [self.fx, 0, self.cx],
-        ], dtype=np.float64)
-
-

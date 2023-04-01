@@ -8,9 +8,10 @@ from utils.colors import BGRCuteColors
 from utils.custom_types import PixelCoordArray, BGRColor, BGRImageArray
 from utils.cv2_but_its_typed import cv2_fill_poly, cv2_line
 from utils.image import get_canvas
+from vslam.cam import CameraIntrinsics
 from vslam.math import normalize_vector
 from vslam.transforms import homogenize
-from vslam.types import CameraPoseSE3, CameraIntrinsics, Point2d, Points2d
+from vslam.types import CameraPoseSE3, Point2d, Points2d
 
 
 @attr.define
@@ -38,7 +39,7 @@ def bev_2d_world_to_pixel(
     return discretized
 
 
-def get_view_spcifier_from_scene(
+def get_view_specifier_from_scene(
         scene: List[RenderTriangle3d],
         world_origin: Optional[Point2d] = None,
         world_size: Optional[Tuple[float, float]] = None,
@@ -68,19 +69,19 @@ def get_view_spcifier_from_scene(
 
 
 def draw_viewport(
-    screen_h: int,
-    screen_w: int,
     view_specifier: BirdseyeViewSpecifier,
     camera_pose: CameraPoseSE3,
     camera_intrinsics: CameraIntrinsics,
     image: BGRImageArray,
-    whiskers_length_m: float = 3.0,
+    whiskers_length_m: float = 5.0,
     whiskers_thickness_px: int = 2,
+    whiskers_color: BGRColor = BGRCuteColors.OFF_WHITE
 ):
     """ Draws viewport on the image """
+    # TODO: draw image plane ?
     # we want to draw viewport etc
     extreme_left = - camera_intrinsics.cx / camera_intrinsics.fx
-    extreme_right = (screen_w - camera_intrinsics.cx) / camera_intrinsics.fx
+    extreme_right = (camera_intrinsics.screen_w - camera_intrinsics.cx) / camera_intrinsics.fx
 
     # not really cam, there is implicit coord flip here
     left_vector_in_cam = whiskers_length_m * normalize_vector(onp.array([1., extreme_right, 0.]))
@@ -94,13 +95,11 @@ def draw_viewport(
     right_px = bev_2d_world_to_pixel(right_homog[:2], view_specifier)
     center_px = bev_2d_world_to_pixel(camera_pose[:2, -1], view_specifier)
 
-    cv2_line(image, left_px, center_px, color=BGRCuteColors.OFF_WHITE, thickness=whiskers_thickness_px)
-    cv2_line(image, right_px, center_px, color=BGRCuteColors.OFF_WHITE, thickness=whiskers_thickness_px)
+    cv2_line(image, left_px, center_px, color=whiskers_color, thickness=whiskers_thickness_px)
+    cv2_line(image, right_px, center_px, color=whiskers_color, thickness=whiskers_thickness_px)
 
 
 def render_birdseye_view(
-        screen_h: int,
-        screen_w: int,
         view_specifier: BirdseyeViewSpecifier,
         camera_pose: CameraPoseSE3,
         camera_intrinsics: CameraIntrinsics,
@@ -118,7 +117,50 @@ def render_birdseye_view(
     for triangle_pts, triangle in zip(pixel_points, triangles):
         cv2_fill_poly(triangle_pts, canvas, color=triangle.front_face_color)
 
-    draw_viewport(screen_h, screen_w, view_specifier, camera_pose, camera_intrinsics, canvas)
+    draw_viewport(view_specifier, camera_pose, camera_intrinsics, canvas)
 
     return canvas
 
+
+@attr.define
+class DisplayBirdseyeView:
+    view_specifier: BirdseyeViewSpecifier
+    canvas: BGRImageArray
+
+    @classmethod
+    def from_view_specifier(
+        cls,
+        view_specifier: BirdseyeViewSpecifier,
+        ground_color: BGRColor = tuple(x - 20 for x in BGRCuteColors.CYAN)
+    ):
+        x_size, y_size = view_specifier.get_pixel_size()
+        canvas = get_canvas(shape=(x_size, y_size, 3), background_color=ground_color)
+        return cls(view_specifier, canvas)
+
+    def draw_viewport(
+            self,
+            at_pose: CameraPoseSE3,
+            camera_intrinsics: CameraIntrinsics   # viewport is for drawing viewports and not general poses
+    ) -> None:
+        """ Draw viewport """
+        draw_viewport(
+            self.view_specifier,
+            at_pose,
+            camera_intrinsics,
+            self.canvas
+        )
+
+    def draw_triangles(
+        self,
+        triangles: List[RenderTriangle3d],
+    ) -> None:
+        """ aka draw scene """
+
+        all_points = onp.array([triangle.points[:, :2] for triangle in triangles])
+        pixel_points = bev_2d_world_to_pixel(all_points, self.view_specifier)
+
+        for triangle_pts, triangle in zip(pixel_points, triangles):
+            cv2_fill_poly(triangle_pts, self.canvas, color=triangle.front_face_color)
+
+    def get_image(self) -> BGRImageArray:
+        return self.canvas
