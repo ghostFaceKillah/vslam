@@ -7,7 +7,7 @@ import numpy as onp
 from jax import numpy as np
 
 from plotting import Col, Padding, Row, TextRenderer, Packer
-from sim.birds_eye_view_render import get_view_spcifier_from_scene, render_birdseye_view, BirdseyeViewParams
+from sim.birds_eye_view_render import get_view_spcifier_from_scene, render_birdseye_view, BirdseyeViewSpecifier
 from sim.egocentric_render import render_scene_pixelwise_depth
 from sim.sample_scenes import get_triangles_in_sky_scene_2, get_two_triangle_scene
 from sim.sim_types import RenderTriangle3d, CameraSpecs, Observation, Action, Recording
@@ -24,7 +24,7 @@ from vslam.types import CameraPoseSE3, Vector3d
 @attr.define
 class TriangleSceneRenderer:
     scene_triangles: List[RenderTriangle3d]
-    birdseye_view_specifier: BirdseyeViewParams
+    birdseye_view_specifier: BirdseyeViewSpecifier
 
     camera: CameraSpecs = attr.field(factory=CameraSpecs.from_default)
 

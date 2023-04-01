@@ -14,7 +14,7 @@ from vslam.types import CameraPoseSE3, CameraIntrinsics, Point2d, Points2d
 
 
 @attr.define
-class BirdseyeViewParams:
+class BirdseyeViewSpecifier:
     """ Parameters for rendering a birdseye view"""
     resolution: float    # how many meters per pixel
     origin: Point2d
@@ -29,7 +29,7 @@ class BirdseyeViewParams:
 
 def bev_2d_world_to_pixel(
         world_coords: Points2d,
-        view_specifier: BirdseyeViewParams
+        view_specifier: BirdseyeViewSpecifier
 ) -> PixelCoordArray:
     """ Convert 2d world coordinates to pixel coordinates"""
 
@@ -43,7 +43,7 @@ def get_view_spcifier_from_scene(
         world_origin: Optional[Point2d] = None,
         world_size: Optional[Tuple[float, float]] = None,
         resolution: float = 0.05,
-) -> BirdseyeViewParams:
+) -> BirdseyeViewSpecifier:
     """ Get a view specifier from a scene """
 
     if world_size is None or world_origin is None:
@@ -60,7 +60,7 @@ def get_view_spcifier_from_scene(
     assert world_size[0] > 0
     assert world_size[1] > 0
 
-    return BirdseyeViewParams(
+    return BirdseyeViewSpecifier(
         resolution=resolution,
         origin=world_origin,
         world_size=world_size
@@ -70,7 +70,7 @@ def get_view_spcifier_from_scene(
 def draw_viewport(
     screen_h: int,
     screen_w: int,
-    view_specifier: BirdseyeViewParams,
+    view_specifier: BirdseyeViewSpecifier,
     camera_pose: CameraPoseSE3,
     camera_intrinsics: CameraIntrinsics,
     image: BGRImageArray,
@@ -101,7 +101,7 @@ def draw_viewport(
 def render_birdseye_view(
         screen_h: int,
         screen_w: int,
-        view_specifier: BirdseyeViewParams,
+        view_specifier: BirdseyeViewSpecifier,
         camera_pose: CameraPoseSE3,
         camera_intrinsics: CameraIntrinsics,
         triangles: List[RenderTriangle3d],
@@ -121,3 +121,4 @@ def render_birdseye_view(
     draw_viewport(screen_h, screen_w, view_specifier, camera_pose, camera_intrinsics, canvas)
 
     return canvas
+
