@@ -1,4 +1,4 @@
-from typing import List, Iterable, Optional
+from typing import List, Iterable, Optional, Dict
 
 import attr
 import cv2
@@ -9,6 +9,7 @@ from plotting import Packer, Col, Row, Padding, TextRenderer
 from utils.colors import BGRCuteColors
 from utils.custom_types import BinaryFeature, BGRImageArray, Array, Pixel
 from utils.cv2_but_its_typed import cv2_circle
+from utils.enum_utils import StrEnum
 from utils.image import take_crop_around, magnify
 from utils.profiling import just_time
 
@@ -161,6 +162,13 @@ class OrbBasedFeatureMatcher:
         return self.match(left_detections, right_detections)
 
 
+class FeatureMatchDebugPanes(StrEnum):
+    LEFT = 'left'
+    RIGHT = 'right'
+    LEFT_CROP = 'left_crop'
+    RIGHT_CROP = 'right_crop'
+
+
 @attr.define
 class FeatureMatchDebugger:
     ui_layout: Packer
@@ -169,10 +177,56 @@ class FeatureMatchDebugger:
     def from_defaults(cls):
         layout = Col(
             Row(Padding("desc")),
-            Row(Padding('left_crop'), Padding('left'), Padding('right'), Padding('right_crop')),
+            Row(
+                Padding(FeatureMatchDebugPanes.LEFT_CROP),
+                Padding(FeatureMatchDebugPanes.LEFT),
+                Padding(FeatureMatchDebugPanes.RIGHT),
+                Padding(FeatureMatchDebugPanes.RIGHT_CROP)
+            ),
         )
 
         return cls(ui_layout=layout)
+
+    def get_baseline_images(
+            self,
+            from_img: BGRImageArray,
+            to_img: BGRImageArray,
+            matches: List[FeatureMatch],
+    ):
+        # draw the matches
+        from_canvas_img = np.copy(from_img)
+        to_canvas_img = np.copy(to_img)
+
+        for match in matches:
+            cv2_circle(from_canvas_img, match.get_from_keypoint_px()[::-1], color=BGRCuteColors.GRASS_GREEN, radius=1,
+                       thickness=1)
+            cv2_circle(to_canvas_img, match.get_to_keypoint_px()[::-1], color=BGRCuteColors.GRASS_GREEN, radius=1,
+                       thickness=1)
+
+        return from_canvas_img, to_canvas_img
+
+    def get_debug_image_dict_for_match(
+        self,
+        from_canvas_img,
+        to_canvas_img,
+        match
+    ) -> Dict[FeatureMatchDebugPanes, BGRImageArray]:
+        from_img = np.copy(from_canvas_img)
+        to_img = np.copy(to_canvas_img)
+
+        crop_from = take_crop_around(from_canvas_img, around_point=match.get_from_keypoint_px(), crop_size=(32, 32))
+        crop_to = take_crop_around(to_canvas_img, around_point=match.get_to_keypoint_px(), crop_size=(32, 32))
+
+        cv2_circle(from_img, match.get_from_keypoint_px()[::-1], color=BGRCuteColors.ORANGE, radius=10, thickness=4)
+        cv2_circle(to_img, match.get_to_keypoint_px()[::-1], color=BGRCuteColors.ORANGE, radius=10, thickness=4)
+
+        return {
+            FeatureMatchDebugPanes.LEFT: from_img,
+            FeatureMatchDebugPanes.RIGHT: to_img,
+            FeatureMatchDebugPanes.LEFT_CROP: magnify(crop_from, factor=4.0),
+            FeatureMatchDebugPanes.RIGHT_CROP: magnify(crop_to, factor=4.0),
+        }
+        pass
 
     def render(
         self,
@@ -181,42 +235,24 @@ class FeatureMatchDebugger:
         matches: List[FeatureMatch],
         depths: Optional[List[float]] = None
     ) -> Iterable[BGRImageArray]:
-        # draw the matches
-        from_canvas_img = np.copy(from_img)
-        to_canvas_img = np.copy(to_img)
 
         assert depths is None or len(depths) == len(matches), f'{len(depths)=} != {len(matches)=}'
+        from_canvas_img, to_canvas_img = self.get_baseline_images(from_img, to_img, matches)
 
         if depths is None:
             depth_txts = [''] * len(matches)
         else:
             depth_txts = ['diverged' if depth is None else f'depth: {depth:.2f}' for depth in depths]
 
-        for match in matches:
-            cv2_circle(from_canvas_img, match.get_from_keypoint_px()[::-1], color=BGRCuteColors.GRASS_GREEN, radius=1,
-                       thickness=1)
-            cv2_circle(to_canvas_img, match.get_to_keypoint_px()[::-1], color=BGRCuteColors.GRASS_GREEN, radius=1,
-                       thickness=1)
-
         for i, (match, depth_txt) in enumerate(zip(matches, depth_txts)):
-            from_img_ = np.copy(from_canvas_img)
-            to_img_ = np.copy(to_canvas_img)
 
-            crop_from = take_crop_around(from_canvas_img, around_point=match.get_from_keypoint_px(), crop_size=(32, 32))
-            crop_to = take_crop_around(to_canvas_img, around_point=match.get_to_keypoint_px(), crop_size=(32, 32))
-
-            cv2_circle(from_img_, match.get_from_keypoint_px()[::-1], color=BGRCuteColors.ORANGE, radius=10, thickness=4)
-            cv2_circle(to_img_, match.get_to_keypoint_px()[::-1], color=BGRCuteColors.ORANGE, radius=10, thickness=4)
+            name_to_image = self.get_debug_image_dict_for_match(from_canvas_img, to_canvas_img, match)
 
             desc = f"Match {i} out of {len(matches)}. Euc dist = {match.get_pixel_distance():.2f} " \
                    f"Hamming dist = {match.get_hamming_distance():.2f} " + depth_txt
 
-            img = self.ui_layout.render({
-                'desc': TextRenderer().render(desc),
-                'left': from_img_,
-                'right': to_img_,
-                'left_crop': magnify(crop_from, factor=4.0),
-                'right_crop': magnify(crop_to, factor=4.0),
-            })
+            name_to_image['desc'] = TextRenderer().render(desc)
+
+            img = self.ui_layout.render(name_to_image)
 
             yield img
