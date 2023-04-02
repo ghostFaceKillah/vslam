@@ -57,6 +57,7 @@ def estimate_keyframe(
     right_detections = matcher.detect(obs.right_eye_img)
     feature_matches = matcher.match(left_detections, right_detections)
 
+    # def estimate depth from feature matches
     from_kp_px_coords_2d = np.array([fm.get_from_keypoint_px() for fm in feature_matches], dtype=np.int64)
     from_kp_cam_coords_3d_homo = px_2d_to_cam_coords_3d_homo(from_kp_px_coords_2d, cam_intrinsics)
 
@@ -98,10 +99,10 @@ def estimate_keyframe(
     # let's do it now!
 
     if debug_depth_estimation:
-        debugger = TriangulationDebugger.from_defaults()
+        depth_est_debugger = TriangulationDebugger.from_defaults()
         assert debug_scene is not None, "If we wanna visualize depth debug, we need scene triangles"
 
-        img_iterator = debugger.render(
+        img_iterator = depth_est_debugger.render(
             obs.left_eye_img,
             obs.right_eye_img,
             feature_matches,

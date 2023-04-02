@@ -1,3 +1,15 @@
+2023-04-02
+----------
+
+When I cast a ray from optical center of left eye to (visual) apex of triangle, I see that the lines don't overlap.
+
+Error can come from may different sources.
+- mapping from image coords to real coords
+- birdeye view rendering
+- 
+As a way to cut through noise, let us draw lines to triangle ends
+
+
 2023-04-01
 ----------
 Nice, I wrote the keyframe making debug and sth is clearly off.
