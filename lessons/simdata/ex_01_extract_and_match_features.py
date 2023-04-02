@@ -4,7 +4,8 @@ import cv2
 
 from defs import ROOT_DIR
 from vslam.datasets.simdata import SimDataStreamer
-from vslam.features import OrbBasedFeatureMatcher, FeatureMatchDebugger
+from vslam.debug import FeatureMatchDebugger
+from vslam.features import OrbBasedFeatureMatcher
 
 if __name__ == '__main__':
     dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-02-04--17-08-25.msgpack')

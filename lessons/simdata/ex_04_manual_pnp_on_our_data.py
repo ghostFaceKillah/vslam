@@ -21,7 +21,8 @@ from sim.sim_types import Observation, CameraSpecs, CameraExtrinsics
 from utils.custom_types import BGRImageArray
 from vslam.cam import CameraIntrinsics
 from vslam.datasets.simdata import SimDataStreamer
-from vslam.features import OrbBasedFeatureMatcher, OrbFeatureDetections, FeatureMatchDebugger
+from vslam.debug import FeatureMatchDebugger, TriangulationDebugger
+from vslam.features import OrbBasedFeatureMatcher, OrbFeatureDetections
 from vslam.pnp import gauss_netwon_pnp
 from vslam.poses import get_SE3_pose, SE3_pose_to_xytheta
 from vslam.transforms import px_2d_to_cam_coords_3d_homo, SE3_inverse, px_2d_to_img_coords_2d, \
@@ -43,13 +44,13 @@ class _Keyframe:
 def estimate_keyframe(
         obs: Observation,
         matcher: OrbBasedFeatureMatcher,
-        current_pose: CameraPoseSE3,
+        baselink_pose: CameraPoseSE3,
         cam_intrinsics: CameraIntrinsics,
         cam_extrinsics: CameraExtrinsics,
-        debug_feature_matches: bool = True,
+        debug_feature_matches: bool = False,
         debug_depth_estimation: bool = True
 ):
-    left_cam_pose = current_pose @ cam_extrinsics.get_pose_of_left_cam_in_baselink()
+    left_cam_pose = baselink_pose @ cam_extrinsics.get_pose_of_left_cam_in_baselink()
 
     left_detections = matcher.detect(obs.left_eye_img)
     right_detections = matcher.detect(obs.right_eye_img)
@@ -103,7 +104,21 @@ def estimate_keyframe(
         - birdseye view
         - 
         """
-        ...
+        debugger = TriangulationDebugger.from_defaults()
+
+        img_iterator = debugger.render(
+            obs.left_eye_img,
+            obs.right_eye_img,
+            feature_matches,
+            depths,
+            baselink_pose,
+            cam_intrinsics,
+            cam_extrinsics
+        )
+
+        for img in img_iterator:
+            cv2.imshow('wow', img)
+            cv2.waitKey(-1)
 
     return _Keyframe(
         image=obs.left_eye_img,
@@ -240,7 +255,7 @@ class Frontend:
                 keyframe = estimate_keyframe(
                     obs=obs,
                     matcher=self.matcher,
-                    current_pose=pose_estimate,
+                    baselink_pose=pose_estimate,
                     cam_intrinsics=self.cam_specs.cam_intrinsics,
                     cam_extrinsics=self.cam_specs.cam_extrinsics,
                 )
@@ -266,8 +281,9 @@ class Frontend:
         else:
             ...
 
+
 def run_couple_first_frames():
-    dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-03-31--20-27-03.msgpack')
+    dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-04-01--22-05-38.msgpack')
     data_streamer = SimDataStreamer.from_dataset_path(dataset_path=dataset_path)
 
     cam_intrinsics = data_streamer.get_cam_intrinsics()
@@ -286,7 +302,7 @@ def run_couple_first_frames():
             keyframe = estimate_keyframe(
                 obs=obs,
                 matcher=matcher,
-                current_pose=pose,
+                baselink_pose=pose,
                 cam_intrinsics=data_streamer.get_cam_specs().intrinsics,
                 cam_extrinsics=data_streamer.get_cam_specs().extrinsics,
             )

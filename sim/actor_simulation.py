@@ -85,12 +85,12 @@ class TriangleSceneRenderer:
         display = DisplayBirdseyeView.from_view_specifier(view_specifier=self.birdseye_view_specifier)
         display.draw_triangles(self.scene_triangles)
 
-        display.draw_viewport(
+        display.draw_view_cone(
             at_pose=baselink_pose @ self.left_eye_offset(),
             camera_intrinsics=self.camera.intrinsics
         )
 
-        display.draw_viewport(
+        display.draw_view_cone(
             at_pose=baselink_pose @ self.right_eye_offset(),
             camera_intrinsics=self.camera.intrinsics
         )

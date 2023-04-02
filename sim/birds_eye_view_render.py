@@ -27,6 +27,23 @@ class BirdseyeViewSpecifier:
         r = self.resolution
         return int(x / r),  int(y / r)
 
+    @classmethod
+    def from_view_center(
+        cls,
+        view_center: Tuple[float, float],
+        world_size: Tuple[float, float],
+        resolution: float = 0.05,  # how many meters per pixel
+    ):
+        """   """
+
+        origin = view_center[0] - world_size[0] / 2, view_center[1] - world_size[1] / 2
+
+        return cls(
+            resolution=resolution,
+            origin=origin,
+            world_size=world_size
+        )
+
 
 def bev_2d_world_to_pixel(
         world_coords: Points2d,
@@ -68,7 +85,7 @@ def get_view_specifier_from_scene(
     )
 
 
-def draw_viewport(
+def draw_view_cone(
     view_specifier: BirdseyeViewSpecifier,
     camera_pose: CameraPoseSE3,
     camera_intrinsics: CameraIntrinsics,
@@ -117,7 +134,7 @@ def render_birdseye_view(
     for triangle_pts, triangle in zip(pixel_points, triangles):
         cv2_fill_poly(triangle_pts, canvas, color=triangle.front_face_color)
 
-    draw_viewport(view_specifier, camera_pose, camera_intrinsics, canvas)
+    draw_view_cone(view_specifier, camera_pose, camera_intrinsics, canvas)
 
     return canvas
 
@@ -137,17 +154,19 @@ class DisplayBirdseyeView:
         canvas = get_canvas(shape=(x_size, y_size, 3), background_color=ground_color)
         return cls(view_specifier, canvas)
 
-    def draw_viewport(
+    def draw_view_cone(
             self,
             at_pose: CameraPoseSE3,
-            camera_intrinsics: CameraIntrinsics   # viewport is for drawing viewports and not general poses
+            camera_intrinsics: CameraIntrinsics,   # viewport is for drawing viewports and not general poses
+            whiskers_thickness_px: int = 2,
     ) -> None:
         """ Draw viewport """
-        draw_viewport(
+        draw_view_cone(
             self.view_specifier,
             at_pose,
             camera_intrinsics,
-            self.canvas
+            self.canvas,
+            whiskers_thickness_px=whiskers_thickness_px
         )
 
     def draw_triangles(
