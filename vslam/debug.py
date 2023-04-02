@@ -189,38 +189,37 @@ class TriangulationDebugger:
         left_pose = baselink_pose @ camera_extrinsics.get_pose_of_left_cam_in_baselink()
         left_img_keypoint_px = match.get_from_keypoint_px()
 
-        right_pose = baselink_pose @ camera_extrinsics.get_pose_of_right_cam_in_baselink()
-        right_img_keypoint_px = match.get_to_keypoint_px()
+        # right_pose = baselink_pose @ camera_extrinsics.get_pose_of_right_cam_in_baselink()
+        # right_img_keypoint_px = match.get_to_keypoint_px()
 
-        def draw_point(
-                pose,
-                keypoint_px
-        ):
-            keypoint_in_cam = homogenize(px_2d_to_cam_coords_3d_homo(np.array([keypoint_px]), camera_intrinsics)[0])
-            world_in_flip = get_world_to_cam_coord_flip_matrix().T
-            keypoint_in_cam_unflipped = world_in_flip @ keypoint_in_cam
-            keypoint_in_cam_unflipped[-1] = 0   # it is direction, not a pose
-            keypoint_in_world = pose @ keypoint_in_cam_unflipped
+        keypoint_in_cam = homogenize(px_2d_to_cam_coords_3d_homo(np.array([left_img_keypoint_px]), camera_intrinsics)[0])
+        world_in_flip = get_world_to_cam_coord_flip_matrix().T
+        keypoint_in_cam_unflipped = world_in_flip @ keypoint_in_cam
+        keypoint_in_cam_unflipped[-1] = 0  # it is direction, not a pose
+        keypoint_in_world = left_pose @ keypoint_in_cam_unflipped
 
-            start_3d = pose[:3, -1]   # write a function, comeon
+        start_3d = left_pose[:3, -1]  # write a function, comeon
 
-            eff_depth = depth_or_none if depth_or_none is not None else 100.0
+        eff_depth = depth_or_none if depth_or_none is not None else 100.0
 
-            end_3d = start_3d + eff_depth * keypoint_in_world[:3]
+        end_3d = start_3d + eff_depth * keypoint_in_world[:3]
 
-            start_2d = start_3d[:2]
-            end_2d = end_3d[:2]
+        start_2d = start_3d[:2]
 
-            display_renderer.draw_line(
-                from_pt=start_2d,
-                to_pt=end_2d,
-                color=BGRCuteColors.DARK_BLUE
-            )
+        for triangle in triangles:
+            for point in triangle.points:
+                end_2d = point[:2]
+                x = 1
+                display_renderer.draw_line(
+                    from_pt=start_2d,
+                    to_pt=end_2d,
+                    color=BGRCuteColors.DARK_BLUE
+                )
 
-        draw_point(left_pose, left_img_keypoint_px)
-        draw_point(right_pose, right_img_keypoint_px)
+                # draw_point(left_pose, left_img_keypoint_px)
+                # draw_point(right_pose, right_img_keypoint_px)
 
-        return display_renderer.get_image()
+                yield display_renderer.get_image()
 
     def render(
         self,
@@ -250,7 +249,8 @@ class TriangulationDebugger:
                    f"Hamming dist = {match.get_hamming_distance():.2f} " + depth_txt
 
             name_to_image[GeneralDebugPanes.DESC] = TextRenderer().render(desc)
-            name_to_image[TriangulationDebugPanes.TRIANGULATION] = self.draw_triangulation_bird_eye_view(
+
+            renderer = self.draw_triangulation_bird_eye_view(
                 baselink_pose=baselink_pose,
                 match=match,
                 camera_intrinsics=camera_intrinsics,
@@ -259,9 +259,11 @@ class TriangulationDebugger:
                 depth_or_none=depth
             )
 
-            img = self.ui_layout.render(name_to_image)
+            for img_ in renderer:
+                name_to_image[TriangulationDebugPanes.TRIANGULATION] = img_
+                img = self.ui_layout.render(name_to_image)
 
-            yield img
+                yield img
 
 
 
