@@ -182,7 +182,10 @@ class Simulation:
         initial_baselink_pose: CameraPoseSE3 = get_SE3_pose(x=-2.5),   # looking toward +x direction in world frame, +z in camera
     ) -> Recording:
         """ Simulates the environment. """
-        recorder = Recording(self.scene_renderer.camera)
+        recorder = Recording(
+            camera_specs=self.scene_renderer.camera,
+            scene=self.scene_renderer.scene_triangles
+        )
 
         baselink_pose = initial_baselink_pose
         sim_time = time.time()

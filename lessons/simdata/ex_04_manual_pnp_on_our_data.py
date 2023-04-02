@@ -10,14 +10,14 @@ then we will do the full nice frontend implementation.
 """
 import os
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, List
 
 import attr
 import cv2
 import numpy as np
 
 from defs import ROOT_DIR
-from sim.sim_types import Observation, CameraSpecs, CameraExtrinsics
+from sim.sim_types import Observation, CameraSpecs, CameraExtrinsics, RenderTriangle3d
 from utils.custom_types import BGRImageArray
 from vslam.cam import CameraIntrinsics
 from vslam.datasets.simdata import SimDataStreamer
@@ -48,7 +48,8 @@ def estimate_keyframe(
         cam_intrinsics: CameraIntrinsics,
         cam_extrinsics: CameraExtrinsics,
         debug_feature_matches: bool = False,
-        debug_depth_estimation: bool = True
+        debug_depth_estimation: bool = True,
+        debug_scene: Optional[List[RenderTriangle3d]] = None,   # purely for debug vis of depth
 ):
     left_cam_pose = baselink_pose @ cam_extrinsics.get_pose_of_left_cam_in_baselink()
 
@@ -97,14 +98,8 @@ def estimate_keyframe(
     # let's do it now!
 
     if debug_depth_estimation:
-        """
-        what do we want to draw ...
-        
-        Same thing as feature match debugger, but additionally:
-        - birdseye view
-        - 
-        """
         debugger = TriangulationDebugger.from_defaults()
+        assert debug_scene is not None, "If we wanna visualize depth debug, we need scene triangles"
 
         img_iterator = debugger.render(
             obs.left_eye_img,
@@ -113,7 +108,8 @@ def estimate_keyframe(
             depths,
             baselink_pose,
             cam_intrinsics,
-            cam_extrinsics
+            cam_extrinsics,
+            debug_scene
         )
 
         for img in img_iterator:
@@ -283,8 +279,9 @@ class Frontend:
 
 
 def run_couple_first_frames():
-    dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-04-01--22-05-38.msgpack')
+    dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-04-01--22-41-24.msgpack')
     data_streamer = SimDataStreamer.from_dataset_path(dataset_path=dataset_path)
+    scene = data_streamer.recorded_data.scene
 
     cam_intrinsics = data_streamer.get_cam_intrinsics()
     matcher = OrbBasedFeatureMatcher.build()
@@ -305,6 +302,7 @@ def run_couple_first_frames():
                 baselink_pose=pose,
                 cam_intrinsics=data_streamer.get_cam_specs().intrinsics,
                 cam_extrinsics=data_streamer.get_cam_specs().extrinsics,
+                debug_scene=scene
             )
             x = 1
         else:

@@ -32,7 +32,7 @@ def px_2d_to_cam_coords_3d_homo(
 def get_world_to_cam_coord_flip_matrix() -> TransformSE3:
     """ x = y, y = -z, z = x,
     Will take WorldCoords3D to CamCoords3d.
-    aka "world in flip" matrix
+    aka "flip in world" matrix
     """
     return np.array([
         [0, 1, 0, 0],

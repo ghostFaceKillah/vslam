@@ -35,6 +35,7 @@ ZP_uv =  Z *  [v]  = K(R P_w + T) = KTP
 CameraPoseSE3 = Array['4,4', np.float64]
 TransformSE3 = Array['4,4', np.float64]   # TODO: Unify Camera pose and transform
 Pose2DArray = Array['3', np.float64]   # x, y, theta in a plane
+UnorientedPose2DArray = Array['2', np.float64]   # x, y in z=0 floor plane
 CameraRotationSO3 = Array['3,3', np.float64]
 CameraTranslationVector = Array['3', np.float64]
 Vector3dHomogenous = Array['4', np.float64]   # TODO: nomenclature difference between having 0 on last coordinate or not

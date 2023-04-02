@@ -5,7 +5,7 @@ import numpy as np
 
 from plotting import Packer, Col, Row, Padding, TextRenderer
 from sim.birds_eye_view_render import DisplayBirdseyeView, BirdseyeViewSpecifier
-from sim.sim_types import CameraExtrinsics
+from sim.sim_types import CameraExtrinsics, RenderTriangle3d
 from utils.colors import BGRCuteColors
 from utils.custom_types import BGRImageArray
 from utils.cv2_but_its_typed import cv2_circle
@@ -13,6 +13,7 @@ from utils.enum_utils import StrEnum
 from utils.image import take_crop_around, magnify
 from vslam.cam import CameraIntrinsics
 from vslam.features import FeatureMatch
+from vslam.transforms import px_2d_to_cam_coords_3d_homo, get_world_to_cam_coord_flip_matrix, homogenize
 from vslam.types import CameraPoseSE3
 
 
@@ -146,14 +147,17 @@ class TriangulationDebugger:
     def draw_triangulation_bird_eye_view(
             self,
             baselink_pose: CameraPoseSE3,
+            match: FeatureMatch,
             camera_intrinsics: CameraIntrinsics,
             camera_extrinsics: CameraExtrinsics,
+            triangles: List[RenderTriangle3d],
+            depth_or_none: Optional[float]
     ) -> BGRImageArray:
         """
         Things to draw:
         1) [X] triangles, but make the color bleaker
         2) [X] view cones
-        NO [ ] 3) baselink as a point
+        NO [N] 3) baselink as a point
         4) [ ] line from left eye's focal point to the right eye's feature
         5) [ ] line from right eye's focal point to the left eye's feature
         NO [ ] 6) line from baselink to intersection of the 2 above lines
@@ -164,9 +168,11 @@ class TriangulationDebugger:
         display_renderer = DisplayBirdseyeView.from_view_specifier(
             view_specifier=BirdseyeViewSpecifier.from_view_center(
                 view_center=(baselink_pose[0, -1], baselink_pose[1, -1]),
-                world_size=(20.0, 20.0)
+                world_size=(60.0, 60.0)
             )
         )
+
+        display_renderer.draw_triangles(triangles)
 
         display_renderer.draw_view_cone(
             at_pose=baselink_pose @ camera_extrinsics.get_pose_of_left_cam_in_baselink(),
@@ -179,6 +185,41 @@ class TriangulationDebugger:
             whiskers_thickness_px=1
         )
 
+        # 4) [ ] line from left eye's focal point to the left eye's feature
+        left_pose = baselink_pose @ camera_extrinsics.get_pose_of_left_cam_in_baselink()
+        left_img_keypoint_px = match.get_from_keypoint_px()
+
+        right_pose = baselink_pose @ camera_extrinsics.get_pose_of_right_cam_in_baselink()
+        right_img_keypoint_px = match.get_to_keypoint_px()
+
+        def draw_point(
+                pose,
+                keypoint_px
+        ):
+            keypoint_in_cam = homogenize(px_2d_to_cam_coords_3d_homo(np.array([keypoint_px]), camera_intrinsics)[0])
+            world_in_flip = get_world_to_cam_coord_flip_matrix().T
+            keypoint_in_cam_unflipped = world_in_flip @ keypoint_in_cam
+            keypoint_in_cam_unflipped[-1] = 0   # it is direction, not a pose
+            keypoint_in_world = pose @ keypoint_in_cam_unflipped
+
+            start_3d = pose[:3, -1]   # write a function, comeon
+
+            eff_depth = depth_or_none if depth_or_none is not None else 100.0
+
+            end_3d = start_3d + eff_depth * keypoint_in_world[:3]
+
+            start_2d = start_3d[:2]
+            end_2d = end_3d[:2]
+
+            display_renderer.draw_line(
+                from_pt=start_2d,
+                to_pt=end_2d,
+                color=BGRCuteColors.DARK_BLUE
+            )
+
+        draw_point(left_pose, left_img_keypoint_px)
+        draw_point(right_pose, right_img_keypoint_px)
+
         return display_renderer.get_image()
 
     def render(
@@ -190,6 +231,7 @@ class TriangulationDebugger:
         baselink_pose: CameraPoseSE3,
         camera_intrinsics: CameraIntrinsics,
         camera_extrinsics: CameraExtrinsics,
+        triangles: List[RenderTriangle3d],
     ) -> Iterable[BGRImageArray]:
 
         assert depths is None or len(depths) == len(matches), f'{len(depths)=} != {len(matches)=}'
@@ -200,7 +242,7 @@ class TriangulationDebugger:
         else:
             depth_txts = ['diverged' if depth is None else f'depth: {depth:.2f}' for depth in depths]
 
-        for i, (match, depth_txt) in enumerate(zip(matches, depth_txts)):
+        for i, (match, depth_txt, depth) in enumerate(zip(matches, depth_txts, depths)):
 
             name_to_image = self.feature_match_debugger.get_debug_image_dict_for_match(from_canvas_img, to_canvas_img, match)
 
@@ -209,7 +251,12 @@ class TriangulationDebugger:
 
             name_to_image[GeneralDebugPanes.DESC] = TextRenderer().render(desc)
             name_to_image[TriangulationDebugPanes.TRIANGULATION] = self.draw_triangulation_bird_eye_view(
-                baselink_pose, camera_intrinsics, camera_extrinsics
+                baselink_pose=baselink_pose,
+                match=match,
+                camera_intrinsics=camera_intrinsics,
+                camera_extrinsics=camera_extrinsics,
+                triangles=triangles,
+                depth_or_none=depth
             )
 
             img = self.ui_layout.render(name_to_image)

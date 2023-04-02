@@ -11,7 +11,7 @@ from utils.image import get_canvas
 from vslam.cam import CameraIntrinsics
 from vslam.math import normalize_vector
 from vslam.transforms import homogenize
-from vslam.types import CameraPoseSE3, Point2d, Points2d
+from vslam.types import CameraPoseSE3, Point2d, Points2d, UnorientedPose2DArray
 
 
 @attr.define
@@ -36,7 +36,7 @@ class BirdseyeViewSpecifier:
     ):
         """   """
 
-        origin = view_center[0] - world_size[0] / 2, view_center[1] - world_size[1] / 2
+        origin = view_center[0] - world_size[1] / 2, view_center[1] - world_size[0] / 2
 
         return cls(
             resolution=resolution,
@@ -116,6 +116,20 @@ def draw_view_cone(
     cv2_line(image, right_px, center_px, color=whiskers_color, thickness=whiskers_thickness_px)
 
 
+def draw_line_on_bev(
+    image: BGRImageArray,
+    view_specifier: BirdseyeViewSpecifier,
+    from_pt: UnorientedPose2DArray,
+    to_pt: UnorientedPose2DArray,
+    color: BGRColor,
+    thickness: int = 1
+):
+    from_px = bev_2d_world_to_pixel(onp.array([from_pt]), view_specifier)[0]
+    to_px = bev_2d_world_to_pixel(onp.array([to_pt]), view_specifier)[0]
+
+    cv2_line(image, from_px, to_px, color=color, thickness=thickness)
+
+
 def render_birdseye_view(
         view_specifier: BirdseyeViewSpecifier,
         camera_pose: CameraPoseSE3,
@@ -167,6 +181,22 @@ class DisplayBirdseyeView:
             camera_intrinsics,
             self.canvas,
             whiskers_thickness_px=whiskers_thickness_px
+        )
+
+    def draw_line(
+            self,
+            from_pt: UnorientedPose2DArray,
+            to_pt: UnorientedPose2DArray,
+            color: BGRColor,
+            thickness: int = 1
+    ):
+        draw_line_on_bev(
+            self.canvas,
+            self.view_specifier,
+            from_pt,
+            to_pt,
+            color,
+            thickness
         )
 
     def draw_triangles(

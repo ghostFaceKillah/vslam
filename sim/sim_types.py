@@ -109,6 +109,7 @@ class Action:
 @attr.define
 class Recording:
     camera_specs: CameraSpecs
+    scene: List[RenderTriangle3d]
     observations: List[Observation] = attr.ib(factory=list)
 
     def record_observation(self, obs: Observation):
