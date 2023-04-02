@@ -1,3 +1,12 @@
+2023-04-01
+----------
+Nice, I wrote the keyframe making debug and sth is clearly off.
+The projection lines don't intersect where they shuold.
+
+Maybe cam intrinsics are off ? 
+I don't get it ... yet!
+
+
 2023-03-31
 ----------
 I see a bunch of interesting ways to debug
