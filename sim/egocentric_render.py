@@ -7,7 +7,7 @@ from sim.clipping import ClippingSurfaces, clip_triangles
 from sim.sim_types import RenderTriangle3d, RenderTrianglesPointsInCam
 from utils.custom_types import BGRColor, Array, JaxImageArray
 from vslam.cam import CameraIntrinsics
-from vslam.transforms import get_world_to_cam_coord_flip_matrix, SE3_inverse
+from vslam.transforms import get_world_to_cam_coord_flip_matrix, SE3_inverse, world_to_cam_4d
 from vslam.types import CameraPoseSE3, Vector3d, TransformSE3, ArrayOfColors
 
 
@@ -52,14 +52,10 @@ def _get_triangles_colors(
     return colors
 
 
-def get_pixel_center_coordinates(
-    screen_h: int,
-    screen_w: int,
-    cam_intrinsics: CameraIntrinsics,
-):
-    """ Get coordinates of the center of each pixel in the camera coordinate system """
-    ws = (np.arange(0, screen_w) - cam_intrinsics.cx) / cam_intrinsics.fx
-    hs = (np.arange(0, screen_h) - cam_intrinsics.cy) / cam_intrinsics.fy
+def get_pixel_center_coordinates(cam_intrinsics: CameraIntrinsics) -> Array['H,W,2', np.float32]:
+    """ Get coordinates of the center of each pixel in the image coordinate system """
+    ws = (np.arange(0, cam_intrinsics.screen_w) - cam_intrinsics.cx) / cam_intrinsics.fx
+    hs = (np.arange(0, cam_intrinsics.screen_h) - cam_intrinsics.cy) / cam_intrinsics.fy
     px_center_coords_in_cam = np.stack(np.meshgrid(ws, hs), axis=-1)
     return px_center_coords_in_cam
 
@@ -196,11 +192,11 @@ def render_scene_pixelwise_depth(
 
     """
     world_to_cam_flip = get_world_to_cam_coord_flip_matrix()
-    cam_pose_inv = SE3_inverse(camera_pose)
-    points = np.array([tri.points for tri in triangles])
-    cam_points = points @ cam_pose_inv.T @ world_to_cam_flip.T
 
-    triangle_cam_points = cam_points
+    points = np.array([tri.points for tri in triangles])
+    points_in_cam = world_to_cam_4d(points, camera_pose)
+
+    triangle_cam_points = points_in_cam
     front_colors = np.array([tri.front_face_color for tri in triangles], dtype=np.uint8)
     back_colors = np.array([tri.back_face_color for tri in triangles], dtype=np.uint8)
 
@@ -220,6 +216,7 @@ def render_scene_pixelwise_depth(
             back_colors, light_direction, shade_color
         )
 
+        # TODO: come on, write a function !
         unit_depth_cam_points = triangle_cam_points[..., :-1]
         triangle_depths = unit_depth_cam_points[..., -1]
         triangles_in_img_coords = (unit_depth_cam_points / triangle_depths[..., np.newaxis])[..., :-1]

@@ -79,7 +79,6 @@ def estimate_keyframe(
             cv2.imshow('wow', img)
             cv2.waitKey(-1)
 
-
     points_3d_est = []
     feature_descriptors = []
     keypoints = []
@@ -287,7 +286,7 @@ def run_couple_first_frames():
     cam_intrinsics = data_streamer.get_cam_intrinsics()
     matcher = OrbBasedFeatureMatcher.build()
 
-    initial_cam_pose = get_SE3_pose(x=-2.5, y=-1.0)
+    initial_cam_pose = get_SE3_pose(x=-2.5)
     # y = -1, because this is left eye, and cam offset was 2
     # this doesn't matter, and could be assumed to be all 0, but alignment to world frame will make debugging easier
 

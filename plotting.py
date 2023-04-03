@@ -45,6 +45,9 @@ class Packer(Protocol):
     def pack(self, name_to_img: Dict[str, ImageArray]) -> Packing:
         ...
 
+    def render(self, name_to_img: Dict[str, ImageArray]) -> ImageArray:
+        ...
+
 
 
 class _Ordering(StrEnum):

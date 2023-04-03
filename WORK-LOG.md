@@ -4,10 +4,18 @@
 When I cast a ray from optical center of left eye to (visual) apex of triangle, I see that the lines don't overlap.
 
 Error can come from may different sources.
-- mapping from image coords to real coords
-- birdeye view rendering
-- 
+- [?] mapping from image coords to real coords
+- [no] birdeye view rendering
+  
 As a way to cut through noise, let us draw lines to triangle ends
+
+birdeye view rendering looks perfect
+
+looks like conversion from camera px coords to world coords is next obvious candidate on the list
+we can do the classic idempotency check.
+
+to_cam(from_cam(world_coords)) == world_coords
+
 
 
 2023-04-01
