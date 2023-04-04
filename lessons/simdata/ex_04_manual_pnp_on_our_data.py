@@ -48,7 +48,7 @@ def estimate_keyframe(
         cam_intrinsics: CameraIntrinsics,
         cam_extrinsics: CameraExtrinsics,
         debug_feature_matches: bool = False,
-        debug_depth_estimation: bool = False,
+        debug_depth_estimation: bool = True,
         debug_scene: Optional[List[RenderTriangle3d]] = None,   # purely for debug vis of depth
 ):
     left_cam_pose = baselink_pose @ cam_extrinsics.get_pose_of_left_cam_in_baselink()
@@ -112,7 +112,9 @@ def estimate_keyframe(
             debug_scene
         )
 
-        for img in img_iterator:
+        for i, img in enumerate(img_iterator):
+            if i > 10:
+                break
             cv2.imshow('wow', img)
             cv2.waitKey(-1)
 
