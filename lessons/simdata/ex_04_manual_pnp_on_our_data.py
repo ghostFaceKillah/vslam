@@ -186,9 +186,14 @@ def estimate_pose_wrt_keyframe(
     return new_pose_estimate
 
 
+@attr.define
 class VelocityPoseTracker:
     # it predicts the next pose
     current_pose_estimate: CameraPoseSE3
+
+    @classmethod
+    def from_defaults(cls):
+        return cls(current_pose_estimate=np.eye(4, np.float64))
 
     def track(self, new_pose: CameraPoseSE3):
         # TODO: propagate it forward by one step
@@ -236,6 +241,12 @@ class FrontendState:
 
 
 @attr.s(auto_attribs=True)
+class FrontendDebugData:
+    """ Privileged information for the sake of debug """
+    scene: List[RenderTriangle3d]
+
+
+@attr.s(auto_attribs=True)
 class Frontend:
     """ At this point, it just groups up stuff related to Frontend """
     matcher: OrbBasedFeatureMatcher
@@ -245,6 +256,21 @@ class Frontend:
     pose_tracker: VelocityPoseTracker
     keyframe: Optional[_Keyframe] = None
     state: FrontendState = attr.Factory(FrontendState.Init)
+    debug_data: Optional[FrontendDebugData] = None
+
+    @classmethod
+    def from_defaults(
+        cls,
+        cam_specs: CameraSpecs,
+        start_pose: Optional[CameraPoseSE3] = None,
+        debug_data: Optional[FrontendDebugData] = None
+    ):
+        return cls(
+            matcher=OrbBasedFeatureMatcher.build(),
+            cam_specs=cam_specs,
+            pose_tracker=VelocityPoseTracker.from_defaults() if start_pose is None else VelocityPoseTracker(start_pose),
+            debug_data=debug_data
+        )
 
     def track(self, obs: Observation) -> CameraPoseSE3:
         pose_estimate = self.pose_tracker.get_next_baselink_in_world_pose_estimate()
@@ -254,9 +280,11 @@ class Frontend:
                     obs=obs,
                     matcher=self.matcher,
                     baselink_pose=pose_estimate,
-                    cam_intrinsics=self.cam_specs.cam_intrinsics,
-                    cam_extrinsics=self.cam_specs.cam_extrinsics,
+                    cam_intrinsics=self.cam_specs.intrinsics,
+                    cam_extrinsics=self.cam_specs.extrinsics,
+                    debug_scene=self.debug_data.scene
                 )
+
                 self.keyframe = keyframe
                 self.state = FrontendState.Tracking(suspicion_level=0, frames_since_keyframe=0)
             case FrontendState.Tracking(suspicion_level, frames_since_keyframe):
@@ -280,7 +308,7 @@ class Frontend:
             ...
 
 
-def run_couple_first_frames():
+def run_couple_first_frames_old():
     dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-04-01--22-41-24.msgpack')
     data_streamer = SimDataStreamer.from_dataset_path(dataset_path=dataset_path)
     scene = data_streamer.recorded_data.scene
@@ -327,6 +355,20 @@ def run_couple_first_frames():
 
             pose = keyframe.pose @ new_pose_estimate
             x = 1
+
+
+def run_couple_first_frames():
+    dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-04-01--22-41-24.msgpack')
+    data_streamer = SimDataStreamer.from_dataset_path(dataset_path=dataset_path)
+
+    frontend = Frontend.from_defaults(
+        cam_specs=data_streamer.get_cam_specs(),
+        start_pose=get_SE3_pose(x=-2.5),
+        debug_data=FrontendDebugData(scene=data_streamer.recorded_data.scene)
+    )
+
+    for i, obs in enumerate(data_streamer.stream()):
+        frontend.track(obs)
 
 
 if __name__ == '__main__':
