@@ -9,12 +9,16 @@ from vslam.types import CameraPoseSE3, CamCoords3dHomog
 def naive_triangulation(
     points_in_cam_one: CamCoords3dHomog,
     points_in_cam_two: CamCoords3dHomog,
-    cam_two_in_cam_one: CameraPoseSE3     # TODO: Make sure it's like that, I think it should be opposite ?
+    cam_one_in_two: CameraPoseSE3
 ) -> List[Optional[float]]:
-    """ We assume T1 to be identity (we compute everything in image frame of camera 1) """
+    """
+     We assume T1 to be identity (we compute everything in image frame of camera 1)
 
-    R = cam_two_in_cam_one[:3, :3]
-    t = cam_two_in_cam_one[:3, 3]
+     This is based on 'Introduction to VSLAM', 6.5 Triangulation
+     """
+
+    R = cam_one_in_two[:3, :3]
+    t = cam_one_in_two[:3, 3]
 
     scales = []
 

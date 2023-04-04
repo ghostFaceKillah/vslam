@@ -4,7 +4,7 @@
 When I cast a ray from optical center of left eye to (visual) apex of triangle, I see that the lines don't overlap.
 
 Error can come from may different sources.
-- [?] mapping from image coords to real coords
+- [X] mapping from image coords to real coords
 - [no] birdeye view rendering
   
 As a way to cut through noise, let us draw lines to triangle ends
@@ -14,7 +14,15 @@ birdeye view rendering looks perfect
 looks like conversion from camera px coords to world coords is next obvious candidate on the list
 we can do the classic idempotency check.
 
-to_cam(from_cam(world_coords)) == world_coords
+- [X] test to_cam(from_cam(world_coords)) == world_coords
+
+the error was difference in beginning pose assumption
+
+- [ ] add beginning pose assumption to serialized simulation recording
+- [.] debug the actual depth finding, we now see that it might have a bug
+- [ ] rewrite equations from piece of paper to ipad
+- [ ] then solve it symbolically and then only use the solution in xy plane, it looks so good, I am surprised 
+      that it's not solved already
 
 
 

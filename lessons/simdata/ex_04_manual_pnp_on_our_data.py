@@ -67,7 +67,7 @@ def estimate_keyframe(
     depths = naive_triangulation(
         points_in_cam_one=from_kp_cam_coords_3d_homo,
         points_in_cam_two=to_kp_cam_coords_3d_homo,
-        cam_two_in_cam_one=cam_extrinsics.get_pose_of_right_cam_in_left_cam()
+        cam_one_in_two=cam_extrinsics.get_pose_of_right_cam_in_left_cam()
     )
     # looks waaay to much
     # what is this depth measured in ?

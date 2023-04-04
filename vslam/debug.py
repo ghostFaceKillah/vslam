@@ -196,17 +196,17 @@ class TriangulationDebugger:
                 pose,
                 keypoint_px
         ):
-            keypoint_in_cam = homogenize(px_2d_to_cam_coords_3d_homo(np.array([keypoint_px]), camera_intrinsics)[0])
+            keypoint_in_img = px_2d_to_cam_coords_3d_homo(np.array([keypoint_px]), camera_intrinsics)[0]
+            eff_depth = depth_or_none if depth_or_none is not None else 100.0
+            keypoint_in_cam = homogenize(eff_depth * keypoint_in_img)
+
+            # TODO: come on, use function
             world_in_flip = get_world_to_cam_coord_flip_matrix().T
             keypoint_in_cam_unflipped = world_in_flip @ keypoint_in_cam
-            keypoint_in_cam_unflipped[-1] = 0   # it is direction, not a pose
             keypoint_in_world = pose @ keypoint_in_cam_unflipped
 
             start_3d = pose[:3, -1]   # write a function, comeon
-
-            eff_depth = depth_or_none if depth_or_none is not None else 100.0
-
-            end_3d = start_3d + eff_depth * keypoint_in_world[:3]
+            end_3d = keypoint_in_world[:3]
 
             start_2d = start_3d[:2]
             end_2d = end_3d[:2]

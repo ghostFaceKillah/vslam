@@ -58,7 +58,7 @@ if __name__ == '__main__':
         depths = naive_triangulation(
             points_in_cam_one=from_kp_cam_coords_3d_homo,
             points_in_cam_two=to_kp_cam_coords_3d_homo,
-            cam_two_in_cam_one=T2
+            cam_one_in_two=T2
         )
 
         depths_df = pd.Series(depths)
