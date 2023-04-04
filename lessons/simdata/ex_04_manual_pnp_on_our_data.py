@@ -48,7 +48,7 @@ def estimate_keyframe(
         cam_intrinsics: CameraIntrinsics,
         cam_extrinsics: CameraExtrinsics,
         debug_feature_matches: bool = False,
-        debug_depth_estimation: bool = True,
+        debug_depth_estimation: bool = False,
         debug_scene: Optional[List[RenderTriangle3d]] = None,   # purely for debug vis of depth
 ):
     left_cam_pose = baselink_pose @ cam_extrinsics.get_pose_of_left_cam_in_baselink()
@@ -67,7 +67,7 @@ def estimate_keyframe(
     depths = naive_triangulation(
         points_in_cam_one=from_kp_cam_coords_3d_homo,
         points_in_cam_two=to_kp_cam_coords_3d_homo,
-        cam_one_in_two=cam_extrinsics.get_pose_of_right_cam_in_left_cam()
+        cam_one_in_two=cam_extrinsics.get_pose_of_left_cam_in_right_cam()
     )
     # looks waaay to much
     # what is this depth measured in ?

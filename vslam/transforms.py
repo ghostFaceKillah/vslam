@@ -63,6 +63,7 @@ def world_to_cam_4d(
     cam_pose_inv = SE3_inverse(cam_in_world)
     return xs @ cam_pose_inv.T @ get_world_to_cam_coord_flip_matrix().T
 
+
 def get_world_to_cam_coord_flip_matrix() -> TransformSE3:
     """ x = y, y = -z, z = x,
     Will take WorldCoords3D to CamCoords3d.
