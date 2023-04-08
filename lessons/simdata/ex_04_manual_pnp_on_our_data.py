@@ -10,7 +10,7 @@ then we will do the full nice frontend implementation.
 """
 import os
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
 import attr
 import cv2
@@ -28,7 +28,7 @@ from vslam.poses import get_SE3_pose, SE3_pose_to_xytheta
 from vslam.transforms import px_2d_to_cam_coords_3d_homo, SE3_inverse, px_2d_to_img_coords_2d, \
     homogenize, CAM_TO_WORLD_FLIP, dehomogenize
 from vslam.triangulation import naive_triangulation
-from vslam.types import WorldCoords3D, CameraPoseSE3
+from vslam.types import WorldCoords3D, CameraPoseSE3, TransformSE3
 
 
 @attr.define
@@ -48,9 +48,9 @@ def estimate_keyframe(
         cam_intrinsics: CameraIntrinsics,
         cam_extrinsics: CameraExtrinsics,
         debug_feature_matches: bool = False,
-        debug_depth_estimation: bool = True,
+        debug_depth_estimation: bool = False,
         debug_scene: Optional[List[RenderTriangle3d]] = None,   # purely for debug vis of depth
-):
+) -> _Keyframe:
     left_cam_pose = baselink_pose @ cam_extrinsics.get_pose_of_left_cam_in_baselink()
 
     left_detections = matcher.detect(obs.left_eye_img)
@@ -168,22 +168,21 @@ def estimate_pose_wrt_keyframe(
         points_2d.append(point_2d)
 
     points_3d = np.array(points_3d)
-    """
-    camera_pose_initial_guess: Optional[CameraPoseSE3],     # initial guess has to be relative to keyframe!
-    points_3d_in_keyframe: WorldCoords3D,   # if those are in keyframe, the pose estimate will be relative to keyframe
-    points_2d_in_img: ImgCoords2d,
-    """
-
     camera_pose_guess_in_keyframe = SE3_inverse(keyframe.pose) @ camera_pose_guess_in_world
 
-    new_pose_estimate = gauss_netwon_pnp(
+    posterior_left_cam_pose_estimate_in_keyframe = gauss_netwon_pnp(
         camera_pose_initial_guess_in_keyframe=camera_pose_guess_in_keyframe,
         points_3d_in_keyframe=homogenize(points_3d),
         points_2d_in_img=px_2d_to_img_coords_2d(np.array(points_2d), cam_intrinsics),
         verbose=False
     )
 
-    return new_pose_estimate
+    posterior_baselink_cam_pose_estimate_in_world = keyframe.pose @ posterior_left_cam_pose_estimate_in_keyframe
+
+    return KeyframeMatchPoseTrackingResult(
+        posterior_baselink_cam_pose_estimate_in_world,
+        tracking_quality_info=None
+    )
 
 
 @attr.define
@@ -234,6 +233,7 @@ class FrontendState:
         """ We are tracking, but maybe some iterations we have suspicions as not enough  """
         suspicion_level: int
         frames_since_keyframe: int
+        keyframe: _Keyframe
 
     class Lost:
         """ Ooops! Doesn't look like anything else we have seen so far... """
@@ -244,6 +244,11 @@ class FrontendState:
 class FrontendDebugData:
     """ Privileged information for the sake of debug """
     scene: List[RenderTriangle3d]
+
+
+@attr.s(auto_attribs=True)
+class FrontendTrackingResult:
+    baselink_pose_estimate: TransformSE3
 
 
 @attr.s(auto_attribs=True)
@@ -272,94 +277,59 @@ class Frontend:
             debug_data=debug_data
         )
 
-    def track(self, obs: Observation) -> CameraPoseSE3:
-        pose_estimate = self.pose_tracker.get_next_baselink_in_world_pose_estimate()
+    def _track(self, obs: Observation) -> Tuple[FrontendTrackingResult, FrontendState]:
         match self.state:
             case FrontendState.Init() | FrontendState.Lost():
+                prior_baselink_pose_estimate = self.pose_tracker.get_next_baselink_in_world_pose_estimate()
                 keyframe = estimate_keyframe(
                     obs=obs,
                     matcher=self.matcher,
-                    baselink_pose=pose_estimate,
+                    baselink_pose=prior_baselink_pose_estimate,
                     cam_intrinsics=self.cam_specs.intrinsics,
                     cam_extrinsics=self.cam_specs.extrinsics,
                     debug_scene=self.debug_data.scene
                 )
 
-                self.keyframe = keyframe
-                self.state = FrontendState.Tracking(suspicion_level=0, frames_since_keyframe=0)
-            case FrontendState.Tracking(suspicion_level, frames_since_keyframe):
-
-                new_pose_estimate, tracking_result = estimate_pose_wrt_keyframe(
+                resu = FrontendTrackingResult(baselink_pose_estimate=prior_baselink_pose_estimate)
+                state = FrontendState.Tracking(
+                    suspicion_level=0,
+                    frames_since_keyframe=0,
+                    keyframe=keyframe
+                )
+                return resu, state
+            case FrontendState.Tracking(suspicion_level, frames_since_keyframe, keyframe):
+                prior_baselink_pose_estimate = self.pose_tracker.get_next_baselink_in_world_pose_estimate()
+                tracking_result = estimate_pose_wrt_keyframe(
                     obs=obs,
                     matcher=self.matcher,
-                    cam_intrinsics=self.cam_intrinsics,
-                    camera_pose_guess_in_world=pose_estimate,
-                    keyframe=self.keyframe
+                    cam_intrinsics=self.cam_specs.intrinsics,
+                    camera_pose_guess_in_world=prior_baselink_pose_estimate,   # TODO: oops
+                    keyframe=keyframe
                 )
-
-                ...
+                posterior_baselink_pose_estimate = tracking_result.pose_estimate
+                # TODO: code that processes suspicion level & frames since last keyframe
+                resu = FrontendTrackingResult(baselink_pose_estimate=posterior_baselink_pose_estimate)
+                state = FrontendState.Tracking(
+                    suspicion_level=0,
+                    frames_since_keyframe=frames_since_keyframe+1,
+                    keyframe=keyframe
+                )
+                return resu, state
             case _:
-                raise ValueError("Unhandled state", self.state)
+                    raise ValueError("Unhandled state", self.state)
 
-        if self.keyframe is None:
-            ...
-            # ?
-        else:
-            ...
-
-
-def run_couple_first_frames_old():
-    dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-04-01--22-41-24.msgpack')
-    data_streamer = SimDataStreamer.from_dataset_path(dataset_path=dataset_path)
-    scene = data_streamer.recorded_data.scene
-
-    cam_intrinsics = data_streamer.get_cam_intrinsics()
-    matcher = OrbBasedFeatureMatcher.build()
-
-    initial_cam_pose = get_SE3_pose(x=-2.5)
-    # y = -1, because this is left eye, and cam offset was 2
-    # this doesn't matter, and could be assumed to be all 0, but alignment to world frame will make debugging easier
-
-    # pose_tracker = PoseTracker()
-    pose = initial_cam_pose
-
-    for i, obs in enumerate(data_streamer.stream()):
-        # off by one error I think
-        if i == 0:
-            keyframe = estimate_keyframe(
-                obs=obs,
-                matcher=matcher,
-                baselink_pose=pose,
-                cam_intrinsics=data_streamer.get_cam_specs().intrinsics,
-                cam_extrinsics=data_streamer.get_cam_specs().extrinsics,
-                debug_scene=scene
-            )
-            x = 1
-        else:
-            # TODO: probably need some kind of pose tracker ?
-            new_pose_estimate = estimate_pose_wrt_keyframe(
-                obs=obs,
-                matcher=matcher,
-                cam_intrinsics=cam_intrinsics,
-                camera_pose_guess_in_world=pose,
-                keyframe=keyframe
-            )
-            np.set_printoptions(suppress=True)
-            print(i)
-            # print(f"{new_pose_estimate.round(2)=}")
-            # print(f"{(keyframe.pose @ new_pose_estimate).round(2)=}")
-            # print(f"{obs.baselink_pose=}")
-            print(f"est pose = {SE3_pose_to_xytheta(keyframe.pose @ new_pose_estimate).round(2)}")
-            pose_of_left_cam_in_baselink = data_streamer.get_cam_specs().extrinsics.get_pose_of_left_cam_in_baselink()
-            print(f"gt  pose = {SE3_pose_to_xytheta(obs.baselink_pose @ pose_of_left_cam_in_baselink).round(2)}")
-
-            pose = keyframe.pose @ new_pose_estimate
-            x = 1
+    def track(self, obs: Observation) -> FrontendTrackingResult:
+        result, state = self._track(obs)
+        self.state = state
+        self.pose_tracker.track(result.baselink_pose_estimate)
+        return result
 
 
 def run_couple_first_frames():
     dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-04-01--22-41-24.msgpack')
     data_streamer = SimDataStreamer.from_dataset_path(dataset_path=dataset_path)
+
+    np.set_printoptions(suppress=True)  # TODO: remove
 
     frontend = Frontend.from_defaults(
         cam_specs=data_streamer.get_cam_specs(),
@@ -368,7 +338,11 @@ def run_couple_first_frames():
     )
 
     for i, obs in enumerate(data_streamer.stream()):
-        frontend.track(obs)
+        frontend_resu = frontend.track(obs)
+
+        print(i)
+        print(f"est pose = {SE3_pose_to_xytheta(frontend_resu.baselink_pose_estimate).round(2)}")
+        print(f"gt  pose = {SE3_pose_to_xytheta(obs.baselink_pose).round(2)}")
 
 
 if __name__ == '__main__':
