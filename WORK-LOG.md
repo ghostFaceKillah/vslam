@@ -1,3 +1,23 @@
+2023-04-07
+----------
+
+Looks great! Error looks ~0. Let me draw the path of the system from birds eye view.
+
+- [ ] Birdseye view of the path
+- [ ] keyframe switching
+- [ ] Test, type lint, etc
+- [ ] Lectures & blogpost
+
+
+2023-04-04
+----------
+
+Let me debug feature matching / pose estimation on second frame.
+- feature matching looks great
+
+Then, let me plot details of pnp.
+
+
 2023-04-02
 ----------
 
@@ -29,7 +49,7 @@ the error was difference in beginning pose assumption
 2023-04-01
 ----------
 Nice, I wrote the keyframe making debug and sth is clearly off.
-The projection lines don't intersect where they shuold.
+The projection lines don't intersect where they should.
 
 Maybe cam intrinsics are off ? 
 I don't get it ... yet!
