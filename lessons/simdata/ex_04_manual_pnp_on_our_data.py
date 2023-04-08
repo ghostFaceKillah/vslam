@@ -143,8 +143,8 @@ class KeyframeMatchPoseTrackingResult:
 def estimate_pose_wrt_keyframe(
         obs: Observation,
         matcher: OrbBasedFeatureMatcher,
-        cam_intrinsics: CameraIntrinsics,
-        camera_pose_guess_in_world: CameraPoseSE3,
+        cam_specs: CameraSpecs,
+        baselink_pose_estimate_in_world: TransformSE3,
         keyframe: _Keyframe,
         debug_feature_matches: bool = False
 ) -> KeyframeMatchPoseTrackingResult:
@@ -168,19 +168,26 @@ def estimate_pose_wrt_keyframe(
         points_2d.append(point_2d)
 
     points_3d = np.array(points_3d)
-    camera_pose_guess_in_keyframe = SE3_inverse(keyframe.pose) @ camera_pose_guess_in_world
+
+    left_camera_pose_in_world = baselink_pose_estimate_in_world @ cam_specs.extrinsics.get_pose_of_left_cam_in_baselink()
+    camera_pose_guess_in_keyframe = SE3_inverse(keyframe.pose) @ left_camera_pose_in_world
 
     posterior_left_cam_pose_estimate_in_keyframe = gauss_netwon_pnp(
         camera_pose_initial_guess_in_keyframe=camera_pose_guess_in_keyframe,
         points_3d_in_keyframe=homogenize(points_3d),
-        points_2d_in_img=px_2d_to_img_coords_2d(np.array(points_2d), cam_intrinsics),
+        points_2d_in_img=px_2d_to_img_coords_2d(np.array(points_2d), cam_specs.intrinsics),
         verbose=False
     )
 
-    posterior_baselink_cam_pose_estimate_in_world = keyframe.pose @ posterior_left_cam_pose_estimate_in_keyframe
+    # want: world T baselink
+    posterior_baselink_pose_estimate_in_world = (
+        keyframe.pose   # world T keyframe
+        @ posterior_left_cam_pose_estimate_in_keyframe  # # keyframe T cam
+        @ SE3_inverse(cam_specs.extrinsics.get_pose_of_left_cam_in_baselink())   # cam T baselink
+    )
 
     return KeyframeMatchPoseTrackingResult(
-        posterior_baselink_cam_pose_estimate_in_world,
+        posterior_baselink_pose_estimate_in_world,
         tracking_quality_info=None
     )
 
@@ -302,8 +309,8 @@ class Frontend:
                 tracking_result = estimate_pose_wrt_keyframe(
                     obs=obs,
                     matcher=self.matcher,
-                    cam_intrinsics=self.cam_specs.intrinsics,
-                    camera_pose_guess_in_world=prior_baselink_pose_estimate,   # TODO: oops
+                    cam_specs=self.cam_specs,
+                    baselink_pose_estimate_in_world=prior_baselink_pose_estimate,   # TODO: oops
                     keyframe=keyframe
                 )
                 posterior_baselink_pose_estimate = tracking_result.pose_estimate
