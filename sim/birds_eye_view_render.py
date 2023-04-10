@@ -7,11 +7,13 @@ from sim.sim_types import RenderTriangle3d
 from utils.colors import BGRCuteColors
 from utils.custom_types import PixelCoordArray, BGRColor, BGRImageArray
 from utils.cv2_but_its_typed import cv2_fill_poly, cv2_line
+from utils.geometry import Arrow2d
 from utils.image import get_canvas
 from vslam.cam import CameraIntrinsics
 from vslam.math import normalize_vector
+from vslam.poses import SE3_pose_to_xytheta
 from vslam.transforms import homogenize
-from vslam.types import CameraPoseSE3, Point2d, Points2d, UnorientedPose2DArray
+from vslam.types import CameraPoseSE3, Point2d, Points2d, TransformSE3
 
 
 @attr.define
@@ -119,8 +121,8 @@ def draw_view_cone(
 def draw_line_on_bev(
     image: BGRImageArray,
     view_specifier: BirdseyeViewSpecifier,
-    from_pt: UnorientedPose2DArray,
-    to_pt: UnorientedPose2DArray,
+    from_pt: Point2d,
+    to_pt: Point2d,
     color: BGRColor,
     thickness: int = 1
 ):
@@ -183,10 +185,29 @@ class DisplayBirdseyeView:
             whiskers_thickness_px=whiskers_thickness_px
         )
 
-    def draw_line(
+    def draw_arrow(
             self,
-            from_pt: UnorientedPose2DArray,
-            to_pt: UnorientedPose2DArray,
+            arrow: Arrow2d,
+            color: BGRColor = BGRCuteColors.DARK_GRAY,
+            thickness: int = 3
+    ):
+        for (from_pt, to_pt) in arrow.get_lines_to_draw():
+            self.draw_line_2d(from_pt, to_pt, color, thickness)
+
+    def draw_3d_pose(
+        self,
+        pose: TransformSE3,
+        color: BGRColor = BGRCuteColors.DARK_GRAY,
+        thickness: int = 3
+    ):
+        pose_2d = SE3_pose_to_xytheta(pose)
+        arrow = Arrow2d.from_length_and_origin(origin=pose_2d[:2], length=0.25, orientation=pose_2d[2])
+        self.draw_arrow(arrow, color, thickness)
+
+    def draw_line_2d(
+            self,
+            from_pt: Point2d,
+            to_pt: Point2d,
             color: BGRColor,
             thickness: int = 1
     ):

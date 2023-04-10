@@ -5,16 +5,16 @@ import numpy as np
 
 from plotting import Packer, Col, Row, Padding, TextRenderer
 from sim.birds_eye_view_render import DisplayBirdseyeView, BirdseyeViewSpecifier
-from sim.sim_types import CameraExtrinsics, RenderTriangle3d
+from sim.sim_types import CameraExtrinsics, RenderTriangle3d, CameraSpecs
 from utils.colors import BGRCuteColors
-from utils.custom_types import BGRImageArray
+from utils.custom_types import BGRImageArray, BGRColor
 from utils.cv2_but_its_typed import cv2_circle
 from utils.enum_utils import StrEnum
 from utils.image import take_crop_around, magnify
 from vslam.cam import CameraIntrinsics
 from vslam.features import FeatureMatch
 from vslam.transforms import px_2d_to_cam_coords_3d_homo, get_world_to_cam_coord_flip_matrix, homogenize
-from vslam.types import CameraPoseSE3
+from vslam.types import CameraPoseSE3, TransformSE3
 
 
 class GeneralDebugPanes(StrEnum):
@@ -211,7 +211,7 @@ class TriangulationDebugger:
             start_2d = start_3d[:2]
             end_2d = end_3d[:2]
 
-            display_renderer.draw_line(
+            display_renderer.draw_line_2d(
                 from_pt=start_2d,
                 to_pt=end_2d,
                 color=BGRCuteColors.DARK_BLUE
@@ -264,6 +264,64 @@ class TriangulationDebugger:
             yield img
 
 
+class LocalisationDebugPanes(StrEnum):
+    MAIN = 'main'  # birdseye view of the scene
+    KEYFRAME_IMG = 'keyframe_img'
+    CURRENT_IMG = 'current_img'
 
 
+@attr.s(auto_attribs=True)
+class LocalizationDebugger:
+    ui_layout: Packer
+    birdseye_display_renderer: DisplayBirdseyeView
+    cam_specs: CameraSpecs
+    previous_pose: Optional[TransformSE3] = None
+    keyframe_img: Optional[BGRImageArray] = None
+
+    @classmethod
+    def from_scene(
+            cls,
+            scene: List[RenderTriangle3d],
+            cam_specs: CameraSpecs
+    ):
+        birdseye_display_renderer = DisplayBirdseyeView.from_view_specifier(
+            view_specifier=BirdseyeViewSpecifier.from_view_center(
+                view_center=(0., 0.),
+                world_size=(20.0, 20.0),
+                resolution=0.005
+            )
+        )
+        birdseye_display_renderer.draw_triangles(scene)
+
+        layout = Col(
+            Row(Padding(LocalisationDebugPanes.MAIN)),
+        )
+
+        return cls(
+            ui_layout=layout,
+            birdseye_display_renderer=birdseye_display_renderer,
+            cam_specs=cam_specs
+        )
+
+    def add_keyframe(
+        self,
+        keyframe_baselink_pose: TransformSE3,
+        keyframe_img: BGRImageArray
+    ):
+        # world T baselink
+        # baslink T camera
+        keyframe_camera_pose = keyframe_baselink_pose @ self.cam_specs.extrinsics.get_pose_of_left_cam_in_baselink()
+
+        self.birdseye_display_renderer.draw_view_cone(at_pose=keyframe_camera_pose, camera_intrinsics=self.cam_specs.intrinsics)
+        self.keyframe_img = keyframe_img
+
+    def add_pose(
+        self,
+        baselink_pose: TransformSE3,
+        color: BGRColor = BGRCuteColors.DARK_GRAY,
+    ):
+        self.birdseye_display_renderer.draw_3d_pose(baselink_pose, color=color)
+
+    def render(self):
+        return self.birdseye_display_renderer.get_image()
 

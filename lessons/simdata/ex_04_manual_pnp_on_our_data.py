@@ -18,10 +18,11 @@ import numpy as np
 
 from defs import ROOT_DIR
 from sim.sim_types import Observation, CameraSpecs, CameraExtrinsics, RenderTriangle3d
+from utils.colors import BGRCuteColors
 from utils.custom_types import BGRImageArray
 from vslam.cam import CameraIntrinsics
 from vslam.datasets.simdata import SimDataStreamer
-from vslam.debug import FeatureMatchDebugger, TriangulationDebugger
+from vslam.debug import FeatureMatchDebugger, TriangulationDebugger, LocalizationDebugger
 from vslam.features import OrbBasedFeatureMatcher, OrbFeatureDetections
 from vslam.pnp import gauss_netwon_pnp
 from vslam.poses import get_SE3_pose, SE3_pose_to_xytheta
@@ -338,6 +339,11 @@ def run_couple_first_frames():
 
     np.set_printoptions(suppress=True)  # TODO: remove
 
+    localization_debugger = LocalizationDebugger.from_scene(
+        scene=data_streamer.recorded_data.scene,
+        cam_specs=data_streamer.get_cam_specs()
+    )
+
     frontend = Frontend.from_defaults(
         cam_specs=data_streamer.get_cam_specs(),
         start_pose=get_SE3_pose(x=-2.5),
@@ -350,6 +356,12 @@ def run_couple_first_frames():
         print(i)
         print(f"est pose = {SE3_pose_to_xytheta(frontend_resu.baselink_pose_estimate).round(2)}")
         print(f"gt  pose = {SE3_pose_to_xytheta(obs.baselink_pose).round(2)}")
+
+        localization_debugger.add_pose(frontend_resu.baselink_pose_estimate, color=BGRCuteColors.DARK_GRAY)
+        localization_debugger.add_pose(obs.baselink_pose, color=BGRCuteColors.SKY_BLUE)
+        img = localization_debugger.render()
+        cv2.imshow('localization_debugger', img)
+        cv2.waitKey(-1)
 
 
 if __name__ == '__main__':
