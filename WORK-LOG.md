@@ -1,9 +1,22 @@
+2023-04-10
+----------
+
+- [ ] keyframe switching
+- [ ] More advanced visualizations
+  - off-white background point n stick plots of tracking
+  - cumulative tracking error (rabbithole warning)
+  - keyframe image vs current image
+  - birdseyeview of keyframe
+- [ ] Test, type lint, etc
+- [ ] Lectures & blogpost
+
+
 2023-04-07
 ----------
 
 Looks great! Error looks ~0. Let me draw the path of the system from birds eye view.
 
-- [ ] Birdseye view of the path
+- [X] Birdseye view of the path
 - [ ] keyframe switching
 - [ ] Test, type lint, etc
 - [ ] Lectures & blogpost
