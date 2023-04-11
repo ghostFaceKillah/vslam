@@ -1,7 +1,7 @@
 2023-04-10
 ----------
 
-- [ ] keyframe switching
+- [X] keyframe switching
 - [ ] More advanced visualizations
   - off-white background point n stick plots of tracking
   - cumulative tracking error (rabbithole warning)

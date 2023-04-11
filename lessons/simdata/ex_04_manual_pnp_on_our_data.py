@@ -9,7 +9,6 @@ Let us reimplement by hand, in an explicit way:
 then we will do the full nice frontend implementation.
 """
 import os
-from dataclasses import dataclass
 from typing import Optional, List, Tuple
 
 import attr
@@ -24,7 +23,7 @@ from vslam.cam import CameraIntrinsics
 from vslam.datasets.simdata import SimDataStreamer
 from vslam.debug import FeatureMatchDebugger, TriangulationDebugger, LocalizationDebugger
 from vslam.features import OrbBasedFeatureMatcher, OrbFeatureDetections
-from vslam.pnp import gauss_netwon_pnp
+from vslam.pnp import gauss_netwon_pnp, GaussNetwonAuxillaryInfo
 from vslam.poses import get_SE3_pose, SE3_pose_to_xytheta
 from vslam.transforms import px_2d_to_cam_coords_3d_homo, SE3_inverse, px_2d_to_img_coords_2d, \
     homogenize, CAM_TO_WORLD_FLIP, dehomogenize
@@ -138,7 +137,7 @@ class PoseTracker:
 @attr.define
 class KeyframeMatchPoseTrackingResult:
     pose_estimate: CameraPoseSE3
-    tracking_quality_info: ...
+    tracking_quality_info: GaussNetwonAuxillaryInfo   # mildly bad design to entangle this to Gauss Newton specifically
 
 
 def estimate_pose_wrt_keyframe(
@@ -173,7 +172,7 @@ def estimate_pose_wrt_keyframe(
     left_camera_pose_in_world = baselink_pose_estimate_in_world @ cam_specs.extrinsics.get_pose_of_left_cam_in_baselink()
     camera_pose_guess_in_keyframe = SE3_inverse(keyframe.pose) @ left_camera_pose_in_world
 
-    posterior_left_cam_pose_estimate_in_keyframe = gauss_netwon_pnp(
+    posterior_left_cam_pose_estimate_in_keyframe, gauss_newton_info = gauss_netwon_pnp(
         camera_pose_initial_guess_in_keyframe=camera_pose_guess_in_keyframe,
         points_3d_in_keyframe=homogenize(points_3d),
         points_2d_in_img=px_2d_to_img_coords_2d(np.array(points_2d), cam_specs.intrinsics),
@@ -189,7 +188,7 @@ def estimate_pose_wrt_keyframe(
 
     return KeyframeMatchPoseTrackingResult(
         posterior_baselink_pose_estimate_in_world,
-        tracking_quality_info=None
+        tracking_quality_info=gauss_newton_info
     )
 
 
@@ -232,20 +231,17 @@ track
 
 
 class FrontendState:
+    """ In future maybe add LOST or sth"""
     class Init:
         """ Just initialized, need a keyframe. """
         ...
 
-    @dataclass
+    @attr.define
     class Tracking:
         """ We are tracking, but maybe some iterations we have suspicions as not enough  """
-        suspicion_level: int
-        frames_since_keyframe: int
-        keyframe: _Keyframe
-
-    class Lost:
-        """ Ooops! Doesn't look like anything else we have seen so far... """
-        ...
+        suspicion_level = attr.ib(type=int)
+        frames_since_keyframe = attr.ib(type=int)
+        keyframe = attr.ib(type=_Keyframe, repr=False)
 
 
 @attr.s(auto_attribs=True)
@@ -259,14 +255,29 @@ class FrontendTrackingResult:
     baselink_pose_estimate: TransformSE3
 
 
+@attr.define
+class TrackingQualityEstimator:
+    minimum_number_of_matches: int = 8
+    max_allowed_error: float = 0.02
+
+    def estimate_tracking_quality(self, tracking_result: KeyframeMatchPoseTrackingResult) -> bool:
+        """ Should roll to a new keyframe ? """
+
+        return (
+            len(tracking_result.tracking_quality_info.euclidean_errors) > self.minimum_number_of_matches and
+            np.percentile(tracking_result.tracking_quality_info.euclidean_errors, 75) < self.max_allowed_error
+        )
+
+
 @attr.s(auto_attribs=True)
 class Frontend:
     """ At this point, it just groups up stuff related to Frontend """
     matcher: OrbBasedFeatureMatcher
     cam_specs: CameraSpecs
-
-    # stateful
     pose_tracker: VelocityPoseTracker
+
+    tracking_quality_estimator: TrackingQualityEstimator = attr.Factory(TrackingQualityEstimator)
+
     keyframe: Optional[_Keyframe] = None
     state: FrontendState = attr.Factory(FrontendState.Init)
     debug_data: Optional[FrontendDebugData] = None
@@ -285,26 +296,33 @@ class Frontend:
             debug_data=debug_data
         )
 
+    def _estimate_new_keyframe(
+        self,
+        obs: Observation,
+        baselink_pose_estimate: TransformSE3
+    ) -> Tuple[FrontendTrackingResult, FrontendState]:
+        keyframe = estimate_keyframe(
+            obs=obs,
+            matcher=self.matcher,
+            baselink_pose=baselink_pose_estimate,
+            cam_intrinsics=self.cam_specs.intrinsics,
+            cam_extrinsics=self.cam_specs.extrinsics,
+            debug_scene=self.debug_data.scene
+        )
+
+        resu = FrontendTrackingResult(baselink_pose_estimate=baselink_pose_estimate)
+        state = FrontendState.Tracking(
+            suspicion_level=0,
+            frames_since_keyframe=0,
+            keyframe=keyframe
+        )
+        return resu, state
+
     def _track(self, obs: Observation) -> Tuple[FrontendTrackingResult, FrontendState]:
         match self.state:
-            case FrontendState.Init() | FrontendState.Lost():
+            case FrontendState.Init():
                 prior_baselink_pose_estimate = self.pose_tracker.get_next_baselink_in_world_pose_estimate()
-                keyframe = estimate_keyframe(
-                    obs=obs,
-                    matcher=self.matcher,
-                    baselink_pose=prior_baselink_pose_estimate,
-                    cam_intrinsics=self.cam_specs.intrinsics,
-                    cam_extrinsics=self.cam_specs.extrinsics,
-                    debug_scene=self.debug_data.scene
-                )
-
-                resu = FrontendTrackingResult(baselink_pose_estimate=prior_baselink_pose_estimate)
-                state = FrontendState.Tracking(
-                    suspicion_level=0,
-                    frames_since_keyframe=0,
-                    keyframe=keyframe
-                )
-                return resu, state
+                return self._estimate_new_keyframe(obs, prior_baselink_pose_estimate)
             case FrontendState.Tracking(suspicion_level, frames_since_keyframe, keyframe):
                 prior_baselink_pose_estimate = self.pose_tracker.get_next_baselink_in_world_pose_estimate()
                 tracking_result = estimate_pose_wrt_keyframe(
@@ -314,20 +332,27 @@ class Frontend:
                     baselink_pose_estimate_in_world=prior_baselink_pose_estimate,   # TODO: oops
                     keyframe=keyframe
                 )
+
                 posterior_baselink_pose_estimate = tracking_result.pose_estimate
-                # TODO: code that processes suspicion level & frames since last keyframe
-                resu = FrontendTrackingResult(baselink_pose_estimate=posterior_baselink_pose_estimate)
-                state = FrontendState.Tracking(
-                    suspicion_level=0,
-                    frames_since_keyframe=frames_since_keyframe+1,
-                    keyframe=keyframe
-                )
-                return resu, state
+                tracking_looks_ok = self.tracking_quality_estimator.estimate_tracking_quality(tracking_result)
+
+                if not tracking_looks_ok:
+                    # important detail: note that we use _prior_ estimate. We trust it more.
+                    return self._estimate_new_keyframe(obs, prior_baselink_pose_estimate)
+                else:
+                    resu = FrontendTrackingResult(baselink_pose_estimate=posterior_baselink_pose_estimate)
+                    state = FrontendState.Tracking(
+                        suspicion_level=0,
+                        frames_since_keyframe=frames_since_keyframe+1,
+                        keyframe=keyframe
+                    )
+                    return resu, state
             case _:
                     raise ValueError("Unhandled state", self.state)
 
     def track(self, obs: Observation) -> FrontendTrackingResult:
         result, state = self._track(obs)
+        print(f"{state=}")
         self.state = state
         self.pose_tracker.track(result.baselink_pose_estimate)
         return result
