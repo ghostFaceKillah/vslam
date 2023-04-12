@@ -9,7 +9,7 @@ if __name__ == '__main__':
     scene_renderer = TriangleSceneRenderer.from_default()
 
     # actor = ManualActor.from_default()
-    actor = PreRecordedActor.from_a_nice_trip()
+    actor = PreRecordedActor.from_a_nice_trip(short_trip=False)
 
     sim = Simulation(
         actor=actor,
