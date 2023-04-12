@@ -205,7 +205,7 @@ def render_scene_pixelwise_depth(
             triangle_cam_points, front_colors, back_colors, clipping_surface
         )
 
-    px_center_coords_in_img_coords = get_pixel_center_coordinates(screen_h, screen_w, cam_intrinsics)
+    px_center_coords_in_img_coords = get_pixel_center_coordinates(cam_intrinsics)
     bg_image = _get_background_image(px_center_coords_in_img_coords, world_to_cam_flip, camera_pose, sky_color, ground_color)
 
     if len(triangle_cam_points) == 0:
