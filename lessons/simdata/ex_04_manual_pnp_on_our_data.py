@@ -17,7 +17,6 @@ import numpy as np
 
 from defs import ROOT_DIR
 from sim.sim_types import Observation, CameraSpecs, CameraExtrinsics, RenderTriangle3d
-from utils.colors import BGRCuteColors
 from utils.custom_types import BGRImageArray
 from vslam.cam import CameraIntrinsics
 from vslam.datasets.simdata import SimDataStreamer
@@ -359,7 +358,8 @@ class Frontend:
 
 
 def run_couple_first_frames():
-    dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-04-01--22-41-24.msgpack')
+    # dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-04-01--22-41-24.msgpack')   # short
+    dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-04-11--19-18-13.msgpack')   # long
     data_streamer = SimDataStreamer.from_dataset_path(dataset_path=dataset_path)
 
     np.set_printoptions(suppress=True)  # TODO: remove
@@ -394,7 +394,6 @@ def run_couple_first_frames():
             baselink_pose_groundtruth=obs.baselink_pose,
             baselink_pose_estimate=frontend_resu.baselink_pose_estimate,
             current_image=obs.left_eye_img,
-            color=BGRCuteColors.DARK_GRAY
         )
         img = localization_debugger.render()
         cv2.imshow('localization_debugger', img)
