@@ -280,6 +280,7 @@ class LocalizationDebugger:
     scene_display_renderer: DisplayBirdseyeView
     cam_specs: CameraSpecs
     keyframe_img: Optional[BGRImageArray] = None
+    current_img: Optional[BGRImageArray] = None
     estimated_pose_history: collections.deque = attr.Factory(lambda: collections.deque([], maxlen=64))
     ground_truth_pose_history: collections.deque = attr.Factory(lambda: collections.deque([], maxlen=64))
 
@@ -300,8 +301,10 @@ class LocalizationDebugger:
 
         layout = Col(
             Row(
+                Padding(LocalisationDebugPanes.KEYFRAME_IMG),
+                Padding(LocalisationDebugPanes.CURRENT_IMG),
                 Padding(LocalisationDebugPanes.SCENE),
-                Padding(LocalisationDebugPanes.POSE_DIFF)
+                Padding(LocalisationDebugPanes.POSE_DIFF),
             ),
         )
 
@@ -328,11 +331,10 @@ class LocalizationDebugger:
         baselink_pose_groundtruth: TransformSE3,
         baselink_pose_estimate: TransformSE3,
         current_image: BGRImageArray,
-        color: BGRColor = BGRCuteColors.DARK_GRAY,
     ):
         self.estimated_pose_history.append(baselink_pose_estimate)
         self.ground_truth_pose_history.append(baselink_pose_groundtruth)
-        # self.scene_display_renderer.draw_3d_pose(baselink_pose, color=color)
+        self.current_img = current_image
 
     def render(self):
 
@@ -370,5 +372,10 @@ class LocalizationDebugger:
             color = BGRCuteColors.GRASS_GREEN,
         )
 
-        return tracking_display_renderer.get_image()
+        return self.ui_layout.render({
+            LocalisationDebugPanes.KEYFRAME_IMG: self.keyframe_img,
+            LocalisationDebugPanes.CURRENT_IMG: self.current_img,
+            LocalisationDebugPanes.SCENE: magnify(self.scene_display_renderer.get_image(), 0.15),
+            LocalisationDebugPanes.POSE_DIFF: tracking_display_renderer.get_image(),
+        })
 
