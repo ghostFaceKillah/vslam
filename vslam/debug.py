@@ -1,3 +1,5 @@
+import collections
+import itertools
 from typing import List, Dict, Optional, Iterable
 
 import attr
@@ -13,6 +15,7 @@ from utils.enum_utils import StrEnum
 from utils.image import take_crop_around, magnify
 from vslam.cam import CameraIntrinsics
 from vslam.features import FeatureMatch
+from vslam.poses import SE3_pose_to_xytheta
 from vslam.transforms import px_2d_to_cam_coords_3d_homo, get_world_to_cam_coord_flip_matrix, homogenize
 from vslam.types import CameraPoseSE3, TransformSE3
 
@@ -265,7 +268,8 @@ class TriangulationDebugger:
 
 
 class LocalisationDebugPanes(StrEnum):
-    MAIN = 'main'  # birdseye view of the scene
+    SCENE = 'scene'  # birdseye view of the scene
+    POSE_DIFF = 'pose_diff'
     KEYFRAME_IMG = 'keyframe_img'
     CURRENT_IMG = 'current_img'
 
@@ -273,10 +277,11 @@ class LocalisationDebugPanes(StrEnum):
 @attr.s(auto_attribs=True)
 class LocalizationDebugger:
     ui_layout: Packer
-    birdseye_display_renderer: DisplayBirdseyeView
+    scene_display_renderer: DisplayBirdseyeView
     cam_specs: CameraSpecs
-    previous_pose: Optional[TransformSE3] = None
     keyframe_img: Optional[BGRImageArray] = None
+    estimated_pose_history: collections.deque = attr.Factory(lambda: collections.deque([], maxlen=64))
+    ground_truth_pose_history: collections.deque = attr.Factory(lambda: collections.deque([], maxlen=64))
 
     @classmethod
     def from_scene(
@@ -284,22 +289,25 @@ class LocalizationDebugger:
             scene: List[RenderTriangle3d],
             cam_specs: CameraSpecs
     ):
-        birdseye_display_renderer = DisplayBirdseyeView.from_view_specifier(
+        scene_display_renderer = DisplayBirdseyeView.from_view_specifier(
             view_specifier=BirdseyeViewSpecifier.from_view_center(
                 view_center=(0., 0.),
                 world_size=(20.0, 20.0),
                 resolution=0.005
             )
         )
-        birdseye_display_renderer.draw_triangles(scene)
+        scene_display_renderer.draw_triangles(scene)
 
         layout = Col(
-            Row(Padding(LocalisationDebugPanes.MAIN)),
+            Row(
+                Padding(LocalisationDebugPanes.SCENE),
+                Padding(LocalisationDebugPanes.POSE_DIFF)
+            ),
         )
 
         return cls(
             ui_layout=layout,
-            birdseye_display_renderer=birdseye_display_renderer,
+            scene_display_renderer=scene_display_renderer,
             cam_specs=cam_specs
         )
 
@@ -312,16 +320,55 @@ class LocalizationDebugger:
         # baslink T camera
         keyframe_camera_pose = keyframe_baselink_pose @ self.cam_specs.extrinsics.get_pose_of_left_cam_in_baselink()
 
-        self.birdseye_display_renderer.draw_view_cone(at_pose=keyframe_camera_pose, camera_intrinsics=self.cam_specs.intrinsics)
+        self.scene_display_renderer.draw_view_cone(at_pose=keyframe_camera_pose, camera_intrinsics=self.cam_specs.intrinsics)
         self.keyframe_img = keyframe_img
 
-    def add_pose(
+    def add_pose_estimate(
         self,
-        baselink_pose: TransformSE3,
+        baselink_pose_groundtruth: TransformSE3,
+        baselink_pose_estimate: TransformSE3,
+        current_image: BGRImageArray,
         color: BGRColor = BGRCuteColors.DARK_GRAY,
     ):
-        self.birdseye_display_renderer.draw_3d_pose(baselink_pose, color=color)
+        self.estimated_pose_history.append(baselink_pose_estimate)
+        self.ground_truth_pose_history.append(baselink_pose_groundtruth)
+        # self.scene_display_renderer.draw_3d_pose(baselink_pose, color=color)
 
     def render(self):
-        return self.birdseye_display_renderer.get_image()
+
+        view_center = tuple(SE3_pose_to_xytheta(self.ground_truth_pose_history[-1])[:2])
+        tracking_display_renderer = DisplayBirdseyeView.from_view_specifier(
+            view_specifier=BirdseyeViewSpecifier.from_view_center(
+                view_center=view_center,
+                world_size=(2.5, 2.5),
+                resolution=0.005
+            ),
+            ground_color=BGRCuteColors.OFF_WHITE
+        )
+        def draw_pose_history(pose_history: List[TransformSE3], color: BGRColor):
+            for prev, next in itertools.pairwise(pose_history):
+                tracking_display_renderer.draw_line_2d(
+                    from_pt=SE3_pose_to_xytheta(prev)[:2],
+                    to_pt=SE3_pose_to_xytheta(next)[:2],
+                    color=color
+                )
+
+            for pose_3d in pose_history:
+                pose_2d = SE3_pose_to_xytheta(pose_3d)
+                tracking_display_renderer.draw_circle(pose_2d[:2], color, thickness=4)
+
+            tracking_display_renderer.draw_3d_pose(pose_history[-1], color, )
+
+        # draw lines
+        draw_pose_history(
+            pose_history = list(self.estimated_pose_history),
+            color = BGRCuteColors.CRIMSON,
+        )
+
+        draw_pose_history(
+            pose_history = list(self.ground_truth_pose_history),
+            color = BGRCuteColors.GRASS_GREEN,
+        )
+
+        return tracking_display_renderer.get_image()
 

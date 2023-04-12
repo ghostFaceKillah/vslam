@@ -6,7 +6,7 @@ import numpy as onp
 from sim.sim_types import RenderTriangle3d
 from utils.colors import BGRCuteColors
 from utils.custom_types import PixelCoordArray, BGRColor, BGRImageArray
-from utils.cv2_but_its_typed import cv2_fill_poly, cv2_line
+from utils.cv2_but_its_typed import cv2_fill_poly, cv2_line, cv2_circle
 from utils.geometry import Arrow2d
 from utils.image import get_canvas
 from vslam.cam import CameraIntrinsics
@@ -132,6 +132,18 @@ def draw_line_on_bev(
     cv2_line(image, from_px, to_px, color=color, thickness=thickness)
 
 
+def draw_circle_on_bev(
+        image: BGRImageArray,
+        view_specifier: BirdseyeViewSpecifier,
+        pt: Point2d,
+        radius: int,
+        color: BGRColor,
+        thickness: int = 1
+):
+    pt_px = bev_2d_world_to_pixel(onp.array([pt]), view_specifier)[0]
+    cv2_circle(image, pt_px, radius, color, thickness)
+
+
 def render_birdseye_view(
         view_specifier: BirdseyeViewSpecifier,
         camera_pose: CameraPoseSE3,
@@ -198,10 +210,11 @@ class DisplayBirdseyeView:
         self,
         pose: TransformSE3,
         color: BGRColor = BGRCuteColors.DARK_GRAY,
-        thickness: int = 3
+        arrow_length: float = 0.15,
+        thickness: int = 2
     ):
         pose_2d = SE3_pose_to_xytheta(pose)
-        arrow = Arrow2d.from_length_and_origin(origin=pose_2d[:2], length=0.25, orientation=pose_2d[2])
+        arrow = Arrow2d.from_length_and_origin(origin=pose_2d[:2], length=arrow_length, orientation=pose_2d[2])
         self.draw_arrow(arrow, color, thickness)
 
     def draw_line_2d(
@@ -216,6 +229,22 @@ class DisplayBirdseyeView:
             self.view_specifier,
             from_pt,
             to_pt,
+            color,
+            thickness
+        )
+
+    def draw_circle(
+            self,
+            pt: Point2d,
+            color: BGRColor,
+            radius: int = 1,
+            thickness: int = 1
+    ):
+        draw_circle_on_bev(
+            self.canvas,
+            self.view_specifier,
+            pt,
+            radius,
             color,
             thickness
         )

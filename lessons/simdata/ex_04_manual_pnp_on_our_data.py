@@ -350,12 +350,12 @@ class Frontend:
             case _:
                     raise ValueError("Unhandled state", self.state)
 
-    def track(self, obs: Observation) -> FrontendTrackingResult:
+    def track(self, obs: Observation) -> Tuple[FrontendTrackingResult, FrontendState]:
         result, state = self._track(obs)
         print(f"{state=}")
         self.state = state
         self.pose_tracker.track(result.baselink_pose_estimate)
-        return result
+        return result, state
 
 
 def run_couple_first_frames():
@@ -376,14 +376,26 @@ def run_couple_first_frames():
     )
 
     for i, obs in enumerate(data_streamer.stream()):
-        frontend_resu = frontend.track(obs)
+        frontend_resu, state = frontend.track(obs)
 
         print(i)
         print(f"est pose = {SE3_pose_to_xytheta(frontend_resu.baselink_pose_estimate).round(2)}")
         print(f"gt  pose = {SE3_pose_to_xytheta(obs.baselink_pose).round(2)}")
 
-        localization_debugger.add_pose(frontend_resu.baselink_pose_estimate, color=BGRCuteColors.DARK_GRAY)
-        localization_debugger.add_pose(obs.baselink_pose, color=BGRCuteColors.SKY_BLUE)
+        match state:
+            case FrontendState.Tracking(_, frames_since_keyframe, _):
+                if frames_since_keyframe == 0:
+                    localization_debugger.add_keyframe(
+                        keyframe_baselink_pose=frontend_resu.baselink_pose_estimate,
+                        keyframe_img=obs.left_eye_img
+                    )
+
+        localization_debugger.add_pose_estimate(
+            baselink_pose_groundtruth=obs.baselink_pose,
+            baselink_pose_estimate=frontend_resu.baselink_pose_estimate,
+            current_image=obs.left_eye_img,
+            color=BGRCuteColors.DARK_GRAY
+        )
         img = localization_debugger.render()
         cv2.imshow('localization_debugger', img)
         cv2.waitKey(-1)
