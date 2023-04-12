@@ -227,15 +227,15 @@ class PreRecordedActor(Actor):
             )
         else:
             actions = (
-                [InteractionTransforms.go_straight()] * 200
+                [InteractionTransforms.go_straight()] * 20
                 + [InteractionTransforms.turn_right(), InteractionTransforms.go_straight()] * 45
                 + [InteractionTransforms.go_straight()] * 40
                 + [InteractionTransforms.turn_right(), InteractionTransforms.go_straight()] * 45
-                + [InteractionTransforms.go_straight()] * 200
+                + [InteractionTransforms.go_straight()] * 20
                 + [InteractionTransforms.turn_right(), InteractionTransforms.go_straight()] * 45
-                + [InteractionTransforms.go_straight()] * 250
+                + [InteractionTransforms.go_straight()] * 25
                 + [InteractionTransforms.turn_left(), InteractionTransforms.go_straight()] * (90 + 22)
-                + [InteractionTransforms.go_straight()] * 300
+                + [InteractionTransforms.go_straight()] * 30
             )
 
         return cls(actions=actions)
