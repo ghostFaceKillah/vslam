@@ -1,12 +1,21 @@
+2023-04-11
+----------
+- [ ] make vis pretty:
+  - Align sizes of images
+  - Add more data to simulation
+  - Add image labels
+- [ ] Test, type lint, etc
+- [ ] Lectures & blogpost
+
 2023-04-10
 ----------
 
 - [X] keyframe switching
-- [ ] More advanced visualizations
-  - off-white background point n stick plots of tracking
-  - cumulative tracking error (rabbithole warning)
-  - keyframe image vs current image
-  - birdseyeview of keyframe
+- [X] More advanced visualizations
+  - [X] off-white background point n stick plots of tracking
+  - [ ] cumulative tracking error (rabbithole warning)
+  - [X] keyframe image vs current image
+  - [X] birdseyeview of keyframe
 - [ ] Test, type lint, etc
 - [ ] Lectures & blogpost
 
