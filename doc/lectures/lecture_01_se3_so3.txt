@@ -1,0 +1,12 @@
+
+- to understand VSLAM, we need to understand
+
+- read the rotation matrix on wikipedia
+  - quick intuition: rotation around axis 0z leaves it unchanged
+
+- The idea of homogenous coordinates
+    - easy to transform directions
+    - easy to transform vectors
+    - easy to compose poses
+
+- composing transforms in Peter way

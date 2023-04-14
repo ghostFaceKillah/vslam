@@ -1,3 +1,18 @@
+2023-04-13
+----------
+
+- [ ] fix frontend bugs: why is it going wrong on the big dataset?
+- [ ] make vis pretty:
+  - [ ] draw matches
+  - [ ] Clean up the scene display
+    - don't show all keyframes, just the recent one
+    - show more global context:
+      - all of ground truth path
+      - current pose estimate
+- [ ] Test, type, lint, refactor etc
+- [ ] Lectures & blogpost
+
+
 2023-04-11
 ----------
 
