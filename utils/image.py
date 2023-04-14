@@ -9,7 +9,7 @@ from utils.custom_types import BGRImageArray, Channels, WidthPx, HeightPx, BGRCo
 
 def magnify(img: BGRImageArray, factor: float = 0.5) -> BGRImageArray:
     """ Convenience wrapper for making image smaller or bigger. """
-    return cv2.resize(img, dsize=(0, 0), fx=factor, fy=factor, interpolation=cv2.INTER_NEAREST)
+    return cv2.resize(img, dsize=(0, 0), fx=factor, fy=factor, interpolation=cv2.INTER_AREA)
 
 
 def take_crop_around(

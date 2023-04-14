@@ -303,6 +303,8 @@ class LocalizationDebugger:
             Row(
                 Padding(LocalisationDebugPanes.KEYFRAME_IMG),
                 Padding(LocalisationDebugPanes.CURRENT_IMG),
+            ),
+            Row(
                 Padding(LocalisationDebugPanes.SCENE),
                 Padding(LocalisationDebugPanes.POSE_DIFF),
             ),
@@ -375,7 +377,7 @@ class LocalizationDebugger:
         return self.ui_layout.render({
             LocalisationDebugPanes.KEYFRAME_IMG: self.keyframe_img,
             LocalisationDebugPanes.CURRENT_IMG: self.current_img,
-            LocalisationDebugPanes.SCENE: magnify(self.scene_display_renderer.get_image(), 0.15),
+            LocalisationDebugPanes.SCENE: magnify(self.scene_display_renderer.get_image(), 0.12),
             LocalisationDebugPanes.POSE_DIFF: tracking_display_renderer.get_image(),
         })
 
