@@ -269,9 +269,13 @@ class TriangulationDebugger:
 
 class LocalisationDebugPanes(StrEnum):
     SCENE = 'scene'  # birdseye view of the scene
+    SCENE_TITLE = 'scene_title'  # birdseye view of the scene
     POSE_DIFF = 'pose_diff'
+    POSE_DIFF_TITLE = 'pose_diff_title'
     KEYFRAME_IMG = 'keyframe_img'
+    KEYFRAME_IMG_TITLE = 'keyframe_img_title'
     CURRENT_IMG = 'current_img'
+    CURRENT_IMG_TITLE = 'current_img_title'
 
 
 @attr.s(auto_attribs=True)
@@ -279,6 +283,7 @@ class LocalizationDebugger:
     ui_layout: Packer
     scene_display_renderer: DisplayBirdseyeView
     cam_specs: CameraSpecs
+    text_renderer: TextRenderer = attr.Factory(TextRenderer)
     keyframe_img: Optional[BGRImageArray] = None
     current_img: Optional[BGRImageArray] = None
     estimated_pose_history: collections.deque = attr.Factory(lambda: collections.deque([], maxlen=64))
@@ -301,12 +306,12 @@ class LocalizationDebugger:
 
         layout = Col(
             Row(
-                Padding(LocalisationDebugPanes.KEYFRAME_IMG),
-                Padding(LocalisationDebugPanes.CURRENT_IMG),
+                Padding(Col(Padding(LocalisationDebugPanes.KEYFRAME_IMG_TITLE), LocalisationDebugPanes.KEYFRAME_IMG)),
+                Padding(Col(Padding(LocalisationDebugPanes.CURRENT_IMG_TITLE), LocalisationDebugPanes.CURRENT_IMG)),
             ),
             Row(
-                Padding(LocalisationDebugPanes.SCENE),
-                Padding(LocalisationDebugPanes.POSE_DIFF),
+                Padding(Col(Padding(LocalisationDebugPanes.SCENE_TITLE), LocalisationDebugPanes.SCENE)),
+                Padding(Col(Padding(LocalisationDebugPanes.POSE_DIFF_TITLE), LocalisationDebugPanes.POSE_DIFF)),
             ),
         )
 
@@ -379,5 +384,9 @@ class LocalizationDebugger:
             LocalisationDebugPanes.CURRENT_IMG: self.current_img,
             LocalisationDebugPanes.SCENE: magnify(self.scene_display_renderer.get_image(), 0.12),
             LocalisationDebugPanes.POSE_DIFF: tracking_display_renderer.get_image(),
+            LocalisationDebugPanes.SCENE_TITLE: self.text_renderer.render('Scene & Keyframes'),
+            LocalisationDebugPanes.POSE_DIFF_TITLE: self.text_renderer.render('Pose diff '),
+            LocalisationDebugPanes.KEYFRAME_IMG_TITLE: self.text_renderer.render('Keyframe left eye image'),
+            LocalisationDebugPanes.CURRENT_IMG_TITLE: self.text_renderer.render('Current left eye image'),
         })
 

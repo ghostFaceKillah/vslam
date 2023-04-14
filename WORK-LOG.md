@@ -1,9 +1,17 @@
 2023-04-11
 ----------
+
+- [ ] fix frontend bugs: why is it going wrong on the big dataset?
 - [ ] make vis pretty:
-  - Align sizes of images
-  - Add more data to simulation
-  - Add image labels
+  - [ ] draw matches
+  - [X] Align sizes of images
+  - [X] Add image labels
+  - [X] Add more data to simulation
+  - [ ] Clean up the scene display
+    - don't show all keyframes, just the recent one
+    - show more global context: 
+      - all of ground truth path
+      - current pose estimate
 - [ ] Test, type lint, etc
 - [ ] Lectures & blogpost
 
