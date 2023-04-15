@@ -1,8 +1,7 @@
-
-- to understand VSLAM, we need to understand
-
 - read the rotation matrix on wikipedia
   - quick intuition: rotation around axis 0z leaves it unchanged
+
+- There is many ways to express rotations of 3d space
 
 - The idea of homogenous coordinates
     - easy to transform directions

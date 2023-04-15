@@ -8,7 +8,8 @@ import attr
 import numpy as np
 
 from sim.sim_types import RenderTriangle3d, CameraSpecs, Observation
-from vslam.features import OrbBasedFeatureMatcher
+from vslam.debug_interface import IProvidesFeatureMatches, IProvidesKeyframe
+from vslam.features import OrbBasedFeatureMatcher, FeatureMatch
 from vslam.ketyframe import Keyframe, KeyframeMatchPoseTrackingResult, estimate_keyframe, estimate_pose_wrt_keyframe
 from vslam.tracking import VelocityPoseTracker
 from vslam.types import TransformSE3, CameraPoseSE3
@@ -24,20 +25,28 @@ class FrontendState:
     class Tracking:
         """ We are tracking, but maybe some iterations we have suspicions
         that the pose matches are not great quality """
-        suspicion_level = attr.ib(type=int)
         frames_since_keyframe = attr.ib(type=int)
         keyframe = attr.ib(type=Keyframe, repr=False)
 
 
 @attr.s(auto_attribs=True)
-class FrontendDebugData:
+class FrontendStaticDebugData:
     """ Privileged information for the sake of debug """
     scene: List[RenderTriangle3d]
 
 
 @attr.s(auto_attribs=True)
+class FrontendResultDebugData(IProvidesKeyframe, IProvidesFeatureMatches):
+    frames_since_keyframe: int
+    keyframe: Keyframe
+    feature_matches: List[FeatureMatch]
+
+
+@attr.s(auto_attribs=True)
 class FrontendTrackingResult:
     baselink_pose_estimate: TransformSE3
+
+    debug_data: FrontendResultDebugData
 
 
 @attr.define
@@ -65,14 +74,14 @@ class Frontend:
 
     keyframe: Optional[Keyframe] = None
     state: FrontendState = attr.Factory(FrontendState.Init)
-    debug_data: Optional[FrontendDebugData] = None
+    debug_data: Optional[FrontendStaticDebugData] = None
 
     @classmethod
     def from_defaults(
         cls,
         cam_specs: CameraSpecs,
         start_pose: Optional[CameraPoseSE3] = None,
-        debug_data: Optional[FrontendDebugData] = None
+        debug_data: Optional[FrontendStaticDebugData] = None
     ):
         return cls(
             matcher=OrbBasedFeatureMatcher.build(),
@@ -86,7 +95,7 @@ class Frontend:
         obs: Observation,
         baselink_pose_estimate: TransformSE3
     ) -> Tuple[FrontendTrackingResult, FrontendState]:
-        keyframe = estimate_keyframe(
+        keyframe, keyframe_debug_data = estimate_keyframe(
             obs=obs,
             matcher=self.matcher,
             baselink_pose=baselink_pose_estimate,
@@ -95,9 +104,15 @@ class Frontend:
             debug_scene=self.debug_data.scene
         )
 
-        resu = FrontendTrackingResult(baselink_pose_estimate=baselink_pose_estimate)
+        resu = FrontendTrackingResult(
+            baselink_pose_estimate=baselink_pose_estimate,
+            debug_data=FrontendResultDebugData(
+                frames_since_keyframe=0,
+                keyframe=keyframe,
+                feature_matches=keyframe_debug_data.feature_matches,
+            )
+        )
         state = FrontendState.Tracking(
-            suspicion_level=0,
             frames_since_keyframe=0,
             keyframe=keyframe
         )
@@ -108,9 +123,9 @@ class Frontend:
             case FrontendState.Init():
                 prior_baselink_pose_estimate = self.pose_tracker.get_next_baselink_in_world_pose_estimate()
                 return self._estimate_new_keyframe(obs, prior_baselink_pose_estimate)
-            case FrontendState.Tracking(suspicion_level, frames_since_keyframe, keyframe):
+            case FrontendState.Tracking(frames_since_keyframe, keyframe):
                 prior_baselink_pose_estimate = self.pose_tracker.get_next_baselink_in_world_pose_estimate()
-                tracking_result = estimate_pose_wrt_keyframe(
+                tracking_result, debug_data = estimate_pose_wrt_keyframe(
                     obs=obs,
                     matcher=self.matcher,
                     cam_specs=self.cam_specs,
@@ -125,9 +140,15 @@ class Frontend:
                     # important detail: note that we use _prior_ estimate. We trust it more.
                     return self._estimate_new_keyframe(obs, prior_baselink_pose_estimate)
                 else:
-                    resu = FrontendTrackingResult(baselink_pose_estimate=posterior_baselink_pose_estimate)
+                    resu = FrontendTrackingResult(
+                        baselink_pose_estimate=posterior_baselink_pose_estimate,
+                        debug_data=FrontendResultDebugData(
+                            frames_since_keyframe=frames_since_keyframe+1,
+                            keyframe=keyframe,
+                            feature_matches=debug_data.feature_matches,
+                        )
+                    )
                     state = FrontendState.Tracking(
-                        suspicion_level=0,
                         frames_since_keyframe=frames_since_keyframe+1,
                         keyframe=keyframe
                     )
@@ -135,9 +156,8 @@ class Frontend:
             case _:
                     raise ValueError("Unhandled state", self.state)
 
-    def track(self, obs: Observation) -> Tuple[FrontendTrackingResult, FrontendState]:
+    def track(self, obs: Observation) -> FrontendTrackingResult:
         result, state = self._track(obs)
-        print(f"{state=}")
         self.state = state
         self.pose_tracker.track(result.baselink_pose_estimate)
-        return result, state
+        return result

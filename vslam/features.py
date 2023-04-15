@@ -113,13 +113,12 @@ class OrbBasedFeatureMatcher:
         print(df.describe())
 
     def match(
-            self,
-            left_detections: OrbFeatureDetections,
-            right_detections: OrbFeatureDetections,
-            debug_matches: bool = False
-        ) -> List[FeatureMatch]:
-        with just_time('matching'):
-            raw_cv_matches = self.feature_matcher.match(left_detections.descriptors, np.array(right_detections.descriptors))
+        self,
+        left_detections: OrbFeatureDetections,
+        right_detections: OrbFeatureDetections,
+        debug_matches: bool = False
+    ) -> List[FeatureMatch]:
+        raw_cv_matches = self.feature_matcher.match(left_detections.descriptors, np.array(right_detections.descriptors))
 
         matches = [
             FeatureMatch.from_cv2_match_and_keypoints(

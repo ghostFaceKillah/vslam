@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
 import attr
 import cv2
@@ -8,7 +8,7 @@ from sim.sim_types import Observation, CameraExtrinsics, RenderTriangle3d, Camer
 from utils.custom_types import BGRImageArray
 from vslam.cam import CameraIntrinsics
 from vslam.debug import FeatureMatchDebugger, TriangulationDebugger
-from vslam.features import OrbFeatureDetections, OrbBasedFeatureMatcher
+from vslam.features import OrbFeatureDetections, OrbBasedFeatureMatcher, FeatureMatch
 from vslam.pnp import GaussNetwonAuxillaryInfo, gauss_netwon_pnp
 from vslam.transforms import px_2d_to_cam_coords_3d_homo, dehomogenize, CAM_TO_WORLD_FLIP, homogenize, SE3_inverse, \
     px_2d_to_img_coords_2d
@@ -26,6 +26,11 @@ class Keyframe:
     feature_detections: OrbFeatureDetections
 
 
+@attr.define
+class KeyFrameEstimationDebugData:
+    feature_matches: List[FeatureMatch]
+
+
 def estimate_keyframe(
         obs: Observation,
         matcher: OrbBasedFeatureMatcher,
@@ -35,7 +40,7 @@ def estimate_keyframe(
         debug_feature_matches: bool = False,
         debug_depth_estimation: bool = False,
         debug_scene: Optional[List[RenderTriangle3d]] = None,   # purely for debug vis of depth
-) -> Keyframe:
+) -> Tuple[Keyframe, KeyFrameEstimationDebugData]:
     left_cam_pose = baselink_pose @ cam_extrinsics.get_pose_of_left_cam_in_baselink()
 
     left_detections = matcher.detect(obs.left_eye_img)
@@ -65,6 +70,7 @@ def estimate_keyframe(
     points_3d_est = []
     feature_descriptors = []
     keypoints = []
+    relevant_feature_matches = []
 
     assert len(depths) == len(from_kp_cam_coords_3d_homo) == len(feature_matches)
 
@@ -72,7 +78,7 @@ def estimate_keyframe(
         if depth is None:
             continue
 
-        # OK need to flip back to world frame here
+        relevant_feature_matches.append(feature_match)
         points_3d_est.append(dehomogenize(CAM_TO_WORLD_FLIP @ homogenize(point_homo * depth)))
         feature_descriptors.append(feature_match.from_feature)
         keypoints.append(feature_match.from_keypoint)
@@ -98,12 +104,16 @@ def estimate_keyframe(
             cv2.imshow('wow', img)
             cv2.waitKey(-1)
 
-    return Keyframe(
+    debug_data = KeyFrameEstimationDebugData(feature_matches=relevant_feature_matches)
+
+    keyframe = Keyframe(
         image=obs.left_eye_img,
         pose=left_cam_pose,
         points_3d_est=points_3d_est,
         feature_detections=OrbFeatureDetections(np.array(feature_descriptors), keypoints)
     )
+
+    return keyframe, debug_data
 
 
 @attr.define
@@ -119,7 +129,7 @@ def estimate_pose_wrt_keyframe(
         baselink_pose_estimate_in_world: TransformSE3,
         keyframe: Keyframe,
         debug_feature_matches: bool = False
-) -> KeyframeMatchPoseTrackingResult:
+) -> Tuple[KeyframeMatchPoseTrackingResult, KeyFrameEstimationDebugData]:
     left_detections = matcher.detect(obs.left_eye_img)
     matches = matcher.match(keyframe.feature_detections, left_detections)
 
@@ -158,7 +168,11 @@ def estimate_pose_wrt_keyframe(
         @ SE3_inverse(cam_specs.extrinsics.get_pose_of_left_cam_in_baselink())   # cam T baselink
     )
 
-    return KeyframeMatchPoseTrackingResult(
+    resu = KeyframeMatchPoseTrackingResult(
         posterior_baselink_pose_estimate_in_world,
         tracking_quality_info=gauss_newton_info
     )
+
+    debug_data = KeyFrameEstimationDebugData(feature_matches=matches)
+
+    return resu, debug_data

@@ -1,5 +1,7 @@
 Course book
 -----------
+- intro (here's what you will need to understand)
+
 - slambook
 
 - SO(3), SE(3)
