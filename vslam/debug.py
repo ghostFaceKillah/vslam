@@ -5,7 +5,6 @@ from typing import List, Dict, Optional, Iterable
 import attr
 import numpy as np
 
-from plotting import Packer, Col, Row, Padding, TextRenderer
 from sim.birds_eye_view_render import DisplayBirdseyeView, BirdseyeViewSpecifier
 from sim.sim_types import CameraExtrinsics, RenderTriangle3d, CameraSpecs
 from utils.colors import BGRCuteColors
@@ -13,6 +12,7 @@ from utils.custom_types import BGRImageArray, BGRColor
 from utils.cv2_but_its_typed import cv2_circle
 from utils.enum_utils import StrEnum
 from utils.image import take_crop_around, magnify
+from utils.plot import Packer, Col, Row, Padding, TextRenderer
 from vslam.cam import CameraIntrinsics
 from vslam.features import FeatureMatch
 from vslam.poses import SE3_pose_to_xytheta

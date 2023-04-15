@@ -1,8 +1,8 @@
 import numpy as np
 
-from plotting import Row, Col, Padding, TextRenderer
 from utils.colors import BGRCuteColors
 from utils.image import get_canvas
+from utils.plot import Row, Col, Padding, TextRenderer
 
 
 def test_basic_row_and_col_behaviour():

@@ -6,7 +6,6 @@ import cv2
 import numpy as onp
 from jax import numpy as np
 
-from plotting import Col, Padding, Row, TextRenderer, Packer
 from sim.birds_eye_view_render import get_view_specifier_from_scene, BirdseyeViewSpecifier, \
     DisplayBirdseyeView
 from sim.egocentric_render import render_scene_pixelwise_depth
@@ -16,6 +15,7 @@ from sim.ui import key_to_maybe_transforms, InteractionTransforms
 from utils.colors import BGRCuteColors
 from utils.custom_types import BGRImageArray, BGRColor
 from utils.image import magnify
+from utils.plot import Col, Padding, Row, TextRenderer, Packer
 from utils.profiling import just_time
 from vslam.math import normalize_vector
 from vslam.poses import get_SE3_pose

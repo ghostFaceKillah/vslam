@@ -5,10 +5,10 @@ import numpy as np
 import pandas as pd
 
 from defs import ROOT_DIR
-from plotting import Padding, Row, Col, TextRenderer
 from utils.custom_types import BGRColor
 from utils.cv2_but_its_typed import cv2_circle
 from utils.image import take_crop_around, magnify
+from utils.plot import Padding, Row, Col, TextRenderer
 from vslam.datasets.simdata import SimDataStreamer
 from vslam.features import OrbBasedFeatureMatcher
 from vslam.poses import get_SE3_pose
