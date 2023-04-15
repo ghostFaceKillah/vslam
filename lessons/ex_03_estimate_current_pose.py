@@ -28,7 +28,7 @@ from utils.profiling import just_time
 from vslam.pnp import estimate_J_numerically, estimate_J_analytically, gauss_netwon_pnp, _compute_reprojection_error
 from vslam.poses import get_SE3_pose
 from vslam.transforms import SE3_inverse, get_world_to_cam_coord_flip_matrix
-from vslam.types import CamFlippedWorldCoords3D, CameraPoseSE3, ImgCoords2d, TransformSE3
+from vslam.types import CamFlippedWorldCoords3D, CameraPoseSE3, ImgCoords2d
 
 
 @attr.define
