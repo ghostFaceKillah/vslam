@@ -1,13 +1,3 @@
-"""
-Pretty much reimplementation by hand of
-# int Frontend::EstimateCurrentPose
-
-Let us reimplement by hand, in an explicit way:
-1) creation of the first keyframe
-2) tracking of couple first frames after that
-
-then we will do the full nice frontend implementation.
-"""
 import os
 
 import cv2
