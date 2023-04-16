@@ -32,12 +32,10 @@ class BirdseyeViewSpecifier:
     @classmethod
     def from_view_center(
         cls,
-        view_center: Tuple[float, float],
+        view_center: Point2d,
         world_size: Tuple[float, float],
         resolution: float = 0.05,  # how many meters per pixel
     ):
-        """   """
-
         origin = view_center[0] - world_size[1] / 2, view_center[1] - world_size[0] / 2
 
         return cls(

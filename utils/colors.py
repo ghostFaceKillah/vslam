@@ -1,5 +1,7 @@
 from typing import List
 
+import numpy as np
+
 from utils.custom_types import BGRColor
 
 
@@ -66,3 +68,11 @@ def _steal_some_colors():
     for clr_12_bit, name in colors:
         b, g, r = _convert_12_bit_to_bgr(clr_12_bit)
         print(f"{name.upper()} = {b}, {g}, {r}")
+
+
+def get_random_color() -> BGRColor:
+    b = np.random.randint(255)
+    g = np.random.randint(255)
+    r = np.random.randint(255)
+
+    return b, g, r

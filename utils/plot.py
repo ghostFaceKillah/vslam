@@ -4,8 +4,8 @@ import attr
 import cv2
 
 from utils.colors import BGRCuteColors, BGRColor
-from utils.custom_types import ImageArray, BGRImageArray, HeightPx, WidthPx
-from utils.cv2_but_its_typed import cv2_get_text_size
+from utils.custom_types import ImageArray, BGRImageArray, HeightPx, WidthPx, Pixel
+from utils.cv2_but_its_typed import cv2_get_text_size, cv2_line
 from utils.enum_utils import StrEnum
 from utils.image import get_canvas
 
@@ -210,6 +210,24 @@ class TextRenderer:
             )
 
         return canvas
+
+
+def draw_cross_px(
+    image: BGRImageArray,
+    center_px: Pixel,
+    color: BGRColor,
+    thickness: int = 1,
+    cross_size: int = 3,
+):
+    arm_size = cross_size // 2 + cross_size % 2
+
+    from_px = center_px[0] - arm_size, center_px[1] - arm_size
+    to_px = center_px[0] + arm_size, center_px[1] + arm_size
+    cv2_line(image, from_px, to_px, color, thickness)
+
+    from_px = center_px[0] - arm_size, center_px[1] + arm_size
+    to_px = center_px[0] + arm_size, center_px[1] - arm_size
+    cv2_line(image, from_px, to_px, color, thickness)
 
 
 if __name__ == '__main__':

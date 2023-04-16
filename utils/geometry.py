@@ -20,6 +20,7 @@ def pol_to_cart(rho, phi):
 
 @dataclasses.dataclass
 class Arrow2d:
+    """ This is in floating point coordinates. """
 
     orientation: float
     origin_point: Point2d

@@ -4,10 +4,40 @@ import cv2
 import numpy as np
 
 from defs import ROOT_DIR
+from sim.sim_types import Observation
+from utils.custom_types import BGRImageArray
 from vslam.datasets.simdata import SimDataStreamer
 from vslam.debug import LocalizationDebugger
-from vslam.frontend import FrontendStaticDebugData, Frontend
+from vslam.frontend import FrontendStaticDebugData, Frontend, FrontendTrackingResult
 from vslam.poses import get_SE3_pose, SE3_pose_to_xytheta
+
+
+def _process_debug_info(
+    iteration_number: int,
+    frontend_resu: FrontendTrackingResult,
+    obs: Observation,
+    localization_debugger: LocalizationDebugger,
+) -> BGRImageArray:
+    # TODO: move all of this inside Localization debugger ?
+    print(iteration_number)
+    print(f"est pose = {SE3_pose_to_xytheta(frontend_resu.baselink_pose_estimate).round(2)}")
+    print(f"gt  pose = {SE3_pose_to_xytheta(obs.baselink_pose).round(2)}")
+
+    if frontend_resu.debug_data.frames_since_keyframe == 0:
+        localization_debugger.add_keyframe(
+            keyframe_baselink_pose=frontend_resu.baselink_pose_estimate,
+            keyframe_img=obs.left_eye_img
+        )
+
+    localization_debugger.add_pose_estimate(
+        baselink_pose_groundtruth=obs.baselink_pose,
+        baselink_pose_estimate=frontend_resu.baselink_pose_estimate,
+        current_left_eye_image=obs.left_eye_img,
+        current_right_eye_image=obs.right_eye_img,
+        feature_matches_or_none=frontend_resu.debug_data.feature_matches,
+        frames_since_keyframe=frontend_resu.debug_data.frames_since_keyframe
+    )
+    return localization_debugger.render()
 
 
 def run_couple_first_frames():
@@ -31,23 +61,10 @@ def run_couple_first_frames():
     for i, obs in enumerate(data_streamer.stream()):
         frontend_resu = frontend.track(obs)
 
-        print(i)
-        print(f"est pose = {SE3_pose_to_xytheta(frontend_resu.baselink_pose_estimate).round(2)}")
-        print(f"gt  pose = {SE3_pose_to_xytheta(obs.baselink_pose).round(2)}")
+        debug_img = _process_debug_info(i, frontend_resu, obs, localization_debugger)
 
-        if frontend_resu.debug_data.frames_since_keyframe == 0:
-            localization_debugger.add_keyframe(
-                keyframe_baselink_pose=frontend_resu.baselink_pose_estimate,
-                keyframe_img=obs.left_eye_img
-            )
-
-        localization_debugger.add_pose_estimate(
-            baselink_pose_groundtruth=obs.baselink_pose,
-            baselink_pose_estimate=frontend_resu.baselink_pose_estimate,
-            current_image=obs.left_eye_img,
-        )
-        img = localization_debugger.render()
-        cv2.imshow('localization_debugger', img)
+        # TODO: just_show ?
+        cv2.imshow('localization_debugger', debug_img)
         cv2.waitKey(-1)
 
 

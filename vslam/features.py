@@ -1,11 +1,12 @@
-from typing import List
+from typing import List, Optional
 
 import attr
 import cv2
 import numpy as np
 import pandas as pd
 
-from utils.custom_types import BinaryFeature, BGRImageArray, Array, Pixel
+from utils.colors import get_random_color
+from utils.custom_types import BinaryFeature, BGRImageArray, Array, Pixel, BGRColor
 from utils.profiling import just_time
 
 
@@ -16,6 +17,7 @@ class FeatureMatch:
     to_keypoint: cv2.KeyPoint
     from_feature: BinaryFeature  # binary feature
     to_feature: BinaryFeature   # binary feature
+    display_color_or_none: Optional[BGRColor] = None
 
     @classmethod
     def from_cv2_match_and_keypoints(
@@ -31,7 +33,8 @@ class FeatureMatch:
             from_keypoint=from_keypoints[match.queryIdx],
             to_keypoint=to_keypoints[match.trainIdx],
             from_feature=from_features[match.queryIdx],
-            to_feature=to_features[match.trainIdx]
+            to_feature=to_features[match.trainIdx],
+            display_color_or_none=get_random_color()
         )
 
     def get_hamming_distance(self) -> float:

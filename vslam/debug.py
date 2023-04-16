@@ -8,11 +8,11 @@ import numpy as np
 from sim.birds_eye_view_render import DisplayBirdseyeView, BirdseyeViewSpecifier
 from sim.sim_types import CameraExtrinsics, RenderTriangle3d, CameraSpecs
 from utils.colors import BGRCuteColors
-from utils.custom_types import BGRImageArray, BGRColor
+from utils.custom_types import BGRImageArray, BGRColor, Pixel
 from utils.cv2_but_its_typed import cv2_circle
 from utils.enum_utils import StrEnum
 from utils.image import take_crop_around, magnify
-from utils.plot import Packer, Col, Row, Padding, TextRenderer
+from utils.plot import Packer, Col, Row, Padding, TextRenderer, draw_cross_px
 from vslam.cam import CameraIntrinsics
 from vslam.features import FeatureMatch
 from vslam.poses import SE3_pose_to_xytheta
@@ -23,6 +23,7 @@ from vslam.types import CameraPoseSE3, TransformSE3
 class GeneralDebugPanes(StrEnum):
     DESC = 'desc'
 
+
 class FeatureMatchDebugPanes(StrEnum):
     LEFT = 'left'
     RIGHT = 'right'
@@ -30,10 +31,51 @@ class FeatureMatchDebugPanes(StrEnum):
     RIGHT_CROP = 'right_crop'
 
 
+class FeatureMatchImageType(StrEnum):
+    FROM = 'from'   # aka left, query (!), keyframe
+    TO = 'to'     # aka right, train
+
+
+class FeatureMatchDrawingOption(StrEnum):
+    CIRCLE = 'circle'
+    CROSS = 'cross'
+
+
+@attr.define
+class FeatureMatchRenderer:
+    drawing_option: FeatureMatchDrawingOption = FeatureMatchDrawingOption.CROSS
+    color: BGRColor = BGRCuteColors.OFF_WHITE
+
+    def _draw_keypoint(
+            self,
+            img: BGRImageArray,
+            keypoint_px: Pixel,
+            color: BGRColor
+    ):
+        if self.drawing_option == FeatureMatchDrawingOption.CIRCLE:
+            cv2_circle(img, keypoint_px[::-1], color=color, radius=1, thickness=1)
+        elif self.drawing_option == FeatureMatchDrawingOption.CROSS:
+            draw_cross_px(img, keypoint_px[::-1], color=color, cross_size=7)
+
+    def draw_soft_summary_of_feature_matches(
+        self,
+        img: BGRImageArray,
+        img_type: FeatureMatchImageType,
+        matches: List[FeatureMatch],
+    ):
+        for match in matches:
+            color = BGRCuteColors.OFF_WHITE if match.display_color_or_none is None else match.display_color_or_none
+            if img_type == FeatureMatchImageType.FROM:
+                self._draw_keypoint(img, match.get_from_keypoint_px(), color)
+            elif img_type == FeatureMatchImageType.TO:
+                self._draw_keypoint(img, match.get_to_keypoint_px(), color)
+
+
 @attr.define
 class FeatureMatchDebugger:
     ui_layout: Packer
-    soft_mark_matches_on_baseline_images: bool = False
+    soft_mark_matches_on_baseline_images: bool = True
+    feature_match_renderer: FeatureMatchRenderer = attr.Factory(FeatureMatchRenderer)
 
     @classmethod
     def from_defaults(cls):
@@ -60,11 +102,8 @@ class FeatureMatchDebugger:
         to_canvas_img = np.copy(to_img)
 
         if self.soft_mark_matches_on_baseline_images:
-            for match in matches:
-                cv2_circle(from_canvas_img, match.get_from_keypoint_px()[::-1], color=BGRCuteColors.GRASS_GREEN, radius=1,
-                           thickness=1)
-                cv2_circle(to_canvas_img, match.get_to_keypoint_px()[::-1], color=BGRCuteColors.GRASS_GREEN, radius=1,
-                           thickness=1)
+            self.feature_match_renderer.draw_soft_summary_of_feature_matches(from_canvas_img, FeatureMatchImageType.FROM, matches)
+            self.feature_match_renderer.draw_soft_summary_of_feature_matches(to_canvas_img, FeatureMatchImageType.TO, matches)
 
         return from_canvas_img, to_canvas_img
 
@@ -284,8 +323,14 @@ class LocalizationDebugger:
     scene_display_renderer: DisplayBirdseyeView
     cam_specs: CameraSpecs
     text_renderer: TextRenderer = attr.Factory(TextRenderer)
+    feature_match_renderer: FeatureMatchRenderer = attr.Factory(FeatureMatchRenderer)
+
+    # state
     keyframe_img: Optional[BGRImageArray] = None
-    current_img: Optional[BGRImageArray] = None
+    frames_since_keyframe: int = 0
+    current_left_eye_image: Optional[BGRImageArray] = None
+    current_right_eye_image: Optional[BGRImageArray] = None
+    current_feature_matches_or_none: Optional[List[FeatureMatch]] = None
     estimated_pose_history: collections.deque = attr.Factory(lambda: collections.deque([], maxlen=64))
     ground_truth_pose_history: collections.deque = attr.Factory(lambda: collections.deque([], maxlen=64))
 
@@ -337,11 +382,17 @@ class LocalizationDebugger:
         self,
         baselink_pose_groundtruth: TransformSE3,
         baselink_pose_estimate: TransformSE3,
-        current_image: BGRImageArray,
+        current_left_eye_image: BGRImageArray,
+        current_right_eye_image: BGRImageArray,
+        frames_since_keyframe: int,
+        feature_matches_or_none: Optional[List[FeatureMatch]] = None
     ):
         self.estimated_pose_history.append(baselink_pose_estimate)
         self.ground_truth_pose_history.append(baselink_pose_groundtruth)
-        self.current_img = current_image
+        self.frames_since_keyframe = frames_since_keyframe
+        self.current_left_eye_image = current_left_eye_image
+        self.current_right_eye_image = current_right_eye_image
+        self.current_feature_matches_or_none = feature_matches_or_none
 
     def render(self):
 
@@ -354,6 +405,7 @@ class LocalizationDebugger:
             ),
             ground_color=BGRCuteColors.OFF_WHITE
         )
+
         def draw_pose_history(pose_history: List[TransformSE3], color: BGRColor):
             for prev, next in itertools.pairwise(pose_history):
                 tracking_display_renderer.draw_line_2d(
@@ -370,23 +422,45 @@ class LocalizationDebugger:
 
         # draw lines
         draw_pose_history(
-            pose_history = list(self.estimated_pose_history),
-            color = BGRCuteColors.CRIMSON,
+            pose_history=list(self.estimated_pose_history),
+            color=BGRCuteColors.CRIMSON,
         )
 
         draw_pose_history(
-            pose_history = list(self.ground_truth_pose_history),
-            color = BGRCuteColors.GRASS_GREEN,
+            pose_history=list(self.ground_truth_pose_history),
+            color=BGRCuteColors.GRASS_GREEN,
+        )
+
+        stuff_to_render_so_far = {
+        }
+
+        left_image = np.copy(self.keyframe_img)
+        if self.frames_since_keyframe == 0:
+            right_image = np.copy(self.current_right_eye_image)
+            right_image_text = 'Keyframe right eye image'
+        else:
+            right_image = np.copy(self.current_left_eye_image)
+            right_image_text = 'Current left eye image'
+
+        self.feature_match_renderer.draw_soft_summary_of_feature_matches(
+            img=left_image,
+            img_type=FeatureMatchImageType.FROM,
+            matches=self.current_feature_matches_or_none
+        )
+        self.feature_match_renderer.draw_soft_summary_of_feature_matches(
+            img=right_image,
+            img_type=FeatureMatchImageType.TO,
+            matches=self.current_feature_matches_or_none
         )
 
         return self.ui_layout.render({
-            LocalisationDebugPanes.KEYFRAME_IMG: self.keyframe_img,
-            LocalisationDebugPanes.CURRENT_IMG: self.current_img,
             LocalisationDebugPanes.SCENE: magnify(self.scene_display_renderer.get_image(), 0.12),
             LocalisationDebugPanes.POSE_DIFF: tracking_display_renderer.get_image(),
             LocalisationDebugPanes.SCENE_TITLE: self.text_renderer.render('Scene & Keyframes'),
             LocalisationDebugPanes.POSE_DIFF_TITLE: self.text_renderer.render('Pose diff '),
+            LocalisationDebugPanes.KEYFRAME_IMG: left_image,
+            LocalisationDebugPanes.CURRENT_IMG: right_image,
             LocalisationDebugPanes.KEYFRAME_IMG_TITLE: self.text_renderer.render('Keyframe left eye image'),
-            LocalisationDebugPanes.CURRENT_IMG_TITLE: self.text_renderer.render('Current left eye image'),
+            LocalisationDebugPanes.CURRENT_IMG_TITLE: self.text_renderer.render(right_image_text)
         })
 
