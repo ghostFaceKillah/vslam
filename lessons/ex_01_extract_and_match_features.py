@@ -8,7 +8,7 @@ from vslam.debug import FeatureMatchDebugger
 from vslam.features import OrbBasedFeatureMatcher
 
 if __name__ == '__main__':
-    dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-02-04--17-08-25.msgpack')
+    dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-04-01--22-41-24.msgpack')
 
     data_streamer = SimDataStreamer.from_dataset_path(dataset_path=dataset_path)
 
@@ -24,7 +24,6 @@ if __name__ == '__main__':
         feature_matches = matcher.detect_and_match_binocular(im_left, im_right)
 
         print(f"Found {len(feature_matches)} feature matches")
-
 
         for img in debugger.render(im_left, im_right, feature_matches):
             # cv2.imwrite(f'imgs/feature_matching_{i:04d}.png', magnify(img, factor=0.7))
