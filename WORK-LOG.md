@@ -1,3 +1,34 @@
+2023-04-17
+----------
+
+- [ ] fix frontend bugs: why is it going wrong on the big dataset?
+  - [ ] what's up with the nan in rotation
+  - [ ] why do later rotations break and require new keyframe all the time ?
+- [ ] Test, type, lint, refactor etc
+- [ ] Lectures & blogpost
+- [ ] better pose tracker - implement the velocity extrapolation thing
+- [X] make vis pretty
+
+
+2023-04-16
+----------
+
+- [ ] fix frontend bugs: why is it going wrong on the big dataset?
+  - [ ] what's up with the nan in rotation
+  - [ ] why do later rotations break and require new keyframe all the time ?
+- [ ] Test, type, lint, refactor etc
+- [ ] Lectures & blogpost
+- [ ] better pose tracker - implement the velocity extrapolation thing
+- 
+- [X] make vis pretty:
+  - [X] draw matches
+  - [X] global scene display
+    - show more global context:
+      - all of ground truth path up to now
+      - current pose estimate
+
+
+
 2023-04-13
 ----------
 

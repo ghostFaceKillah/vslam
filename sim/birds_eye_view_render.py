@@ -1,3 +1,4 @@
+import copy
 from typing import List, Tuple, Optional
 
 import attr
@@ -261,3 +262,6 @@ class DisplayBirdseyeView:
 
     def get_image(self) -> BGRImageArray:
         return self.canvas
+
+    def clone(self):
+        return copy.deepcopy(self)

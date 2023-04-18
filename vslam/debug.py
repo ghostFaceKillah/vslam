@@ -331,8 +331,8 @@ class LocalizationDebugger:
     current_left_eye_image: Optional[BGRImageArray] = None
     current_right_eye_image: Optional[BGRImageArray] = None
     current_feature_matches_or_none: Optional[List[FeatureMatch]] = None
-    estimated_pose_history: collections.deque = attr.Factory(lambda: collections.deque([], maxlen=64))
-    ground_truth_pose_history: collections.deque = attr.Factory(lambda: collections.deque([], maxlen=64))
+    estimated_pose_history: collections.deque = attr.Factory(lambda: collections.deque([], maxlen=256))
+    ground_truth_pose_history: collections.deque = attr.Factory(lambda: collections.deque([], maxlen=256))
 
     @classmethod
     def from_scene(
@@ -406,33 +406,52 @@ class LocalizationDebugger:
             ground_color=BGRCuteColors.OFF_WHITE
         )
 
-        def draw_pose_history(pose_history: List[TransformSE3], color: BGRColor):
+        def draw_pose_history(
+            display_renderer: DisplayBirdseyeView,
+            pose_history: List[TransformSE3],
+            color: BGRColor,
+            thickness: int = 1
+        ):
             for prev, next in itertools.pairwise(pose_history):
-                tracking_display_renderer.draw_line_2d(
+                display_renderer.draw_line_2d(
                     from_pt=SE3_pose_to_xytheta(prev)[:2],
                     to_pt=SE3_pose_to_xytheta(next)[:2],
-                    color=color
+                    color=color,
+                    thickness=thickness
                 )
 
             for pose_3d in pose_history:
                 pose_2d = SE3_pose_to_xytheta(pose_3d)
-                tracking_display_renderer.draw_circle(pose_2d[:2], color, thickness=4)
+                display_renderer.draw_circle(pose_2d[:2], color, thickness=4)
 
-            tracking_display_renderer.draw_3d_pose(pose_history[-1], color, )
+            display_renderer.draw_3d_pose(pose_history[-1], color)
 
         # draw lines
         draw_pose_history(
+            display_renderer=tracking_display_renderer,
             pose_history=list(self.estimated_pose_history),
             color=BGRCuteColors.CRIMSON,
         )
 
         draw_pose_history(
+            display_renderer=tracking_display_renderer,
             pose_history=list(self.ground_truth_pose_history),
             color=BGRCuteColors.GRASS_GREEN,
         )
 
-        stuff_to_render_so_far = {
-        }
+        scene_display_renderer = self.scene_display_renderer.clone()
+        draw_pose_history(
+            display_renderer=scene_display_renderer,
+            pose_history=list(self.ground_truth_pose_history),
+            color=BGRCuteColors.CRIMSON,
+            thickness=5
+        )
+        scene_display_renderer.draw_3d_pose(
+            pose=self.estimated_pose_history[-1],
+            color=BGRCuteColors.OFF_WHITE,
+            arrow_length=0.5,
+            thickness=3
+        )
 
         left_image = np.copy(self.keyframe_img)
         if self.frames_since_keyframe == 0:
@@ -454,7 +473,7 @@ class LocalizationDebugger:
         )
 
         return self.ui_layout.render({
-            LocalisationDebugPanes.SCENE: magnify(self.scene_display_renderer.get_image(), 0.12),
+            LocalisationDebugPanes.SCENE: magnify(scene_display_renderer.get_image(), 0.12),
             LocalisationDebugPanes.POSE_DIFF: tracking_display_renderer.get_image(),
             LocalisationDebugPanes.SCENE_TITLE: self.text_renderer.render('Scene & Keyframes'),
             LocalisationDebugPanes.POSE_DIFF_TITLE: self.text_renderer.render('Pose diff '),
