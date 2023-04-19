@@ -5,6 +5,7 @@ import numpy as np
 
 from liegroups.numpy.se3 import SE3Matrix
 from utils.custom_types import Array
+from vslam.poses import correct_SE3_matrix_inplace
 from vslam.transforms import SE3_inverse, WORLD_TO_CAM_FLIP
 from vslam.types import CamFlippedWorldCoords3D, ImgCoords2d, CameraPoseSE3, ReprojectionErrorVector, WorldCoords3D, \
     TransformSE3
@@ -114,7 +115,7 @@ def gauss_netwon_pnp(
         euc_errs = np.linalg.norm(errs, axis=1)   # how much off on both axes
         loss = euc_errs.mean()
         real_dx = np.array([dx[0], dx[1], 0, 0, 0, dx[2]])
-        camera_pose = camera_pose @ SE3Matrix.exp(real_dx).as_matrix()
+        camera_pose = correct_SE3_matrix_inplace(camera_pose @ SE3Matrix.exp(real_dx).as_matrix())
         if verbose:
             print(f"i = {i} mse = {loss:.2f} dx = {dx.round(2)}")
 
