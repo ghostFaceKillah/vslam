@@ -10,6 +10,7 @@ from vslam.cam import CameraIntrinsics
 from vslam.debug import FeatureMatchDebugger, TriangulationDebugger
 from vslam.features import OrbFeatureDetections, OrbBasedFeatureMatcher, FeatureMatch
 from vslam.pnp import GaussNetwonAuxillaryInfo, gauss_netwon_pnp
+from vslam.poses import correct_SE3_matrix_inplace
 from vslam.transforms import px_2d_to_cam_coords_3d_homo, dehomogenize, CAM_TO_WORLD_FLIP, homogenize, SE3_inverse, \
     px_2d_to_img_coords_2d
 from vslam.triangulation import naive_triangulation
@@ -151,8 +152,10 @@ def estimate_pose_wrt_keyframe(
 
     points_3d = np.array(points_3d)
 
-    left_camera_pose_in_world = baselink_pose_estimate_in_world @ cam_specs.extrinsics.get_pose_of_left_cam_in_baselink()
-    camera_pose_guess_in_keyframe = SE3_inverse(keyframe.pose) @ left_camera_pose_in_world
+    left_camera_pose_in_world = correct_SE3_matrix_inplace(
+        baselink_pose_estimate_in_world @ cam_specs.extrinsics.get_pose_of_left_cam_in_baselink()
+    )
+    camera_pose_guess_in_keyframe = correct_SE3_matrix_inplace(SE3_inverse(keyframe.pose) @ left_camera_pose_in_world)
 
     posterior_left_cam_pose_estimate_in_keyframe, gauss_newton_info = gauss_netwon_pnp(
         camera_pose_initial_guess_in_keyframe=camera_pose_guess_in_keyframe,
@@ -162,7 +165,7 @@ def estimate_pose_wrt_keyframe(
     )
 
     # want: world T baselink
-    posterior_baselink_pose_estimate_in_world = (
+    posterior_baselink_pose_estimate_in_world = correct_SE3_matrix_inplace(
         keyframe.pose   # world T keyframe
         @ posterior_left_cam_pose_estimate_in_keyframe  # # keyframe T cam
         @ SE3_inverse(cam_specs.extrinsics.get_pose_of_left_cam_in_baselink())   # cam T baselink
