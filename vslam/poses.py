@@ -50,8 +50,8 @@ def get_SE3_pose(
 
 
 def SE3_pose_to_xytheta(pose: TransformSE3) -> Pose2DArray:
-    yaw = np.arcsin(pose[1, 0])
-    out_pose = np.array([pose[0, 3], pose[1, 3], yaw])
+    theta = np.arctan2(pose[1, 0], pose[0, 0])
+    out_pose = np.array([pose[0, 3], pose[1, 3], theta])
     return out_pose
 
 
