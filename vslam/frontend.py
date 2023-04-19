@@ -49,6 +49,16 @@ class FrontendTrackingResult:
     debug_data: FrontendResultDebugData
 
 
+class TrackingQualityEstimate:
+    @attr.define
+    class Healthy:
+        ...
+
+    @attr.define
+    class Bad:
+        reasons: str
+
+
 @attr.define
 class FrontendPoseQualityEstimator:
     minimum_number_of_matches: int = 8
@@ -57,10 +67,22 @@ class FrontendPoseQualityEstimator:
     def estimate_tracking_quality(self, tracking_result: KeyframeMatchPoseTrackingResult) -> bool:
         """ Should roll to a new keyframe ? """
 
-        return (
-            len(tracking_result.tracking_quality_info.euclidean_errors) > self.minimum_number_of_matches and
-            np.percentile(tracking_result.tracking_quality_info.euclidean_errors, 75) < self.max_allowed_error
-        )
+        tracking_is_good = True
+        reasons = []
+
+        if (no_matches := len(tracking_result.tracking_quality_info.euclidean_errors)) < self.minimum_number_of_matches:
+            tracking_is_good = False
+            reasons.append(f"{no_matches=}, which is less then required {self.minimum_number_of_matches=}")
+
+        err_75th_percentile = np.percentile(tracking_result.tracking_quality_info.euclidean_errors, 75)
+        if err_75th_percentile > self.max_allowed_error:
+            tracking_is_good = False
+            reasons.append(f"{err_75th_percentile=}, which is more then {self.max_allowed_error=:.4f}")
+
+        if tracking_is_good:
+            return TrackingQualityEstimate.Healthy()
+        else:
+            return TrackingQualityEstimate.Bad(reasons=" and ".join(reasons))
 
 
 @attr.s(auto_attribs=True)
@@ -119,6 +141,7 @@ class Frontend:
         return resu, state
 
     def _track(self, obs: Observation) -> Tuple[FrontendTrackingResult, FrontendState]:
+        # TODO: refactor me pls
         match self.state:
             case FrontendState.Init():
                 prior_baselink_pose_estimate = self.pose_tracker.get_next_baselink_in_world_pose_estimate()
@@ -132,29 +155,43 @@ class Frontend:
                     baselink_pose_estimate_in_world=prior_baselink_pose_estimate,   # TODO: oops
                     keyframe=keyframe
                 )
-
-                posterior_baselink_pose_estimate = tracking_result.pose_estimate
-                tracking_looks_ok = self.tracking_quality_estimator.estimate_tracking_quality(tracking_result)
-
-                if not tracking_looks_ok:
-                    # important detail: note that we use _prior_ estimate. We trust it more.
-                    return self._estimate_new_keyframe(obs, prior_baselink_pose_estimate)
-                else:
-                    resu = FrontendTrackingResult(
-                        baselink_pose_estimate=posterior_baselink_pose_estimate,
-                        debug_data=FrontendResultDebugData(
-                            frames_since_keyframe=frames_since_keyframe+1,
-                            keyframe=keyframe,
-                            feature_matches=debug_data.feature_matches,
+                match tracking_result:
+                    case KeyframeMatchPoseTrackingResult.Failure(reason=reason):
+                        print(f"Tracking failed due to {reason}")
+                        return self._estimate_new_keyframe(obs, prior_baselink_pose_estimate)
+                    case KeyframeMatchPoseTrackingResult.Success(posterior_baselink_pose_estimate, _):
+                        # posterior_baselink_pose_estimate = tracking_result.pose_estimate
+                        tracking_quality_estimate = self.tracking_quality_estimator.estimate_tracking_quality(
+                            tracking_result
                         )
-                    )
-                    state = FrontendState.Tracking(
-                        frames_since_keyframe=frames_since_keyframe+1,
-                        keyframe=keyframe
-                    )
-                    return resu, state
+                        x = 1
+
+                        match tracking_quality_estimate:
+                            case TrackingQualityEstimate.Bad(reasons=reasons):
+                                # important detail: note that we use _prior_ estimate. We trust it more.
+                                print(f"Estimating new keyframe. Tracking quality looks bad due to {reasons=}")
+                                return self._estimate_new_keyframe(obs, prior_baselink_pose_estimate)
+                            case TrackingQualityEstimate.Healthy():
+                                resu = FrontendTrackingResult(
+                                    baselink_pose_estimate=posterior_baselink_pose_estimate,
+                                    debug_data=FrontendResultDebugData(
+                                        frames_since_keyframe=frames_since_keyframe+1,
+                                        keyframe=keyframe,
+                                        feature_matches=debug_data.feature_matches,
+                                    )
+                                )
+                                state = FrontendState.Tracking(
+                                    frames_since_keyframe=frames_since_keyframe+1,
+                                    keyframe=keyframe
+                                )
+                                return resu, state
+                            case _:
+                                raise ValueError("Unhandled TrackingQualityEstimate", tracking_quality_estimate)
+                    case _:
+                        raise ValueError("Unhandled KeyframeMatchPoseTrackingResult", tracking_result)
+
             case _:
-                    raise ValueError("Unhandled state", self.state)
+                raise ValueError("Unhandled state", self.state)
 
     def track(self, obs: Observation) -> FrontendTrackingResult:
         result, state = self._track(obs)
