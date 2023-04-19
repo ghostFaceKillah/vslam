@@ -43,18 +43,18 @@ class FeatureMatchDrawingOption(StrEnum):
 
 @attr.define
 class FeatureMatchRenderer:
-    drawing_option: FeatureMatchDrawingOption = FeatureMatchDrawingOption.CROSS
     color: BGRColor = BGRCuteColors.OFF_WHITE
 
     def _draw_keypoint(
             self,
             img: BGRImageArray,
             keypoint_px: Pixel,
-            color: BGRColor
+            color: BGRColor,
+            drawing_option: FeatureMatchDrawingOption = FeatureMatchDrawingOption.CROSS
     ):
-        if self.drawing_option == FeatureMatchDrawingOption.CIRCLE:
-            cv2_circle(img, keypoint_px[::-1], color=color, radius=1, thickness=1)
-        elif self.drawing_option == FeatureMatchDrawingOption.CROSS:
+        if drawing_option == FeatureMatchDrawingOption.CIRCLE:
+            cv2_circle(img, keypoint_px[::-1], color=color, radius=3, thickness=3)
+        elif drawing_option == FeatureMatchDrawingOption.CROSS:
             draw_cross_px(img, keypoint_px[::-1], color=color, cross_size=7)
 
     def draw_soft_summary_of_feature_matches(
@@ -62,13 +62,14 @@ class FeatureMatchRenderer:
         img: BGRImageArray,
         img_type: FeatureMatchImageType,
         matches: List[FeatureMatch],
+        drawing_option: FeatureMatchDrawingOption = FeatureMatchDrawingOption.CROSS
     ):
         for match in matches:
             color = BGRCuteColors.OFF_WHITE if match.display_color_or_none is None else match.display_color_or_none
             if img_type == FeatureMatchImageType.FROM:
-                self._draw_keypoint(img, match.get_from_keypoint_px(), color)
+                self._draw_keypoint(img, match.get_from_keypoint_px(), color, drawing_option)
             elif img_type == FeatureMatchImageType.TO:
-                self._draw_keypoint(img, match.get_to_keypoint_px(), color)
+                self._draw_keypoint(img, match.get_to_keypoint_px(), color, drawing_option)
 
 
 @attr.define
@@ -311,10 +312,33 @@ class LocalisationDebugPanes(StrEnum):
     SCENE_TITLE = 'scene_title'  # birdseye view of the scene
     POSE_DIFF = 'pose_diff'
     POSE_DIFF_TITLE = 'pose_diff_title'
-    KEYFRAME_IMG = 'keyframe_img'
-    KEYFRAME_IMG_TITLE = 'keyframe_img_title'
+    KEYFRAME_LEFT_IMG = 'keyframe_left_img'
+    KEYFRAME_RIGHT_IMG = 'keyframe_right_img'
+    KEYFRAME_LEFT_IMG_TITLE = 'keyframe_left_img_title'
+    KEYFRAME_RIGHT_IMG_TITLE = 'keyframe_right_img_title'
     CURRENT_IMG = 'current_img'
     CURRENT_IMG_TITLE = 'current_img_title'
+
+
+def _draw_pose_history(
+        display_renderer: DisplayBirdseyeView,
+        pose_history: List[TransformSE3],
+        color: BGRColor,
+        thickness: int = 1
+):
+    for prev, next in itertools.pairwise(pose_history):
+        display_renderer.draw_line_2d(
+            from_pt=SE3_pose_to_xytheta(prev)[:2],
+            to_pt=SE3_pose_to_xytheta(next)[:2],
+            color=color,
+            thickness=thickness
+        )
+
+    for pose_3d in pose_history:
+        pose_2d = SE3_pose_to_xytheta(pose_3d)
+        display_renderer.draw_circle(pose_2d[:2], color, thickness=4)
+
+    display_renderer.draw_3d_pose(pose_history[-1], color)
 
 
 @attr.s(auto_attribs=True)
@@ -326,7 +350,8 @@ class LocalizationDebugger:
     feature_match_renderer: FeatureMatchRenderer = attr.Factory(FeatureMatchRenderer)
 
     # state
-    keyframe_img: Optional[BGRImageArray] = None
+    keyframe_left_img: Optional[BGRImageArray] = None
+    keyframe_right_img: Optional[BGRImageArray] = None
     frames_since_keyframe: int = 0
     current_left_eye_image: Optional[BGRImageArray] = None
     current_right_eye_image: Optional[BGRImageArray] = None
@@ -351,8 +376,9 @@ class LocalizationDebugger:
 
         layout = Col(
             Row(
-                Padding(Col(Padding(LocalisationDebugPanes.KEYFRAME_IMG_TITLE), LocalisationDebugPanes.KEYFRAME_IMG)),
                 Padding(Col(Padding(LocalisationDebugPanes.CURRENT_IMG_TITLE), LocalisationDebugPanes.CURRENT_IMG)),
+                Padding(Col(Padding(LocalisationDebugPanes.KEYFRAME_LEFT_IMG_TITLE), LocalisationDebugPanes.KEYFRAME_LEFT_IMG)),
+                Padding(Col(Padding(LocalisationDebugPanes.KEYFRAME_RIGHT_IMG_TITLE), LocalisationDebugPanes.KEYFRAME_RIGHT_IMG)),
             ),
             Row(
                 Padding(Col(Padding(LocalisationDebugPanes.SCENE_TITLE), LocalisationDebugPanes.SCENE)),
@@ -369,14 +395,25 @@ class LocalizationDebugger:
     def add_keyframe(
         self,
         keyframe_baselink_pose: TransformSE3,
-        keyframe_img: BGRImageArray
+        keyframe_left_img: BGRImageArray,
+        keyframe_right_img: BGRImageArray,
+        feature_matches_or_none: Optional[List[FeatureMatch]] = None
     ):
         # world T baselink
         # baslink T camera
         keyframe_camera_pose = keyframe_baselink_pose @ self.cam_specs.extrinsics.get_pose_of_left_cam_in_baselink()
 
         self.scene_display_renderer.draw_view_cone(at_pose=keyframe_camera_pose, camera_intrinsics=self.cam_specs.intrinsics)
-        self.keyframe_img = keyframe_img
+        self.keyframe_left_img = keyframe_left_img
+        self.keyframe_right_img = keyframe_right_img
+
+        if feature_matches_or_none is not None:
+            self.feature_match_renderer.draw_soft_summary_of_feature_matches(
+                img=self.keyframe_right_img,
+                img_type=FeatureMatchImageType.TO,
+                matches=feature_matches_or_none,
+                drawing_option=FeatureMatchDrawingOption.CIRCLE
+            )
 
     def add_pose_estimate(
         self,
@@ -394,8 +431,7 @@ class LocalizationDebugger:
         self.current_right_eye_image = current_right_eye_image
         self.current_feature_matches_or_none = feature_matches_or_none
 
-    def render(self):
-
+    def _prepare_tracking_closeup_display_renderer(self) -> DisplayBirdseyeView:
         view_center = tuple(SE3_pose_to_xytheta(self.ground_truth_pose_history[-1])[:2])
         tracking_display_renderer = DisplayBirdseyeView.from_view_specifier(
             view_specifier=BirdseyeViewSpecifier.from_view_center(
@@ -406,41 +442,23 @@ class LocalizationDebugger:
             ground_color=BGRCuteColors.OFF_WHITE
         )
 
-        def draw_pose_history(
-            display_renderer: DisplayBirdseyeView,
-            pose_history: List[TransformSE3],
-            color: BGRColor,
-            thickness: int = 1
-        ):
-            for prev, next in itertools.pairwise(pose_history):
-                display_renderer.draw_line_2d(
-                    from_pt=SE3_pose_to_xytheta(prev)[:2],
-                    to_pt=SE3_pose_to_xytheta(next)[:2],
-                    color=color,
-                    thickness=thickness
-                )
-
-            for pose_3d in pose_history:
-                pose_2d = SE3_pose_to_xytheta(pose_3d)
-                display_renderer.draw_circle(pose_2d[:2], color, thickness=4)
-
-            display_renderer.draw_3d_pose(pose_history[-1], color)
-
         # draw lines
-        draw_pose_history(
+        _draw_pose_history(
             display_renderer=tracking_display_renderer,
             pose_history=list(self.estimated_pose_history),
             color=BGRCuteColors.CRIMSON,
         )
 
-        draw_pose_history(
+        _draw_pose_history(
             display_renderer=tracking_display_renderer,
             pose_history=list(self.ground_truth_pose_history),
             color=BGRCuteColors.GRASS_GREEN,
         )
+        return tracking_display_renderer
 
+    def _prepare_scene_overview_display_renderer(self) -> DisplayBirdseyeView:
         scene_display_renderer = self.scene_display_renderer.clone()
-        draw_pose_history(
+        _draw_pose_history(
             display_renderer=scene_display_renderer,
             pose_history=list(self.ground_truth_pose_history),
             color=BGRCuteColors.CRIMSON,
@@ -453,33 +471,36 @@ class LocalizationDebugger:
             thickness=3
         )
 
-        left_image = np.copy(self.keyframe_img)
-        if self.frames_since_keyframe == 0:
-            right_image = np.copy(self.current_right_eye_image)
-            right_image_text = 'Keyframe right eye image'
-        else:
-            right_image = np.copy(self.current_left_eye_image)
-            right_image_text = 'Current left eye image'
+        return scene_display_renderer
 
+    def render(self):
+        tracking_closeup_display_renderer = self._prepare_tracking_closeup_display_renderer()
+        scene_display_renderer = self._prepare_scene_overview_display_renderer()
+
+        left_image = np.copy(self.keyframe_left_img)
         self.feature_match_renderer.draw_soft_summary_of_feature_matches(
             img=left_image,
             img_type=FeatureMatchImageType.FROM,
             matches=self.current_feature_matches_or_none
         )
+
+        current_image = np.copy(self.current_left_eye_image)
         self.feature_match_renderer.draw_soft_summary_of_feature_matches(
-            img=right_image,
+            img=np.copy(self.current_left_eye_image),
             img_type=FeatureMatchImageType.TO,
             matches=self.current_feature_matches_or_none
         )
 
         return self.ui_layout.render({
             LocalisationDebugPanes.SCENE: magnify(scene_display_renderer.get_image(), 0.12),
-            LocalisationDebugPanes.POSE_DIFF: tracking_display_renderer.get_image(),
+            LocalisationDebugPanes.POSE_DIFF: tracking_closeup_display_renderer.get_image(),
+            LocalisationDebugPanes.KEYFRAME_LEFT_IMG: left_image,
+            LocalisationDebugPanes.KEYFRAME_RIGHT_IMG: self.keyframe_right_img,
+            LocalisationDebugPanes.CURRENT_IMG: current_image,
             LocalisationDebugPanes.SCENE_TITLE: self.text_renderer.render('Scene & Keyframes'),
-            LocalisationDebugPanes.POSE_DIFF_TITLE: self.text_renderer.render('Pose diff '),
-            LocalisationDebugPanes.KEYFRAME_IMG: left_image,
-            LocalisationDebugPanes.CURRENT_IMG: right_image,
-            LocalisationDebugPanes.KEYFRAME_IMG_TITLE: self.text_renderer.render('Keyframe left eye image'),
-            LocalisationDebugPanes.CURRENT_IMG_TITLE: self.text_renderer.render(right_image_text)
+            LocalisationDebugPanes.POSE_DIFF_TITLE: self.text_renderer.render('Pose diff'),
+            LocalisationDebugPanes.KEYFRAME_LEFT_IMG_TITLE: self.text_renderer.render('Keyframe left image'),
+            LocalisationDebugPanes.KEYFRAME_RIGHT_IMG_TITLE: self.text_renderer.render('Keyframe right image'),
+            LocalisationDebugPanes.CURRENT_IMG_TITLE: self.text_renderer.render('Current left eye image')
         })
 

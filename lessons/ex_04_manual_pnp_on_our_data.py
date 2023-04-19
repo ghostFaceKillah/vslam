@@ -23,12 +23,15 @@ def _process_debug_info(
     print(
         f"est pose = {SE3_pose_to_xytheta(frontend_resu.baselink_pose_estimate).round(2)}"
     )
+
     print(f"gt  pose = {SE3_pose_to_xytheta(obs.baselink_pose).round(2)}")
 
     if frontend_resu.debug_data.frames_since_keyframe == 0:
         localization_debugger.add_keyframe(
             keyframe_baselink_pose=frontend_resu.baselink_pose_estimate,
-            keyframe_img=obs.left_eye_img,
+            keyframe_left_img=obs.left_eye_img,
+            keyframe_right_img=obs.right_eye_img,
+            feature_matches_or_none=frontend_resu.debug_data.feature_matches
         )
 
     localization_debugger.add_pose_estimate(
@@ -45,7 +48,8 @@ def _process_debug_info(
 def run_couple_first_frames():
     # dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-04-01--22-41-24.msgpack')   # short
     dataset_path = os.path.join(
-        ROOT_DIR, "data/short_recording_2023-04-11--19-18-13.msgpack"
+        ROOT_DIR, "data/short_recording_2023-04-18--19-19-43.msgpack"
+        # ROOT_DIR, "data/short_recording_2023-04-18--20-43-48.msgpack"
     )  # long
     data_streamer = SimDataStreamer.from_dataset_path(dataset_path=dataset_path)
 
@@ -58,6 +62,7 @@ def run_couple_first_frames():
     frontend = Frontend.from_defaults(
         cam_specs=data_streamer.get_cam_specs(),
         start_pose=get_SE3_pose(x=-2.5),
+        # start_pose=get_SE3_pose(y=-5.),   # move this into data streamer, it's OK to assume coordinates of start point
         debug_data=FrontendStaticDebugData(scene=data_streamer.recorded_data.scene),
     )
 
