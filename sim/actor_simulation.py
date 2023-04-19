@@ -18,7 +18,7 @@ from utils.image import magnify
 from utils.plot import Col, Padding, Row, TextRenderer, Packer
 from utils.profiling import just_time
 from vslam.math import normalize_vector
-from vslam.poses import get_SE3_pose
+from vslam.poses import get_SE3_pose, correct_SE3_matrix_inplace
 from vslam.types import CameraPoseSE3, Vector3d
 
 
@@ -179,7 +179,7 @@ class Simulation:
 
     def simulate(
         self,
-        initial_baselink_pose: CameraPoseSE3 = get_SE3_pose(x=-2.5),   # looking toward +x direction in world frame, +z in camera
+        initial_baselink_pose: CameraPoseSE3 = get_SE3_pose(y=-5.),   # looking toward +x direction in world frame, +z in camera
     ) -> Recording:
         """ Simulates the environment. """
         recorder = Recording(
@@ -195,7 +195,7 @@ class Simulation:
 
         while True:
             # mutates environment based on actions
-            baselink_pose = baselink_pose @ action.transforms.camera
+            baselink_pose = correct_SE3_matrix_inplace(baselink_pose @ action.transforms.camera)
 
             if action.end:
                 break
