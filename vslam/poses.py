@@ -53,3 +53,31 @@ def SE3_pose_to_xytheta(pose: TransformSE3) -> Pose2DArray:
     yaw = np.arcsin(pose[1, 0])
     out_pose = np.array([pose[0, 3], pose[1, 3], yaw])
     return out_pose
+
+
+def _reorthogonalize_rotation_matrix(R: CameraRotationSO3) -> CameraRotationSO3:
+    # Perform Gram-Schmidt orthogonalization
+    u1 = R[:, 0]
+    u1 /= np.linalg.norm(u1)
+    u2 = R[:, 1] - np.dot(u1, R[:, 1]) * u1
+    u2 /= np.linalg.norm(u2)
+    u3 = np.cross(u1, u2)
+
+    # Create the orthonormal rotation matrix
+    R_ortho = np.column_stack([u1, u2, u3])
+    return R_ortho
+
+
+def _correct_SE3_matrix(T):
+    R = T[:3, :3]
+    t = T[:3, 3]
+    R_ortho = _reorthogonalize_rotation_matrix(R)
+    T_corrected = np.eye(4)
+    T_corrected[:3, :3] = R_ortho
+    T_corrected[:3, 3] = t
+    return T_corrected
+
+
+def correct_SE3_matrix_inplace(T: TransformSE3) -> TransformSE3:
+    T[:3, :3] = _reorthogonalize_rotation_matrix(T[:3, :3])
+    return T
