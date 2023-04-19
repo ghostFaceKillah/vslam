@@ -117,10 +117,15 @@ def estimate_keyframe(
     return keyframe, debug_data
 
 
-@attr.define
 class KeyframeMatchPoseTrackingResult:
-    pose_estimate: CameraPoseSE3
-    tracking_quality_info: GaussNetwonAuxillaryInfo   # mildly bad design to entangle this to Gauss Newton specifically
+    @attr.define
+    class Failure:
+        reason: str
+
+    @attr.define
+    class Success:
+        pose_estimate: CameraPoseSE3
+        tracking_quality_info: GaussNetwonAuxillaryInfo   # mildly bad design to entangle this to Gauss Newton specifically
 
 
 def estimate_pose_wrt_keyframe(
@@ -129,10 +134,16 @@ def estimate_pose_wrt_keyframe(
         cam_specs: CameraSpecs,
         baselink_pose_estimate_in_world: TransformSE3,
         keyframe: Keyframe,
+        min_no_matches_needed: int = 5,
         debug_feature_matches: bool = False
 ) -> Tuple[KeyframeMatchPoseTrackingResult, KeyFrameEstimationDebugData]:
     left_detections = matcher.detect(obs.left_eye_img)
     matches = matcher.match(keyframe.feature_detections, left_detections)
+
+    if len(matches) < min_no_matches_needed:
+        debug_data = KeyFrameEstimationDebugData(feature_matches=matches)
+        result = KeyframeMatchPoseTrackingResult.Failure(reason=f'not enough matches {len(matches)=}')
+        return result, debug_data
 
     if debug_feature_matches:
         debugger = FeatureMatchDebugger.from_defaults()
@@ -150,6 +161,7 @@ def estimate_pose_wrt_keyframe(
         point_2d = np.array(match.get_to_keypoint_px()).astype(np.float64)
         points_2d.append(point_2d)
 
+    # what happens if there are no matches ?
     points_3d = np.array(points_3d)
 
     left_camera_pose_in_world = correct_SE3_matrix_inplace(
@@ -171,7 +183,7 @@ def estimate_pose_wrt_keyframe(
         @ SE3_inverse(cam_specs.extrinsics.get_pose_of_left_cam_in_baselink())   # cam T baselink
     )
 
-    resu = KeyframeMatchPoseTrackingResult(
+    resu = KeyframeMatchPoseTrackingResult.Success(
         posterior_baselink_pose_estimate_in_world,
         tracking_quality_info=gauss_newton_info
     )
