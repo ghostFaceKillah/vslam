@@ -7,15 +7,16 @@ from vslam.datasets.simdata import SimDataStreamer
 from vslam.debug import FeatureMatchDebugger
 from vslam.features import OrbBasedFeatureMatcher
 
-if __name__ == '__main__':
-    dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-04-01--22-41-24.msgpack')
+if __name__ == "__main__":
+    dataset_path = os.path.join(
+        ROOT_DIR, "data/short_recording_2023-04-01--22-41-24.msgpack"
+    )
 
     data_streamer = SimDataStreamer.from_dataset_path(dataset_path=dataset_path)
 
     debugger = FeatureMatchDebugger.from_defaults()
 
     for obs in data_streamer.stream():
-
         matcher = OrbBasedFeatureMatcher.build()
 
         im_left = obs.left_eye_img
@@ -27,8 +28,5 @@ if __name__ == '__main__':
 
         for img in debugger.render(im_left, im_right, feature_matches):
             # cv2.imwrite(f'imgs/feature_matching_{i:04d}.png', magnify(img, factor=0.7))
-            cv2.imshow('wow', img)
+            cv2.imshow("wow", img)
             cv2.waitKey(-1)
-
-
-
