@@ -9,9 +9,9 @@ import numpy as np
 
 from sim.sim_types import RenderTriangle3d, CameraSpecs, Observation
 from vslam.debug_interface import IProvidesFeatureMatches, IProvidesKeyframe
-from vslam.features import OrbBasedFeatureMatcher, FeatureMatch
-from vslam.ketyframe import Keyframe, KeyframeMatchPoseTrackingResult, estimate_keyframe, estimate_pose_wrt_keyframe, \
-    KeyFrameEstimationDebugData
+from vslam.features import OrbBasedFeatureMatcher
+from vslam.keyframe import Keyframe, KeyframeMatchPoseTrackingResult, estimate_keyframe, estimate_pose_wrt_keyframe, \
+    KeyFrameEstimationDebugData, KeyframeTrackingDebugData
 from vslam.tracking import VelocityPoseTracker
 from vslam.types import TransformSE3, CameraPoseSE3
 
@@ -36,11 +36,14 @@ class FrontendStaticDebugData:
     scene: List[RenderTriangle3d]
 
 
+
+
 @attr.s(auto_attribs=True)
 class FrontendResultDebugData(IProvidesKeyframe, IProvidesFeatureMatches):
     frames_since_keyframe: int
     keyframe: Keyframe
-    feature_matches: List[FeatureMatch]
+    keyframe_estimation_debug_data_or_none: Optional[KeyFrameEstimationDebugData]
+    keyframe_tracking_debug_data_or_none: Optional[KeyframeTrackingDebugData]
 
 
 @attr.s(auto_attribs=True)
@@ -118,7 +121,7 @@ class Frontend:
         obs: Observation,
         baselink_pose_estimate: TransformSE3
     ) -> Tuple[FrontendTrackingResult, FrontendState]:
-        keyframe, keyframe_debug_data = estimate_keyframe(
+        keyframe, keyframe_estimation_debug_data = estimate_keyframe(
             obs=obs,
             matcher=self.matcher,
             baselink_pose=baselink_pose_estimate,
@@ -132,7 +135,8 @@ class Frontend:
             debug_data=FrontendResultDebugData(
                 frames_since_keyframe=0,
                 keyframe=keyframe,
-                feature_matches=keyframe_debug_data.feature_matches,
+                keyframe_estimation_debug_data_or_none=keyframe_estimation_debug_data,
+                keyframe_tracking_debug_data_or_none=None
             )
         )
         state = FrontendState.Tracking(
@@ -145,7 +149,7 @@ class Frontend:
         self,
         obs: Observation,
         prior_baselink_pose_estimate: CameraPoseSE3,
-        debug_data: KeyFrameEstimationDebugData,
+        keyframe_tracking_debug_data: KeyframeTrackingDebugData,
         state: FrontendState.Tracking,
         tracking_result: KeyframeMatchPoseTrackingResult.Success,
     ) -> Tuple[FrontendTrackingResult, FrontendState]:
@@ -162,7 +166,8 @@ class Frontend:
                     debug_data=FrontendResultDebugData(
                         frames_since_keyframe=state.frames_since_keyframe + 1,
                         keyframe=state.keyframe,
-                        feature_matches=debug_data.feature_matches,
+                        keyframe_tracking_debug_data_or_none=keyframe_tracking_debug_data,
+                        keyframe_estimation_debug_data_or_none=None
                     )
                 )
                 state = FrontendState.Tracking(

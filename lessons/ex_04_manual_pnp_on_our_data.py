@@ -20,10 +20,7 @@ def _process_debug_info(
 ) -> BGRImageArray:
     # TODO: move all of this inside Localization debugger ?
     print(iteration_number)
-    print(
-        f"est pose = {SE3_pose_to_xytheta(frontend_resu.baselink_pose_estimate).round(2)}"
-    )
-
+    print(f"est pose = {SE3_pose_to_xytheta(frontend_resu.baselink_pose_estimate).round(2)}")
     print(f"gt  pose = {SE3_pose_to_xytheta(obs.baselink_pose).round(2)}")
 
     if frontend_resu.debug_data.frames_since_keyframe == 0:
@@ -31,15 +28,18 @@ def _process_debug_info(
             keyframe_baselink_pose=frontend_resu.baselink_pose_estimate,
             keyframe_left_img=obs.left_eye_img,
             keyframe_right_img=obs.right_eye_img,
-            feature_matches_or_none=frontend_resu.debug_data.feature_matches
+            feature_matches_or_none=frontend_resu.debug_data.keyframe_estimation_debug_data_or_none.relevant_feature_matches,
         )
+        debug_feature_matches = frontend_resu.debug_data.keyframe_estimation_debug_data_or_none.relevant_feature_matches
+    else:
+        debug_feature_matches = frontend_resu.debug_data.keyframe_tracking_debug_data_or_none.all_feature_matches
 
     localization_debugger.add_pose_estimate(
         baselink_pose_groundtruth=obs.baselink_pose,
         baselink_pose_estimate=frontend_resu.baselink_pose_estimate,
         current_left_eye_image=obs.left_eye_img,
         current_right_eye_image=obs.right_eye_img,
-        feature_matches_or_none=frontend_resu.debug_data.feature_matches,
+        feature_matches_or_none=debug_feature_matches,
         frames_since_keyframe=frontend_resu.debug_data.frames_since_keyframe,
     )
     return localization_debugger.render()
@@ -62,7 +62,7 @@ def run_couple_first_frames():
     frontend = Frontend.from_defaults(
         cam_specs=data_streamer.get_cam_specs(),
         start_pose=get_SE3_pose(x=-2.5),
-        # start_pose=get_SE3_pose(y=-5.),   # move this into data streamer, it's OK to assume coordinates of start point
+        # start_pose=get_SE3_pose(y=-5.),   # TODO: move this into data streamer, it's OK to assume coordinates of start point
         debug_data=FrontendStaticDebugData(scene=data_streamer.recorded_data.scene),
     )
 

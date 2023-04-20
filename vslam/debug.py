@@ -486,7 +486,7 @@ class LocalizationDebugger:
 
         current_image = np.copy(self.current_left_eye_image)
         self.feature_match_renderer.draw_soft_summary_of_feature_matches(
-            img=np.copy(self.current_left_eye_image),
+            img=current_image,
             img_type=FeatureMatchImageType.TO,
             matches=self.current_feature_matches_or_none
         )

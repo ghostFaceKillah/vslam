@@ -1,5 +1,6 @@
 from typing import List, Optional
 
+import attr
 import numpy as np
 
 from vslam.math import vec_hat
@@ -44,11 +45,17 @@ def _docs_of_naive_triangulation() -> str:
      """
 
 
+@attr.define
+class DepthEstimate:
+    depth_or_none: Optional[float]
+    depth_est_std: float
+
+
 def naive_triangulation(
     points_in_cam_one: CamCoords3dHomog,
     points_in_cam_two: CamCoords3dHomog,
     cam_one_in_two: CameraPoseSE3
-) -> List[Optional[float]]:
+) -> List[DepthEstimate]:
     """ Esimate depth based on coordinate transform formula. See above for longer doc.
     Returns None if there seems to be too much error in inputs. """
 
@@ -76,8 +83,8 @@ def naive_triangulation(
 
         # further naive success filtering
         if s.std() < 0.5 and s.mean() > 0:
-            scales.append(s.mean())
+            scales.append(DepthEstimate(s.mean(), s.std()))
         else:
-            scales.append(None)
+            scales.append(DepthEstimate(None, s.std()))
 
     return scales

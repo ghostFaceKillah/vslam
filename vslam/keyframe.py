@@ -13,7 +13,7 @@ from vslam.pnp import GaussNetwonAuxillaryInfo, gauss_netwon_pnp
 from vslam.poses import correct_SE3_matrix_inplace
 from vslam.transforms import px_2d_to_cam_coords_3d_homo, dehomogenize, CAM_TO_WORLD_FLIP, homogenize, SE3_inverse, \
     px_2d_to_img_coords_2d
-from vslam.triangulation import naive_triangulation
+from vslam.triangulation import naive_triangulation, DepthEstimate
 from vslam.types import CameraPoseSE3, WorldCoords3D, TransformSE3
 
 
@@ -29,7 +29,9 @@ class Keyframe:
 
 @attr.define
 class KeyFrameEstimationDebugData:
-    feature_matches: List[FeatureMatch]
+    relevant_feature_matches: List[FeatureMatch]   # feature matches with succesfully estimated depth
+    all_feature_matches: List[FeatureMatch]
+    all_depth_estimates: List[DepthEstimate]
 
 
 def estimate_keyframe(
@@ -55,11 +57,13 @@ def estimate_keyframe(
     to_kp_px_coords_2d = np.array([fm.get_to_keypoint_px() for fm in feature_matches], dtype=np.int64)
     to_kp_cam_coords_3d_homo = px_2d_to_cam_coords_3d_homo(to_kp_px_coords_2d, cam_intrinsics)
 
-    depths = naive_triangulation(
+    depth_estimates = naive_triangulation(
         points_in_cam_one=from_kp_cam_coords_3d_homo,
         points_in_cam_two=to_kp_cam_coords_3d_homo,
         cam_one_in_two=cam_extrinsics.get_pose_of_left_cam_in_right_cam()
     )
+
+    depths = [est.depth_or_none for est in depth_estimates]
 
     if debug_feature_matches:
         debugger = FeatureMatchDebugger.from_defaults()
@@ -75,12 +79,12 @@ def estimate_keyframe(
 
     assert len(depths) == len(from_kp_cam_coords_3d_homo) == len(feature_matches)
 
-    for depth, point_homo, feature_match in zip(depths, from_kp_cam_coords_3d_homo, feature_matches):
-        if depth is None:
+    for depth_estimate, point_homo, feature_match in zip(depth_estimates, from_kp_cam_coords_3d_homo, feature_matches):
+        if depth_estimate.depth_or_none is None:
             continue
 
         relevant_feature_matches.append(feature_match)
-        points_3d_est.append(dehomogenize(CAM_TO_WORLD_FLIP @ homogenize(point_homo * depth)))
+        points_3d_est.append(dehomogenize(CAM_TO_WORLD_FLIP @ homogenize(point_homo * depth_estimate.depth_or_none)))
         feature_descriptors.append(feature_match.from_feature)
         keypoints.append(feature_match.from_keypoint)
 
@@ -105,7 +109,11 @@ def estimate_keyframe(
             cv2.imshow('wow', img)
             cv2.waitKey(-1)
 
-    debug_data = KeyFrameEstimationDebugData(feature_matches=relevant_feature_matches)
+    debug_data = KeyFrameEstimationDebugData(
+        relevant_feature_matches=relevant_feature_matches,
+        all_feature_matches=feature_matches,
+        all_depth_estimates=depth_estimates
+    )
 
     keyframe = Keyframe(
         image=obs.left_eye_img,
@@ -128,6 +136,12 @@ class KeyframeMatchPoseTrackingResult:
         tracking_quality_info: GaussNetwonAuxillaryInfo   # mildly bad design to entangle this to Gauss Newton specifically
 
 
+@attr.s(auto_attribs=True)
+class KeyframeTrackingDebugData:
+    all_feature_matches: List[FeatureMatch]
+    reprojection_errors_or_none: Optional[List[float]]
+
+
 def estimate_pose_wrt_keyframe(
         obs: Observation,
         matcher: OrbBasedFeatureMatcher,
@@ -136,12 +150,15 @@ def estimate_pose_wrt_keyframe(
         keyframe: Keyframe,
         min_no_matches_needed: int = 5,
         debug_feature_matches: bool = False
-) -> Tuple[KeyframeMatchPoseTrackingResult, KeyFrameEstimationDebugData]:
+) -> Tuple[KeyframeMatchPoseTrackingResult, KeyframeTrackingDebugData]:
     left_detections = matcher.detect(obs.left_eye_img)
     matches = matcher.match(keyframe.feature_detections, left_detections)
 
     if len(matches) < min_no_matches_needed:
-        debug_data = KeyFrameEstimationDebugData(feature_matches=matches)
+        debug_data = KeyframeTrackingDebugData(
+            all_feature_matches=matches,
+            reprojection_errors_or_none=None
+        )
         result = KeyframeMatchPoseTrackingResult.Failure(reason=f'not enough matches {len(matches)=}')
         return result, debug_data
 
@@ -188,6 +205,9 @@ def estimate_pose_wrt_keyframe(
         tracking_quality_info=gauss_newton_info
     )
 
-    debug_data = KeyFrameEstimationDebugData(feature_matches=matches)
+    debug_data = KeyframeTrackingDebugData(
+        all_feature_matches=matches,
+        reprojection_errors_or_none=gauss_newton_info.euclidean_errors
+    )
 
     return resu, debug_data

@@ -80,7 +80,7 @@ def estimate_J_analytically(
 
 @attr.s(auto_attribs=True)
 class GaussNetwonAuxillaryInfo:
-    euclidean_errors: Array['N', np.float64]
+    euclidean_errors: Array['N', np.float64]   # TODO: rename to euclidean reprojection errors ?
     mean_euclidean_error: float
 
 

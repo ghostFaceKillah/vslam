@@ -1,7 +1,7 @@
 from typing import List, Protocol
 
 from vslam.features import FeatureMatch
-from vslam.ketyframe import Keyframe
+from vslam.keyframe import Keyframe
 
 
 class IProvidesKeyframe(Protocol):
