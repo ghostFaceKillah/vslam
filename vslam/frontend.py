@@ -10,7 +10,8 @@ import numpy as np
 from sim.sim_types import RenderTriangle3d, CameraSpecs, Observation
 from vslam.debug_interface import IProvidesFeatureMatches, IProvidesKeyframe
 from vslam.features import OrbBasedFeatureMatcher, FeatureMatch
-from vslam.ketyframe import Keyframe, KeyframeMatchPoseTrackingResult, estimate_keyframe, estimate_pose_wrt_keyframe
+from vslam.ketyframe import Keyframe, KeyframeMatchPoseTrackingResult, estimate_keyframe, estimate_pose_wrt_keyframe, \
+    KeyFrameEstimationDebugData
 from vslam.tracking import VelocityPoseTracker
 from vslam.types import TransformSE3, CameraPoseSE3
 
@@ -64,7 +65,7 @@ class FrontendPoseQualityEstimator:
     minimum_number_of_matches: int = 8
     max_allowed_error: float = 0.02
 
-    def estimate_tracking_quality(self, tracking_result: KeyframeMatchPoseTrackingResult) -> bool:
+    def estimate_tracking_quality(self, tracking_result: KeyframeMatchPoseTrackingResult.Success) -> TrackingQualityEstimate:
         """ Should roll to a new keyframe ? """
 
         tracking_is_good = True
@@ -140,56 +141,67 @@ class Frontend:
         )
         return resu, state
 
+    def _handle_keyframe_tracking_successful(
+        self,
+        obs: Observation,
+        prior_baselink_pose_estimate: CameraPoseSE3,
+        debug_data: KeyFrameEstimationDebugData,
+        state: FrontendState.Tracking,
+        tracking_result: KeyframeMatchPoseTrackingResult.Success,
+    ) -> Tuple[FrontendTrackingResult, FrontendState]:
+        tracking_quality_estimate = self.tracking_quality_estimator.estimate_tracking_quality(tracking_result)
+        match tracking_quality_estimate:
+            case TrackingQualityEstimate.Bad(reasons=reasons):
+                # important detail: note that we use _prior_ estimate. We trust it more because tracking is bad.
+                print(f"Estimating new keyframe. Tracking quality looks bad due to {reasons=}")
+                return self._estimate_new_keyframe(obs, prior_baselink_pose_estimate)
+            case TrackingQualityEstimate.Healthy():
+                posterior_baselink_pose_estimate = tracking_result.pose_estimate
+                resu = FrontendTrackingResult(
+                    baselink_pose_estimate=posterior_baselink_pose_estimate,
+                    debug_data=FrontendResultDebugData(
+                        frames_since_keyframe=state.frames_since_keyframe + 1,
+                        keyframe=state.keyframe,
+                        feature_matches=debug_data.feature_matches,
+                    )
+                )
+                state = FrontendState.Tracking(
+                    frames_since_keyframe=state.frames_since_keyframe + 1,
+                    keyframe=state.keyframe
+                )
+                return resu, state
+            case _:
+                raise ValueError("Unhandled TrackingQualityEstimate", tracking_quality_estimate)
+
+    def _handle_tracking_state(
+        self,
+        obs: Observation,
+        state: FrontendState.Tracking
+   ) -> Tuple[FrontendTrackingResult, FrontendState]:
+        prior_baselink_pose_estimate = self.pose_tracker.get_next_baselink_in_world_pose_estimate()
+        tracking_result, debug_data = estimate_pose_wrt_keyframe(
+            obs=obs,
+            matcher=self.matcher,
+            cam_specs=self.cam_specs,
+            baselink_pose_estimate_in_world=prior_baselink_pose_estimate,  # TODO: oops
+            keyframe=state.keyframe
+        )
+        match tracking_result:
+            case KeyframeMatchPoseTrackingResult.Failure(reason=reason):
+                print(f"Tracking failed due to {reason}")
+                return self._estimate_new_keyframe(obs, prior_baselink_pose_estimate)
+            case KeyframeMatchPoseTrackingResult.Success():
+                return self._handle_keyframe_tracking_successful(obs, prior_baselink_pose_estimate, debug_data, state, tracking_result)
+            case _:
+                raise ValueError("Unhandled KeyframeMatchPoseTrackingResult", tracking_result)
+
     def _track(self, obs: Observation) -> Tuple[FrontendTrackingResult, FrontendState]:
-        # TODO: refactor me pls
         match self.state:
             case FrontendState.Init():
                 prior_baselink_pose_estimate = self.pose_tracker.get_next_baselink_in_world_pose_estimate()
                 return self._estimate_new_keyframe(obs, prior_baselink_pose_estimate)
-            case FrontendState.Tracking(frames_since_keyframe, keyframe):
-                prior_baselink_pose_estimate = self.pose_tracker.get_next_baselink_in_world_pose_estimate()
-                tracking_result, debug_data = estimate_pose_wrt_keyframe(
-                    obs=obs,
-                    matcher=self.matcher,
-                    cam_specs=self.cam_specs,
-                    baselink_pose_estimate_in_world=prior_baselink_pose_estimate,   # TODO: oops
-                    keyframe=keyframe
-                )
-                match tracking_result:
-                    case KeyframeMatchPoseTrackingResult.Failure(reason=reason):
-                        print(f"Tracking failed due to {reason}")
-                        return self._estimate_new_keyframe(obs, prior_baselink_pose_estimate)
-                    case KeyframeMatchPoseTrackingResult.Success(posterior_baselink_pose_estimate, _):
-                        # posterior_baselink_pose_estimate = tracking_result.pose_estimate
-                        tracking_quality_estimate = self.tracking_quality_estimator.estimate_tracking_quality(
-                            tracking_result
-                        )
-                        x = 1
-
-                        match tracking_quality_estimate:
-                            case TrackingQualityEstimate.Bad(reasons=reasons):
-                                # important detail: note that we use _prior_ estimate. We trust it more.
-                                print(f"Estimating new keyframe. Tracking quality looks bad due to {reasons=}")
-                                return self._estimate_new_keyframe(obs, prior_baselink_pose_estimate)
-                            case TrackingQualityEstimate.Healthy():
-                                resu = FrontendTrackingResult(
-                                    baselink_pose_estimate=posterior_baselink_pose_estimate,
-                                    debug_data=FrontendResultDebugData(
-                                        frames_since_keyframe=frames_since_keyframe+1,
-                                        keyframe=keyframe,
-                                        feature_matches=debug_data.feature_matches,
-                                    )
-                                )
-                                state = FrontendState.Tracking(
-                                    frames_since_keyframe=frames_since_keyframe+1,
-                                    keyframe=keyframe
-                                )
-                                return resu, state
-                            case _:
-                                raise ValueError("Unhandled TrackingQualityEstimate", tracking_quality_estimate)
-                    case _:
-                        raise ValueError("Unhandled KeyframeMatchPoseTrackingResult", tracking_result)
-
+            case FrontendState.Tracking():
+                return self._handle_tracking_state(obs, self.state)
             case _:
                 raise ValueError("Unhandled state", self.state)
 
