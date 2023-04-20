@@ -1,10 +1,76 @@
+2023-04-19
+----------
+
+Good news: loss of tracking is clearly visible in the data and should be possible to debug.
+I guess both looking deep into debug and blackbox tuning could work.
+There seems to be high correlation between high reprojection error and bad tracking.
+In the book, they had nice outlier rejection on the level of tracking. Maybe that's the way to go forward.
+
+When we estimate new keyframe, it might be best to take posterior pose as keyframe pose, right?
+
+- [ ] Lectures & blogpost
+- [ ] R&D
+  - [ ] 
+  - [.] why do later rotations break and require new keyframe all the time ?
+    - [X] display debug stats, as described above
+    - [X] maybe play with most interesting crosses
+  - [ ] Optimize path and scene?
+    - [ ] sometimes, we go the middle of triangles and that's really confusing for VSLAM
+    - [ ] make the rotations smoother
+    - [ ] add more triangles in the distance, currently it's just too weird on the edges
+    - [ ] we go out of bounds at some point, no reason to do it
+  - [ ] Just grid search the params 
+- [ ] code niceness etc
+  - [ ] fold tracking quality estimator back into tracking code, this weird double layer decreases readability
+  - [ ] display grid  on the pose tracking thing?
+  - [X] the jump when we go through new keyframe / oldkeyframe is a bit confusing, it's better to show all 3
+- [ ] pose tracker, disallow big velocity jumps
+  - [ ] display prior pose guess ?
+- [ ] be able to go back during debug ?
+  - [ ] Serialize outputs of frontend run?
+- [ ] Test, type, lint, todo
+  - [ ] use ruff, black and typing
+- [ ] Read all from scratch and optimize for ease of understanding
+- [ ] better pose tracker - implement the velocity extrapolation thing
+
+2023-04-18
+----------
+
+Rotations break, because there seems to be not enough feature matches when making the keyframe.
+
+- [ ] Lectures & blogpost
+- [ ] end to end thing bugs:
+  - [ ] sometimes, we go the middle of triangles and that's really confusing for VSLAM
+  - [ ] the jump when we go through new keyframe / oldkeyframe is a bit confusing, it's better to show all 3
+  - [.] why do later rotations break and require new keyframe all the time ?
+    - it looks like not enough matches or bad matches ?
+    - [ ] display amount of matches and their quality
+    - [ ] display stats of reprojection error (distributions of reprojection error ?)
+  - [ ] add more triangles in the distance, currently it's just too weird on the edges
+  - [ ] we go out of bounds at some point, no reason to do it
+  - [ ] display grid  on the pose tracking thing?
+  - [X] interpolation
+  - [X] crash later in the replay
+  - [X] later into replay, the pose direction arrow points into wrong direction
+  - [X] what's up with the nan in rotation
+- [ ] pose tracker, disallow big velocity jumps
+  - [ ] display prior pose guess ?
+- [ ] be able to go back during debug ?
+  - [ ] Serialize outputs of frontend run?
+- [ ] Test, type, lint
+  - [ ] use ruff, black and typing
+- [ ] Read all from scratch and optimize for cleaniness?
+- [ ] better pose tracker - implement the velocity extrapolation thing
+
 2023-04-17
 ----------
 
 - [ ] fix frontend bugs: why is it going wrong on the big dataset?
   - [ ] what's up with the nan in rotation
   - [ ] why do later rotations break and require new keyframe all the time ?
-- [ ] Test, type, lint, refactor etc
+- [ ] Test, type, lint
+  - [ ] use ruff, black and typing
+- [ ] Read all from scratch and optimize for cleaniness?
 - [ ] Lectures & blogpost
 - [ ] better pose tracker - implement the velocity extrapolation thing
 - [X] make vis pretty
@@ -708,11 +774,7 @@ I wonder:
 
 2022-11-07
 ==========
-
 Probably need a nice camera library.
-
-Would be super nice to have cool visualizations of the camera matrix,
-projections, etc.
-
+Would be super nice to have cool visualizations of the camera matrix, projections, etc.
 Maybe just in pangolin, right ?
 

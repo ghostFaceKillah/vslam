@@ -82,7 +82,7 @@ def naive_triangulation(
         s = -b / a
 
         # further naive success filtering
-        if s.std() < 0.5 and s.mean() > 0:
+        if s.std() < 0.01 and s.mean() > 0:
             scales.append(DepthEstimate(s.mean(), s.std()))
         else:
             scales.append(DepthEstimate(None, s.std()))

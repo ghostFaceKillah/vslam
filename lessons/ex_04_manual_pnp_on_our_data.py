@@ -24,15 +24,30 @@ def _process_debug_info(
     print(f"gt  pose = {SE3_pose_to_xytheta(obs.baselink_pose).round(2)}")
 
     if frontend_resu.debug_data.frames_since_keyframe == 0:
+        debug_feature_matches = frontend_resu.debug_data.keyframe_estimation_debug_data_or_none.relevant_feature_matches
+    else:
+        debug_feature_matches = frontend_resu.debug_data.keyframe_tracking_debug_data_or_none.all_feature_matches
+
+    if frontend_resu.debug_data.frames_since_keyframe == 0:
         localization_debugger.add_keyframe(
             keyframe_baselink_pose=frontend_resu.baselink_pose_estimate,
             keyframe_left_img=obs.left_eye_img,
             keyframe_right_img=obs.right_eye_img,
-            feature_matches_or_none=frontend_resu.debug_data.keyframe_estimation_debug_data_or_none.relevant_feature_matches,
+            feature_matches_or_none=debug_feature_matches
         )
-        debug_feature_matches = frontend_resu.debug_data.keyframe_estimation_debug_data_or_none.relevant_feature_matches
+
+    if frontend_resu.debug_data.frames_since_keyframe == 0:
+        df = frontend_resu.debug_data.keyframe_estimation_debug_data_or_none.to_df()
+        print("Keyframe estimation debug info")
+        print(df.describe().round(2))
+        print("correlations = ")
+        print(df.dropna().corr())
     else:
-        debug_feature_matches = frontend_resu.debug_data.keyframe_tracking_debug_data_or_none.all_feature_matches
+        df = frontend_resu.debug_data.keyframe_tracking_debug_data_or_none.to_df()
+        print("Keyframe tracking debug info")
+        print(df.describe().round(4))
+        print("correlations = ")
+        print(df.corr())
 
     localization_debugger.add_pose_estimate(
         baselink_pose_groundtruth=obs.baselink_pose,

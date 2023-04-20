@@ -3,6 +3,7 @@ from typing import Optional, List, Tuple
 import attr
 import cv2
 import numpy as np
+import pandas as pd  # oof
 
 from sim.sim_types import Observation, CameraExtrinsics, RenderTriangle3d, CameraSpecs
 from utils.custom_types import BGRImageArray
@@ -32,6 +33,15 @@ class KeyFrameEstimationDebugData:
     relevant_feature_matches: List[FeatureMatch]   # feature matches with succesfully estimated depth
     all_feature_matches: List[FeatureMatch]
     all_depth_estimates: List[DepthEstimate]
+
+    def to_df(self) -> pd.DataFrame:
+        df = pd.DataFrame({
+            'hamming_dist': [fm.get_hamming_distance() for fm in self.all_feature_matches],
+            'px_dist': [fm.get_pixel_distance() for fm in self.all_feature_matches],
+            'depths': [de.depth_or_none if de.depth_or_none is not None else np.nan for de in self.all_depth_estimates],
+            'depth_std': [de.depth_est_std for de in self.all_depth_estimates]
+        })
+        return df
 
 
 def estimate_keyframe(
@@ -140,6 +150,17 @@ class KeyframeMatchPoseTrackingResult:
 class KeyframeTrackingDebugData:
     all_feature_matches: List[FeatureMatch]
     reprojection_errors_or_none: Optional[List[float]]
+
+    def to_df(self) -> pd.DataFrame:
+        data = {
+            'hamming_dist': [fm.get_hamming_distance() for fm in self.all_feature_matches],
+            'px_dist': [fm.get_pixel_distance() for fm in self.all_feature_matches],
+        }
+
+        if self.reprojection_errors_or_none is not None:
+            data['repr_err'] = self.reprojection_errors_or_none
+        df = pd.DataFrame(data)
+        return df
 
 
 def estimate_pose_wrt_keyframe(
