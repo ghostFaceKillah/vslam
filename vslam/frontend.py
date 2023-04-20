@@ -36,8 +36,6 @@ class FrontendStaticDebugData:
     scene: List[RenderTriangle3d]
 
 
-
-
 @attr.s(auto_attribs=True)
 class FrontendResultDebugData(IProvidesKeyframe, IProvidesFeatureMatches):
     frames_since_keyframe: int
