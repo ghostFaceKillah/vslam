@@ -1,6 +1,7 @@
 import itertools
 import os
 
+import cv2
 import numpy as np
 import pandas as pd
 import tqdm
@@ -75,9 +76,12 @@ def run_couple_first_frames(
     max_px_distance=100.0,
     max_hamming_distance=31,
     minimum_number_of_matches=8,
-    max_allowed_error=0.02
+    max_allowed_error=0.02,
+        show=False,
+        diff_err=False
 ):
-    localization_debugger = LocalizationDebugger.from_scene(scene=data_streamer.recorded_data.scene, cam_specs=data_streamer.get_cam_specs())
+    if show:
+        localization_debugger = LocalizationDebugger.from_scene(scene=data_streamer.recorded_data.scene, cam_specs=data_streamer.get_cam_specs())
 
     frontend = Frontend(
         matcher=OrbBasedFeatureMatcher.build(
@@ -85,7 +89,8 @@ def run_couple_first_frames(
             max_hamming_distance=max_hamming_distance,
         ),
         cam_specs=data_streamer.get_cam_specs(),
-        pose_tracker=VelocityPoseTracker(get_SE3_pose(x=-2.5)),
+        # pose_tracker=VelocityPoseTracker(get_SE3_pose(x=-2.5)),
+        pose_tracker=VelocityPoseTracker(get_SE3_pose(y=-5.)),
         tracking_quality_estimator=FrontendPoseQualityEstimator(
             minimum_number_of_matches=minimum_number_of_matches,
             max_allowed_error=max_allowed_error,
@@ -93,58 +98,62 @@ def run_couple_first_frames(
         debug_data=FrontendStaticDebugData(scene=data_streamer.recorded_data.scene),
     )
 
-    sum_euclidean_error = 0.0
-    sum_angular_error = 0.0
+    est_poses, gt_poses = [], []
 
     for i, obs in enumerate(data_streamer.stream()):
         frontend_resu = frontend.track(obs)
         est_pose = SE3_pose_to_xytheta(frontend_resu.baselink_pose_estimate)
         gt_pose = SE3_pose_to_xytheta(obs.baselink_pose)
 
-        euclidean_err = np.linalg.norm(est_pose[:2] - gt_pose[:2])
-        angular_err = np.abs(get_angular_error(est_pose[2], gt_pose[2]))
+        est_poses.append(est_pose)
+        gt_poses.append(gt_pose)
 
-        sum_euclidean_error += euclidean_err
-        sum_angular_error += angular_err
+        if show:
+            img = _process_debug_info(i, frontend_resu, obs, localization_debugger)
+            cv2.imshow('eheh', img)
+            cv2.waitKey(-1)
 
-        # print(f"{i}")
-        # print(f"est pose = {est_pose.round(2)}")
-        # print(f"gt  pose = {gt_pose.round(2)}")
-        # print(f"Euclidean error: {euclidean_err:.2f}")
-        # print(f"Angular error: {angular_err:.2f} radians")
+        if i > 130:
+            break
 
-        # img = _process_debug_info(i, frontend_resu, obs, localization_debugger)
-        # cv2.imshow('eheh', img)
-        # cv2.waitKey(-1)
+    est_poses = np.array(est_poses)
+    gt_poses = np.array(gt_poses)
 
-        # if i > 80:
-        #     break
+    if diff_err:
+        gt_diffs = np.diff(gt_poses, axis=0)
+        est_diffs = np.diff(est_poses, axis=0)
+        sum_euclidean_error = np.linalg.norm(gt_diffs[:, :2] - est_diffs[:, :2], axis=1).sum()
+        sum_angular_error = np.abs(get_angular_error(gt_diffs[:, 2], est_diffs[:, 2])).sum()
+    else:
+        sum_euclidean_error = np.linalg.norm(gt_poses[:, :2] - est_poses[:, :2], axis=1).sum()
+        sum_angular_error = np.abs(get_angular_error(gt_poses[:, 2], est_poses[:, 2])).sum()
 
-    # print(f'sum angular error = {sum_angular_error:.2f} sum_euclidean_eror = {sum_euclidean_error:.2f}')
     return sum_euclidean_error, sum_angular_error
 
 
 if __name__ == "__main__":
     # dataset_path = os.path.join(ROOT_DIR, 'data/short_recording_2023-04-01--22-41-24.msgpack')   # short
     dataset_path = os.path.join(
-        ROOT_DIR, "data/short_recording_2023-04-18--19-19-43.msgpack"
-        # ROOT_DIR, "data/short_recording_2023-04-18--20-43-48.msgpack"
+        # ROOT_DIR, "data/short_recording_2023-04-20--22-29-41.msgpack"    # short, many triangles, smooth
+        # ROOT_DIR, "data/short_recording_2023-04-18--20-43-48.msgpack"  # classic, sparse, unsmooth turns
+        ROOT_DIR, "data/short_recording_2023-04-20--22-46-06.msgpack"    # long, many triangles, smooth
     )  # long
     data_streamer = SimDataStreamer.from_dataset_path(dataset_path=dataset_path)
 
     run_couple_first_frames(
-            data_streamer,
-            max_px_distance=150.0,
-            max_hamming_distance=32,
-            minimum_number_of_matches=12,
-            max_allowed_error=0.01
+        data_streamer,
+        max_px_distance=50.0,
+        max_hamming_distance=32,
+        minimum_number_of_matches=4,
+        max_allowed_error=0.01,
+        show=True
     )
 
     np.set_printoptions(suppress=True)  # TODO: remove
     max_px_distance = [50.0, 100.0, 150.0, 200.0, 400.0]
-    max_hamming_distance = [4, 8, 16, 32, 64]
+    max_hamming_distance = [4, 8, 16, 32, 64, 128]
     minimum_number_of_matches = [4, 8, 12, 16]
-    max_allowed_error = [0.005, 0.01, 0.02, 0.05, 0.1, 0.5, 1.0]
+    max_allowed_error = [0.005, 0.01, 0.02, 0.05, 0.1, 0.2]
 
     all_params = [
         params for params in itertools.product(max_px_distance, max_hamming_distance, minimum_number_of_matches, max_allowed_error)

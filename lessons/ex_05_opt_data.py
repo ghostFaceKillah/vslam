@@ -3,7 +3,7 @@ import itertools
 import pandas as pd
 
 if __name__ == '__main__':
-    df = pd.read_csv('results.csv')
+    df = pd.read_csv('results_diff_errors.csv')
     df = df.iloc[:, 1:]
 
     pd.set_option('display.max_rows', 500)
