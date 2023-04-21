@@ -96,6 +96,7 @@ class Frontend:
 
     tracking_quality_estimator: FrontendPoseQualityEstimator = attr.Factory(FrontendPoseQualityEstimator)
 
+    verbose: bool = False
     keyframe: Optional[Keyframe] = None
     state: FrontendState = attr.Factory(FrontendState.Init)
     debug_data: Optional[FrontendStaticDebugData] = None
@@ -155,7 +156,8 @@ class Frontend:
         match tracking_quality_estimate:
             case TrackingQualityEstimate.Bad(reasons=reasons):
                 # important detail: note that we use _prior_ estimate. We trust it more because tracking is bad.
-                print(f"Estimating new keyframe. Tracking quality looks bad due to {reasons=}")
+                if self.verbose:
+                    print(f"Estimating new keyframe. Tracking quality looks bad due to {reasons=}")
                 return self._estimate_new_keyframe(obs, prior_baselink_pose_estimate)
             case TrackingQualityEstimate.Healthy():
                 posterior_baselink_pose_estimate = tracking_result.pose_estimate
@@ -191,7 +193,8 @@ class Frontend:
         )
         match tracking_result:
             case KeyframeMatchPoseTrackingResult.Failure(reason=reason):
-                print(f"Tracking failed due to {reason}")
+                if self.verbose:
+                    print(f"Tracking failed due to {reason}")
                 return self._estimate_new_keyframe(obs, prior_baselink_pose_estimate)
             case KeyframeMatchPoseTrackingResult.Success():
                 return self._handle_keyframe_tracking_successful(obs, prior_baselink_pose_estimate, debug_data, state, tracking_result)
