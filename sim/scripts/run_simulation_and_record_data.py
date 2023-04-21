@@ -9,12 +9,9 @@ if __name__ == '__main__':
     scene_renderer = TriangleSceneRenderer.from_default()
 
     # actor = ManualActor.from_default()
-    actor = PreRecordedActor.from_a_nice_trip(short_trip=False)
+    actor = PreRecordedActor.from_a_nice_trip(short_trip=True)
+    sim = Simulation(actor=actor, scene_renderer=scene_renderer)
 
-    sim = Simulation(
-        actor=actor,
-        scene_renderer=scene_renderer,
-    )
     with just_time('simulating'):
         recording = sim.simulate()
 
