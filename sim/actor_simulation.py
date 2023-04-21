@@ -223,18 +223,18 @@ class PreRecordedActor(Actor):
         if short_trip:
             actions = (
                 [InteractionTransforms.go_straight()] * 20
-                + [InteractionTransforms.turn_right(), InteractionTransforms.go_straight()] * 20
+                + [InteractionTransforms.turn_right()] * 90
             )
         else:
             actions = (
                 [InteractionTransforms.go_straight()] * 20
-                + [InteractionTransforms.turn_right(), InteractionTransforms.go_straight()] * 45
+                + [InteractionTransforms.turn_right()] * 90
                 + [InteractionTransforms.go_straight()] * 40
-                + [InteractionTransforms.turn_right(), InteractionTransforms.go_straight()] * 45
+                + [InteractionTransforms.turn_right()] * 90
                 + [InteractionTransforms.go_straight()] * 20
-                + [InteractionTransforms.turn_right(), InteractionTransforms.go_straight()] * 45
+                + [InteractionTransforms.turn_right()] * 90
                 + [InteractionTransforms.go_straight()] * 25
-                + [InteractionTransforms.turn_left(), InteractionTransforms.go_straight()] * (90 + 22)
+                + [InteractionTransforms.turn_right()] * 204
                 + [InteractionTransforms.go_straight()] * 30
             )
 
