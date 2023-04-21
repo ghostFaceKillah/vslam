@@ -24,11 +24,11 @@ class InteractionTransforms:
 
     @classmethod
     def turn_right(cls):
-        return cls(camera=get_SE3_pose(yaw=np.deg2rad(2)))
+        return cls(camera=get_SE3_pose(x=0.05, yaw=np.deg2rad(1)))
 
     @classmethod
     def turn_left(cls):
-        return cls(camera=get_SE3_pose(yaw=np.deg2rad(-2)))
+        return cls(camera=get_SE3_pose(x=0.05, yaw=np.deg2rad(-1)))
 
 
 def key_to_maybe_transforms(key: int) -> InteractionTransforms:

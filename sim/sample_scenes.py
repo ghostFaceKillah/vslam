@@ -138,14 +138,14 @@ def get_triangles_in_sky_scene_2(
         rng: onp.random.RandomState = onp.random.RandomState(42),
         min_z: float = 0.5,
         max_z: float = 10.0,
-        min_x: float = -20.0,
-        max_x: float = 20.0,
-        min_y: float = -20.0,
-        max_y: float = 20.0,
+        min_x: float = -40.0,
+        max_x: float = 40.0,
+        min_y: float = -40.0,
+        max_y: float = 40.0,
 ) -> List[RenderTriangle3d]:
 
-    xs = np.linspace(min_x, max_x, num=10)
-    ys = np.linspace(min_y, max_y, num=10)
+    xs = np.linspace(min_x, max_x, num=20)
+    ys = np.linspace(min_y, max_y, num=20)
     zs = np.linspace(min_z, max_z, num=5)
 
     probability_exists = 0.8
