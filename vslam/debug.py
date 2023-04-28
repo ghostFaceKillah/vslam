@@ -1,9 +1,9 @@
 import collections
 import itertools
-from typing import List, Dict, Optional, Iterable
 
 import attr
 import numpy as np
+from typing import List, Dict, Optional, Iterable
 
 from sim.birds_eye_view_render import DisplayBirdseyeView, BirdseyeViewSpecifier
 from sim.sim_types import CameraExtrinsics, RenderTriangle3d, CameraSpecs
@@ -318,6 +318,7 @@ class LocalisationDebugPanes(StrEnum):
     KEYFRAME_RIGHT_IMG_TITLE = 'keyframe_right_img_title'
     CURRENT_IMG = 'current_img'
     CURRENT_IMG_TITLE = 'current_img_title'
+    GENERAL_INFO_TXT = 'general_info_txt'
 
 
 def _draw_pose_history(
@@ -353,6 +354,7 @@ class LocalizationDebugger:
     keyframe_left_img: Optional[BGRImageArray] = None
     keyframe_right_img: Optional[BGRImageArray] = None
     frames_since_keyframe: int = 0
+    current_frame_no: int = 0
     current_left_eye_image: Optional[BGRImageArray] = None
     current_right_eye_image: Optional[BGRImageArray] = None
     current_feature_matches_or_none: Optional[List[FeatureMatch]] = None
@@ -375,6 +377,7 @@ class LocalizationDebugger:
         scene_display_renderer.draw_triangles(scene)
 
         layout = Col(
+            Row(LocalisationDebugPanes.GENERAL_INFO_TXT),
             Row(
                 Padding(Col(Padding(LocalisationDebugPanes.CURRENT_IMG_TITLE), LocalisationDebugPanes.CURRENT_IMG)),
                 Padding(Col(Padding(LocalisationDebugPanes.KEYFRAME_LEFT_IMG_TITLE), LocalisationDebugPanes.KEYFRAME_LEFT_IMG)),
@@ -422,6 +425,7 @@ class LocalizationDebugger:
         current_left_eye_image: BGRImageArray,
         current_right_eye_image: BGRImageArray,
         frames_since_keyframe: int,
+        current_frame_no: Optional[int] = None,
         feature_matches_or_none: Optional[List[FeatureMatch]] = None
     ):
         self.estimated_pose_history.append(baselink_pose_estimate)
@@ -430,6 +434,7 @@ class LocalizationDebugger:
         self.current_left_eye_image = current_left_eye_image
         self.current_right_eye_image = current_right_eye_image
         self.current_feature_matches_or_none = feature_matches_or_none
+        self.current_frame_no = self.current_frame_no + 1 if current_frame_no is None else current_frame_no
 
     def _prepare_tracking_closeup_display_renderer(self) -> DisplayBirdseyeView:
         view_center = tuple(SE3_pose_to_xytheta(self.ground_truth_pose_history[-1])[:2])
@@ -501,6 +506,7 @@ class LocalizationDebugger:
             LocalisationDebugPanes.POSE_DIFF_TITLE: self.text_renderer.render('Pose diff'),
             LocalisationDebugPanes.KEYFRAME_LEFT_IMG_TITLE: self.text_renderer.render('Keyframe left image'),
             LocalisationDebugPanes.KEYFRAME_RIGHT_IMG_TITLE: self.text_renderer.render('Keyframe right image'),
-            LocalisationDebugPanes.CURRENT_IMG_TITLE: self.text_renderer.render('Current left eye image')
+            LocalisationDebugPanes.CURRENT_IMG_TITLE: self.text_renderer.render('Current left eye image'),
+            LocalisationDebugPanes.GENERAL_INFO_TXT: self.text_renderer.render(f"Current frame = {self.current_frame_no}")
         })
 

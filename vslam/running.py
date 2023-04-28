@@ -96,6 +96,7 @@ def _process_debug_info(
         current_right_eye_image=obs.right_eye_img,
         feature_matches_or_none=debug_feature_matches,
         frames_since_keyframe=frontend_resu.debug_data.frames_since_keyframe,
+        current_frame_no=iteration_number
     )
     return localization_debugger.render()
 

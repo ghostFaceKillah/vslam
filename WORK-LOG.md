@@ -1,10 +1,18 @@
+2023-04-27
+----------
+
+- Make infra for capturing one problem
+- frame 32, 40, 52 (!)
+- in frame 52, at least part of the problem is ridiculously bad feature matches
+- I saved two images in the working dir, they can be used to figure it out
+
 2023-04-25
 ----------
 
 in the straight line, tracking looks good.
 in turns, tracking looks weird still
 
-- cleanup after param optimization
+- [X] cleanup after param optimization
 - errors during rotations look weird, what's up with this ?
 - lectures
 
