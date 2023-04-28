@@ -1,7 +1,6 @@
-from typing import Optional, Tuple
-
 import attr
 import numpy as np
+from typing import Optional, Tuple
 
 from liegroups.numpy.se3 import SE3Matrix
 from utils.custom_types import Array
@@ -105,8 +104,9 @@ def gauss_netwon_pnp(
             J = estimate_J_analytically(point_3d, camera_pose)
             e = _compute_reprojection_error(point_3d, point_2d, camera_pose)
 
-            H += J @ J.T
-            b += -J @ e
+            if np.linalg.norm(e) < 0.01:
+                H += J @ J.T
+                b += -J @ e
 
             errs.append(e)
 

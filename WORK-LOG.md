@@ -5,6 +5,26 @@
 - frame 32, 40, 52 (!)
 - in frame 52, at least part of the problem is ridiculously bad feature matches
 - I saved two images in the working dir, they can be used to figure it out
+  
+- Naive match between keyframe image and later image looks good, but that's _not_ what we do.
+  We need to match new image descriptors to old descriptors, because we need to procss the depths associated with them.
+  
+- Keyframe feature matcher needs to be separated from tracking feature matcher.
+  Currently it broadly disallows reasonable matches, probably due to high pixel distance.
+
+- still not enough matches, why?
+  - relaxing the hamming match distance fixes lack of matches,
+  - now need to dig into big optimization jump
+  
+  - honestly, just looks like big reprojection errors :shrug:
+
+- Outlier rejection fixed it !
+
+TODO:
+- Cleanup
+- handle Singular matrix in gauss-newton
+- find best params
+- THEEN disallow big pose jumps outside of motion model
 
 2023-04-25
 ----------

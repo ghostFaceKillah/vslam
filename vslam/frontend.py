@@ -89,7 +89,8 @@ class FrontendPoseQualityEstimator:
 @attr.s(auto_attribs=True)
 class Frontend:
     """ At this point, it just groups up stuff related to Frontend """
-    matcher: OrbBasedFeatureMatcher
+    tracking_matcher: OrbBasedFeatureMatcher
+    keyframe_feature_matcher: OrbBasedFeatureMatcher
     cam_specs: CameraSpecs
     pose_tracker: VelocityPoseTracker
 
@@ -112,9 +113,13 @@ class Frontend:
         max_allowed_error=0.02,
     ):
         return cls(
-            matcher=OrbBasedFeatureMatcher.build(
+            tracking_matcher=OrbBasedFeatureMatcher.build(
                 max_px_distance=max_px_distance,
                 max_hamming_distance=max_hamming_distance,
+            ),
+            keyframe_feature_matcher=OrbBasedFeatureMatcher.build(
+                max_px_distance=np.inf,
+                max_hamming_distance=30,
             ),
             cam_specs=cam_specs,
             pose_tracker=VelocityPoseTracker.from_defaults() if start_pose is None else VelocityPoseTracker(start_pose),
@@ -132,7 +137,7 @@ class Frontend:
     ) -> Tuple[FrontendTrackingResult, FrontendState]:
         keyframe, keyframe_estimation_debug_data = estimate_keyframe(
             obs=obs,
-            matcher=self.matcher,
+            matcher=self.keyframe_feature_matcher,
             baselink_pose=baselink_pose_estimate,
             cam_intrinsics=self.cam_specs.intrinsics,
             cam_extrinsics=self.cam_specs.extrinsics,
@@ -196,7 +201,7 @@ class Frontend:
         prior_baselink_pose_estimate = self.pose_tracker.get_next_baselink_in_world_pose_estimate()
         tracking_result, debug_data = estimate_pose_wrt_keyframe(
             obs=obs,
-            matcher=self.matcher,
+            matcher=self.tracking_matcher,
             cam_specs=self.cam_specs,
             baselink_pose_estimate_in_world=prior_baselink_pose_estimate,  # TODO: oops
             keyframe=state.keyframe
