@@ -1,3 +1,35 @@
+2023-04-25
+----------
+
+in the straight line, tracking looks good.
+in turns, tracking looks weird still
+
+- cleanup after param optimization
+- errors during rotations look weird, what's up with this ?
+- lectures
+
+
+2023-04-20
+----------
+        # ROOT_DIR, "data/short_recording_2023-04-18--20-43-48.msgpack"
+
+on classic dataset, I was able to get nice tracking
+with those parameters 
+    run_couple_first_frames(
+            data_streamer,
+            max_px_distance=150.0,
+            max_hamming_distance=32,
+            minimum_number_of_matches=12,
+            max_allowed_error=0.01
+    )
+on new dataset, the tracking is meh
+
+I guess I still need to dig in deeper into the one frame tracking loss
+
+- Optimize scene
+  - more triangles
+  - make rotation smoother
+
 2023-04-19
 ----------
 
@@ -9,29 +41,13 @@ In the book, they had nice outlier rejection on the level of tracking. Maybe tha
 When we estimate new keyframe, it might be best to take posterior pose as keyframe pose, right?
 
 - [ ] Lectures & blogpost
+  - Update README
 - [ ] R&D
-  - [ ] 
   - [.] why do later rotations break and require new keyframe all the time ?
     - [X] display debug stats, as described above
     - [X] maybe play with most interesting crosses
-  - [ ] Optimize path and scene?
-    - [ ] sometimes, we go the middle of triangles and that's really confusing for VSLAM
-    - [ ] make the rotations smoother
-    - [ ] add more triangles in the distance, currently it's just too weird on the edges
-    - [ ] we go out of bounds at some point, no reason to do it
-  - [ ] Just grid search the params 
-- [ ] code niceness etc
-  - [ ] fold tracking quality estimator back into tracking code, this weird double layer decreases readability
-  - [ ] display grid  on the pose tracking thing?
-  - [X] the jump when we go through new keyframe / oldkeyframe is a bit confusing, it's better to show all 3
-- [ ] pose tracker, disallow big velocity jumps
-  - [ ] display prior pose guess ?
-- [ ] be able to go back during debug ?
-  - [ ] Serialize outputs of frontend run?
-- [ ] Test, type, lint, todo
-  - [ ] use ruff, black and typing
-- [ ] Read all from scratch and optimize for ease of understanding
-- [ ] better pose tracker - implement the velocity extrapolation thing
+  - [ ] make the rotations smoother
+  - [X] Just grid search the params 
 
 2023-04-18
 ----------

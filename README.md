@@ -16,6 +16,12 @@ They also generously [provided pdf of the book itself in a realted repo](https:/
 This is very awesome and I am grateful for that.
 
 
+Here is how it works currently on an imagined scene.
+
+![render](imgs/gui.gif)
+
+As you can see, there is probably a bug around turns, but generally it works.
+
 Installing
 ----------
 

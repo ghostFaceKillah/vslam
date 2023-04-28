@@ -1,7 +1,6 @@
-from typing import Tuple
-
 import cv2
 import numpy as onp
+from typing import Tuple
 
 from utils.colors import BGRCuteColors
 from utils.custom_types import BGRImageArray, Channels, WidthPx, HeightPx, BGRColor
@@ -36,3 +35,7 @@ def get_canvas(
 ) -> BGRImageArray:
     return onp.ones(shape, dtype=onp.uint8) * onp.array(background_color, dtype=onp.uint8)
 
+
+def just_show(img: BGRImageArray, title: str = 'image'):
+    cv2.imshow(title, img)
+    cv2.waitKey(-1)

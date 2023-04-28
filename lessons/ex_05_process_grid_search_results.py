@@ -14,12 +14,8 @@ if __name__ == '__main__':
 
     df = df[df.max_allowed_error < 0.5]
 
-    cols = ['max_px_distance', 'max_hamming_distance', 'minimum_number_of_matches','max_allowed_error']
+    cols = ['max_px_distance', 'max_hamming_distance', 'minimum_number_of_matches', 'max_allowed_error']
 
     for twocols in itertools.combinations(cols, 2):
         print(80 * '-')
         print(df.groupby(list(twocols)).euclidean_err.mean().unstack().round(2))
-
-
-
-    x = 1

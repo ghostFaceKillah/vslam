@@ -21,3 +21,9 @@ def dot_product(x: Vector3d, y: Vector3d) -> Vector3d:
     return x @ y / np.linalg.norm(x) / np.linalg.norm(y)
 
 
+def normalize_angle(angle):
+    return (angle + np.pi) % (2 * np.pi) - np.pi
+
+
+def get_difference_of_angles(theta_one: float, theta_two: float) -> float:
+    return normalize_angle(theta_one - theta_two)

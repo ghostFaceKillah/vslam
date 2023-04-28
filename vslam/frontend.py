@@ -2,10 +2,9 @@
 We visually match features to keyframe and we try to figure out how much we have moved with respect to that.
 We do not do any global state correction - no loop closure and no global state optimization.
 """
-from typing import List, Optional, Tuple
-
 import attr
 import numpy as np
+from typing import List, Optional, Tuple
 
 from sim.sim_types import RenderTriangle3d, CameraSpecs, Observation
 from vslam.debug_interface import IProvidesFeatureMatches, IProvidesKeyframe
@@ -102,17 +101,28 @@ class Frontend:
     debug_data: Optional[FrontendStaticDebugData] = None
 
     @classmethod
-    def from_defaults(
+    def from_params(
         cls,
         cam_specs: CameraSpecs,
         start_pose: Optional[CameraPoseSE3] = None,
-        debug_data: Optional[FrontendStaticDebugData] = None
+        scene_for_debug: Optional[List[RenderTriangle3d]] = None,
+        max_px_distance=100.0,
+        max_hamming_distance=31,
+        minimum_number_of_matches=8,
+        max_allowed_error=0.02,
     ):
         return cls(
-            matcher=OrbBasedFeatureMatcher.build(),
+            matcher=OrbBasedFeatureMatcher.build(
+                max_px_distance=max_px_distance,
+                max_hamming_distance=max_hamming_distance,
+            ),
             cam_specs=cam_specs,
             pose_tracker=VelocityPoseTracker.from_defaults() if start_pose is None else VelocityPoseTracker(start_pose),
-            debug_data=debug_data
+            tracking_quality_estimator=FrontendPoseQualityEstimator(
+                minimum_number_of_matches=minimum_number_of_matches,
+                max_allowed_error=max_allowed_error,
+            ),
+            debug_data=FrontendStaticDebugData(scene=scene_for_debug) if scene_for_debug is not None else None
         )
 
     def _estimate_new_keyframe(
