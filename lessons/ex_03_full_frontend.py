@@ -23,7 +23,7 @@ if __name__ == "__main__":
             max_allowed_error=0.01,
         ),
         result_recorder=ResultRecorder(),
-        localization_debugger_or_none = LocalizationDebugger.from_scene(
+        localization_debugger_or_none=LocalizationDebugger.from_scene(
             scene=data_streamer.recorded_data.scene,
             cam_specs=data_streamer.get_cam_specs()
         )

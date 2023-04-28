@@ -50,15 +50,6 @@ if __name__ == "__main__":
     )  # long
     data_streamer = SimDataStreamer.from_dataset_path(dataset_path=dataset_path, max_obs=130)
 
-    run_couple_first_frames(
-        data_streamer,
-        max_px_distance=50.0,
-        max_hamming_distance=32,
-        minimum_number_of_matches=4,
-        max_allowed_error=0.01,
-        show=True
-    )
-
     np.set_printoptions(suppress=True)  # TODO: remove
     max_px_distance = [50.0, 100.0, 150.0, 200.0, 400.0]
     max_hamming_distance = [4, 8, 16, 32, 64, 128]
