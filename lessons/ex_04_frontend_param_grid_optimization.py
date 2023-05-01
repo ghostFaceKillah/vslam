@@ -79,7 +79,7 @@ if __name__ == "__main__":
     metrics_agg = []
     best_euclidean_error_so_far = float('inf')
 
-    for params in tqdm.tqdm(np.random.permutation(all_params)):
+    for params in tqdm.tqdm(all_params):
         metrics = run_couple_first_frames(data_streamer, *params)
         if metrics.sum_euclidean_error < best_euclidean_error_so_far:
             best_euclidean_error_so_far = metrics.sum_euclidean_error
