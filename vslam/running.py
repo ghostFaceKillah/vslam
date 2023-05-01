@@ -114,3 +114,5 @@ def run_slam_system(
 
         if localization_debugger_or_none is not None:
             just_show(_process_debug_info(i, frontend_resu, obs, localization_debugger_or_none))
+
+    return result_recorder.emit_metrics()
