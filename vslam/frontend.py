@@ -93,6 +93,7 @@ class Frontend:
     keyframe_feature_matcher: OrbBasedFeatureMatcher
     cam_specs: CameraSpecs
     pose_tracker: VelocityPoseTracker
+    outlier_rejection_margin: float  # TODO(mike): pls no
 
     tracking_quality_estimator: FrontendPoseQualityEstimator = attr.Factory(FrontendPoseQualityEstimator)
 
@@ -107,10 +108,13 @@ class Frontend:
         cam_specs: CameraSpecs,
         start_pose: Optional[CameraPoseSE3] = None,
         scene_for_debug: Optional[List[RenderTriangle3d]] = None,
-        max_px_distance=100.0,
-        max_hamming_distance=31,
+        max_px_distance: float=float('inf'),
+        max_hamming_distance:int=64,
+        keyframe_max_px_distance: float = np.inf,
+        keyframe_max_hamming_distance:int=31,
         minimum_number_of_matches=8,
         max_allowed_error=0.02,
+        outlier_rejection_margin=0.01
     ):
         return cls(
             tracking_matcher=OrbBasedFeatureMatcher.build(
@@ -118,9 +122,10 @@ class Frontend:
                 max_hamming_distance=max_hamming_distance,
             ),
             keyframe_feature_matcher=OrbBasedFeatureMatcher.build(
-                max_px_distance=np.inf,
-                max_hamming_distance=30,
+                max_px_distance=keyframe_max_px_distance,
+                max_hamming_distance=keyframe_max_hamming_distance,
             ),
+            outlier_rejection_margin=outlier_rejection_margin,
             cam_specs=cam_specs,
             pose_tracker=VelocityPoseTracker.from_defaults() if start_pose is None else VelocityPoseTracker(start_pose),
             tracking_quality_estimator=FrontendPoseQualityEstimator(
@@ -204,7 +209,8 @@ class Frontend:
             matcher=self.tracking_matcher,
             cam_specs=self.cam_specs,
             baselink_pose_estimate_in_world=prior_baselink_pose_estimate,  # TODO: oops
-            keyframe=state.keyframe
+            keyframe=state.keyframe,
+            outlier_rejection_margin=self.outlier_rejection_margin
         )
         match tracking_result:
             case KeyframeMatchPoseTrackingResult.Failure(reason=reason):

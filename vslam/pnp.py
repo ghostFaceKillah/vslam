@@ -88,6 +88,7 @@ def gauss_netwon_pnp(
     points_3d_in_keyframe: WorldCoords3D,   # if those are in keyframe, the pose estimate will be relative to keyframe
     points_2d_in_img: ImgCoords2d,
     iterations: int = 20,   # convergence is quadratic, so 10 should be plenty
+    outlier_rejection_margin: float = 0.01,
     verbose: bool = False
 ) -> Tuple[TransformSE3, GaussNetwonAuxillaryInfo]:
     camera_pose = camera_pose_initial_guess_in_keyframe
@@ -104,13 +105,13 @@ def gauss_netwon_pnp(
             J = estimate_J_analytically(point_3d, camera_pose)
             e = _compute_reprojection_error(point_3d, point_2d, camera_pose)
 
-            if np.linalg.norm(e) < 0.01:
+            if np.linalg.norm(e) < outlier_rejection_margin:
                 H += J @ J.T
                 b += -J @ e
 
             errs.append(e)
 
-        dx = np.linalg.solve(H, b)
+        dx = np.linalg.solve(H, b) if np.linalg.det(H) > 1e-6 else np.zeros(6)
         errs = np.array(errs)   # reprojection error per axis
         euc_errs = np.linalg.norm(errs, axis=1)   # how much off on both axes
         loss = euc_errs.mean()

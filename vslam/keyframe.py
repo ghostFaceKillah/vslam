@@ -1,9 +1,8 @@
-from typing import Optional, List, Tuple
-
 import attr
 import cv2
 import numpy as np
 import pandas as pd  # oof
+from typing import Optional, List, Tuple
 
 from sim.sim_types import Observation, CameraExtrinsics, RenderTriangle3d, CameraSpecs
 from utils.custom_types import BGRImageArray
@@ -170,6 +169,7 @@ def estimate_pose_wrt_keyframe(
         baselink_pose_estimate_in_world: TransformSE3,
         keyframe: Keyframe,
         min_no_matches_needed: int = 5,
+        outlier_rejection_margin: float = 0.01,
         debug_feature_matches: bool = False
 ) -> Tuple[KeyframeMatchPoseTrackingResult, KeyframeTrackingDebugData]:
     left_detections = matcher.detect(obs.left_eye_img)
@@ -207,10 +207,12 @@ def estimate_pose_wrt_keyframe(
     )
     camera_pose_guess_in_keyframe = correct_SE3_matrix_inplace(SE3_inverse(keyframe.pose) @ left_camera_pose_in_world)
 
+    # TODO: extract it out to capture parameters together with state
     posterior_left_cam_pose_estimate_in_keyframe, gauss_newton_info = gauss_netwon_pnp(
         camera_pose_initial_guess_in_keyframe=camera_pose_guess_in_keyframe,
         points_3d_in_keyframe=homogenize(points_3d),
         points_2d_in_img=px_2d_to_img_coords_2d(np.array(points_2d), cam_specs.intrinsics),
+        outlier_rejection_margin=outlier_rejection_margin,
         verbose=False
     )
 
