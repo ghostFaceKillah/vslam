@@ -38,7 +38,7 @@ To briefly summarize, we depend mostly on `attrs`, `numpy`, `jax` (!), `opencv-p
 `jax` is not critical and could be done away with in favour of numpy, but it keeps things fast.
 
 
-Exploring
+Rendering
 ----------
 
 Run `python -m sim.render` to see the current status of the rendering code.
