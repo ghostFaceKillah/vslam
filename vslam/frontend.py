@@ -8,7 +8,6 @@ import attr
 import numpy as np
 
 from sim.sim_types import RenderTriangle3d, CameraSpecs, Observation
-from vslam.debug_interface import IProvidesFeatureMatches, IProvidesKeyframe
 from vslam.features import OrbBasedFeatureMatcher
 from vslam.keyframe import Keyframe, KeyframeMatchPoseTrackingResult, estimate_keyframe, estimate_pose_wrt_keyframe, \
     KeyFrameEstimationDebugData, KeyframeTrackingDebugData
@@ -37,7 +36,7 @@ class FrontendStaticDebugData:
 
 
 @attr.s(auto_attribs=True)
-class FrontendResultDebugData(IProvidesKeyframe, IProvidesFeatureMatches):
+class FrontendResultDebugData:
     frames_since_keyframe: int
     keyframe: Keyframe
     keyframe_estimation_debug_data_or_none: Optional[KeyFrameEstimationDebugData]
