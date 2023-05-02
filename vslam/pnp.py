@@ -1,6 +1,7 @@
+from typing import Optional, Tuple
+
 import attr
 import numpy as np
-from typing import Optional, Tuple
 
 from liegroups.numpy.se3 import SE3Matrix
 from utils.custom_types import Array
@@ -80,6 +81,7 @@ def estimate_J_analytically(
 @attr.s(auto_attribs=True)
 class GaussNetwonAuxillaryInfo:
     euclidean_errors: Array['N', np.float64]   # TODO: rename to euclidean reprojection errors ?
+    outlier_flags: Array['N', np.bool]
     mean_euclidean_error: float
 
 
@@ -95,6 +97,7 @@ def gauss_netwon_pnp(
 
     for i in range(iterations):
         errs = []
+        outlier_flags = []
 
         H = np.zeros((3, 3))
         b = np.zeros(3)
@@ -108,6 +111,9 @@ def gauss_netwon_pnp(
             if np.linalg.norm(e) < outlier_rejection_margin:
                 H += J @ J.T
                 b += -J @ e
+                outlier_flags.append(False)
+            else:
+                outlier_flags.append(True)
 
             errs.append(e)
 
@@ -123,7 +129,11 @@ def gauss_netwon_pnp(
     if verbose:
         print(f'Final reprojection MSE = {loss}')
 
-    aux_info = GaussNetwonAuxillaryInfo(euclidean_errors=euc_errs, mean_euclidean_error=loss)
+    aux_info = GaussNetwonAuxillaryInfo(
+        euclidean_errors=euc_errs,
+        outlier_flags=np.array(outlier_flags),
+        mean_euclidean_error=loss
+    )
 
     return camera_pose, aux_info
 
