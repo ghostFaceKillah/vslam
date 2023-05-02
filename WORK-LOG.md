@@ -1,3 +1,62 @@
+2023-05-01
+----------
+- [X] find best params
+- [N] disallow big pose jumps outside of motion model: not necessary
+- [X] max reprojection error has a bug - it also takes into account the outliers
+- [ ] make nice readme
+- [ ] live sim driver (no-one will have data ready when they run it, right ?)
+- [ ] lectures
+- [ ] further cleanup (iterate through TODOs, send for code review)
+
+- best sum l2 diff err
+            max_px_distance=400,
+            max_hamming_distance=128,
+            keyframe_max_px_distance=300,
+            keyframe_max_hamming_distance=64,
+            minimum_number_of_matches=12,
+            max_allowed_error=0.1,
+            outlier_rejection_margin=0.01
+- 9.15 - best sum l2 error
+            max_px_distance=float('inf'),
+            max_hamming_distance=64,
+            keyframe_max_px_distance=200,
+            keyframe_max_hamming_distance=128,
+            minimum_number_of_matches=12,
+            max_allowed_error=0.1,
+            outlier_rejection_margin=0.01
+
+not best (11) but doesn't look jumpy
+
+            max_px_distance=200.,
+            max_hamming_distance=128,
+            keyframe_max_px_distance=300.,
+            keyframe_max_hamming_distance=128,
+            minimum_number_of_matches=12,
+            max_allowed_error=0.05,
+            outlier_rejection_margin=0.01
+
+2023-04-30
+----------
+
+- [X] find best params
+- [ ] THEEN disallow big pose jumps outside of motion model
+- readme
+  - live sim driver (no-one will have data ready when they run it, right ?)
+- lectures
+- further cleanup (iterate through TODOs, send for code review)
+- max reprojection error has a bug - it also takes into account the outliers
+
+2023-04-28
+----------
+
+  TODO:
+- [X] Cleanup: expose params
+- [X] handle Singular matrix in gauss-newton
+- find best params
+- THEEN disallow big pose jumps outside of motion model
+- readme 
+- lectures
+
 2023-04-27
 ----------
 
