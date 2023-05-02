@@ -56,7 +56,7 @@ def naive_triangulation(
     points_in_cam_two: CamCoords3dHomog,
     cam_one_in_two: CameraPoseSE3
 ) -> List[DepthEstimate]:
-    """ Esimate depth based on coordinate transform formula. See above for longer doc.
+    """ Estimate depth based on coordinate transform formula. See above for longer doc.
     Returns None if there seems to be too much error in inputs. """
 
     R = cam_one_in_two[:3, :3]
