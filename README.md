@@ -4,7 +4,9 @@ VSLAM
 Intro
 -----
 
-Here's an easy-to-understand Visual Simultaneous Localization And Mapping (VSLAM) algorithm, on top of
+Here's an easy-to-understand Visual Simultaneous Localization And Mapping (VSLAM) algorithm.
+
+It works on top of
 data coming from kinda-easy-to-understand triangle-based scene rendering from scratch.
 
 The VSLAM part of this repo is largely reinterpretation of tutorials presented in an ***excellent*** book 
@@ -17,7 +19,38 @@ Here is how it looks like on an imagined triangle scene.
 
 ![render](imgs/gui.gif)
 
-There is a bit of normal frontend noise, but it generally works well :)
+Top panes shows current image from the left eye.
+Top middle and top right image show what respectively left eye and right eye have seen when the keyframe was estimated.
+Bottom left shows birdseye view of the system, including keyframe viewports, current estimate of the pose and
+historical ground truth poses.
+Bottom right image shows a zoom-in of the difference between ground truth and estimated poses so far.
+
+Main entry point into VSLAM demo is:
+
+```
+pipenv shell
+python -m lessons.ex_03_full_frontend
+```
+
+It currently depends on gathering data that can saved by `python -m sim.run`
+
+Previous lessons in the `lesson` folder showcase feature matching and 3d-2d PNP via Gauss-Newton optimization.
+
+
+Structure
+----------
+
+- `robots`
+    - `vslam`  - the vslam library
+        - `keyframe` - contains the most important functions that drive the SLAM algorithm
+            - `def estimate_keyframe()`
+            - `def estimate_pose_wrt_keyframe()`
+        - `frontend` - Is the primary VSLAM state holder. Pulls everything together.
+    - `sim` - rendering framework. Uses `jax` a lot.
+        - `egocentric_render` - contains the most important functions that drive rendering
+            - `def parallel_z_buffer_render()` - that's the function that resolves object drawing
+
+
 
 Installing
 ----------
@@ -38,20 +71,25 @@ To briefly summarize, we depend mostly on `attrs`, `numpy`, `jax` (!), `opencv-p
 Rendering
 ----------
 
-I made a small triangle rendering library.
+I made a small triangle rendering library to make data for VSLAM.
+
 This way we fully control the data coming into the algorithm and we get to learn the camera equations
-from the "inverse problem" side (rendering is inverse of SLAM in a way).
+from the "inverse problem" side. Indeed, rendering is inverse of SLAM in a way.
 Below command runs the entry point of the interactive rendering code.
 
 ```
 pipenv shell
 python -m sim.render
 ```
-Sorry it's too slow to feel smooth to humans! It seems we would need to rewrite in c++ to be proper fast.
+Sorry it's too slow to feel smooth to humans!
+It seems we would need to rewrite in c++ to be proper fast.
+
 Jax doesn't like modifying arrays in place.
 
-Experiment with WSAD, QE and arrow keys. Escape to quit.
-Change `__main__` to save data. One eye image looks more or less like this:
+- Experiment with WSAD, QE and arrow keys. 
+- Escape to quit.
+- Change `__main__` to save data.
+One eye image looks more or less like this:
 
 ![render](imgs/triangles.gif)
 
