@@ -2,9 +2,10 @@
 We visually match features to keyframe and we try to figure out how much we have moved with respect to that.
 We do not do any global state correction - no loop closure and no global state optimization.
 """
+from typing import List, Optional, Tuple
+
 import attr
 import numpy as np
-from typing import List, Optional, Tuple
 
 from sim.sim_types import RenderTriangle3d, CameraSpecs, Observation
 from vslam.debug_interface import IProvidesFeatureMatches, IProvidesKeyframe
@@ -75,7 +76,11 @@ class FrontendPoseQualityEstimator:
             tracking_is_good = False
             reasons.append(f"{no_matches=}, which is less then required {self.minimum_number_of_matches=}")
 
-        err_75th_percentile = np.percentile(tracking_result.tracking_quality_info.euclidean_errors, 75)
+        relevant_errors = (
+            tracking_result.tracking_quality_info.outlier_flags.astype(np.int32) *
+            tracking_result.tracking_quality_info.euclidean_errors
+        )
+        err_75th_percentile = np.percentile(relevant_errors, 75)
         if err_75th_percentile > self.max_allowed_error:
             tracking_is_good = False
             reasons.append(f"{err_75th_percentile=}, which is more then {self.max_allowed_error=:.4f}")
