@@ -4,52 +4,11 @@ import jax.numpy as np
 from jax import jit
 
 from sim.clipping import ClippingSurfaces, clip_triangles
-from sim.sim_types import RenderTriangle3d, RenderTrianglesPointsInCam
+from sim.sim_types import RenderTriangle3d
 from utils.custom_types import BGRColor, Array, JaxImageArray
 from vslam.cam import CameraIntrinsics
-from vslam.transforms import get_world_to_cam_coord_flip_matrix, SE3_inverse, world_to_cam_4d
-from vslam.types import CameraPoseSE3, Vector3d, TransformSE3, ArrayOfColors
-
-
-def _get_triangles_colors(
-    world_to_cam_flip: TransformSE3,
-    camera_pose: CameraPoseSE3,
-    cam_points: RenderTrianglesPointsInCam,
-    front_face_colors: ArrayOfColors,    # in future, it could be even more attributes
-    back_face_colors: ArrayOfColors,
-    light_direction: Vector3d,
-    shade_color: BGRColor,
-):
-    """ Get colors of the triangles in the scene based on basic shading. """
-    spanning_vectors_1 = cam_points[:, 1, :] - cam_points[:, 0, :]
-    spanning_vectors_2 = cam_points[:, 2, :] - cam_points[:, 0, :]
-
-    surface_normals = np.cross(spanning_vectors_1[:, :-1], spanning_vectors_2[:, :-1])
-    inverse_norms = 1 / np.linalg.norm(surface_normals, axis=1)
-    unit_surface_normals = np.einsum('i,ij->ij', inverse_norms, surface_normals)
-
-    light_direction_homogenous = np.array([light_direction[0], light_direction[1], light_direction[2], 0.0])
-    light_direction_in_camera = world_to_cam_flip @ SE3_inverse(camera_pose) @ light_direction_homogenous
-    light_direction_in_camera = light_direction_in_camera[:3]
-
-    light_coeffs = unit_surface_normals @ light_direction_in_camera
-    alphas = ((light_coeffs + 1) / 2)[:, None]
-
-    # back color blending
-    # from_colors_back = np.tile(np.array(shade_color), (len(cam_points), 1))
-    # to_colors_back = back_face_colors
-    # colors_back = (alphas * to_colors_back + (1 - alphas) * from_colors_back).astype(np.uint8)
-    #
-    # from_colors_front = front_face_colors
-    # to_colors_front = from_colors_back
-    # colors_front = (alphas * to_colors_front + (1 - alphas) * from_colors_front).astype(np.uint8)
-    #
-    # front_face_filter = unit_surface_normals[:, 2] < 0
-    # colors = np.where(front_face_filter[:, np.newaxis], colors_front, colors_back)
-
-    colors = front_face_colors
-
-    return colors
+from vslam.transforms import get_world_to_cam_coord_flip_matrix, world_to_cam_4d
+from vslam.types import CameraPoseSE3, Vector3d, ArrayOfColors
 
 
 def get_pixel_center_coordinates(cam_intrinsics: CameraIntrinsics) -> Array['H,W,2', np.float32]:
@@ -211,10 +170,7 @@ def render_scene_pixelwise_depth(
     if len(triangle_cam_points) == 0:
         return bg_image
     else:
-        colors = _get_triangles_colors(
-            world_to_cam_flip, camera_pose, triangle_cam_points, front_colors,
-            back_colors, light_direction, shade_color
-        )
+        colors = front_colors
 
         # TODO: come on, write a function !
         unit_depth_cam_points = triangle_cam_points[..., :-1]
