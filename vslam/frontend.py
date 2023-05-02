@@ -113,12 +113,12 @@ class Frontend:
         cam_specs: CameraSpecs,
         start_pose: Optional[CameraPoseSE3] = None,
         scene_for_debug: Optional[List[RenderTriangle3d]] = None,
-        max_px_distance: float=float('inf'),
-        max_hamming_distance:int=64,
-        keyframe_max_px_distance: float = np.inf,
-        keyframe_max_hamming_distance:int=31,
-        minimum_number_of_matches=8,
-        max_allowed_error=0.02,
+        max_px_distance: float=200.,
+        max_hamming_distance:int=128,
+        keyframe_max_px_distance: float = 300.,
+        keyframe_max_hamming_distance:int=128,
+        minimum_number_of_matches=12,
+        max_allowed_error=0.05,
         outlier_rejection_margin=0.01
     ):
         return cls(

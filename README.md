@@ -20,15 +20,16 @@ Here is how it works currently on an imagined triangle scene.
 
 ![render](imgs/gui.gif)
 
-There is a bit of normal frontend noise, but it generally works :)
+There is a bit of normal frontend noise, but it generally works well :)
 
 Installing
 ----------
 
-I tend to use virtualenvs with minimal wrapping in `pipenv`.
+I recommend using `pipenv`.
 
 ```
-pipenv --python 3.10
+python -m pip install pipenv
+pipenv --python 3.10   # this assumes that you have python 3.10 installed
 pipenv shell
 pip install -r requirements.txt
 ```
