@@ -1,6 +1,7 @@
+from typing import List, Optional
+
 import attr
 import numpy as np
-from typing import List, Optional
 
 from sim.sim_types import Observation
 from utils.custom_types import BGRImageArray
@@ -57,12 +58,9 @@ def _process_debug_info(
     frontend_resu: FrontendTrackingResult,
     obs: Observation,
     localization_debugger: LocalizationDebugger,
+    verbose: bool = False
 ) -> BGRImageArray:
     # TODO: move all of this inside Localization debugger ?
-    print(iteration_number)
-    print(f"est pose = {SE3_pose_to_xytheta(frontend_resu.baselink_pose_estimate).round(2)}")
-    print(f"gt  pose = {SE3_pose_to_xytheta(obs.baselink_pose).round(2)}")
-
     if frontend_resu.debug_data.frames_since_keyframe == 0:
         debug_feature_matches = frontend_resu.debug_data.keyframe_estimation_debug_data_or_none.relevant_feature_matches
     else:
@@ -76,18 +74,22 @@ def _process_debug_info(
             feature_matches_or_none=debug_feature_matches
         )
 
-    if frontend_resu.debug_data.frames_since_keyframe == 0:
-        df = frontend_resu.debug_data.keyframe_estimation_debug_data_or_none.to_df()
-        print("Keyframe estimation debug info")
-        print(df.describe().round(2))
-        print("correlations = ")
-        print(df.dropna().corr())
-    else:
-        df = frontend_resu.debug_data.keyframe_tracking_debug_data_or_none.to_df()
-        print("Keyframe tracking debug info")
-        print(df.describe().round(4))
-        print("correlations = ")
-        print(df.corr())
+    if verbose:
+        print(iteration_number)
+        print(f"est pose = {SE3_pose_to_xytheta(frontend_resu.baselink_pose_estimate).round(2)}")
+        print(f"gt  pose = {SE3_pose_to_xytheta(obs.baselink_pose).round(2)}")
+        if frontend_resu.debug_data.frames_since_keyframe == 0:
+            df = frontend_resu.debug_data.keyframe_estimation_debug_data_or_none.to_df()
+            print("Keyframe estimation debug info")
+            print(df.describe().round(2))
+            print("correlations = ")
+            print(df.dropna().corr())
+        else:
+            df = frontend_resu.debug_data.keyframe_tracking_debug_data_or_none.to_df()
+            print("Keyframe tracking debug info")
+            print(df.describe().round(4))
+            print("correlations = ")
+            print(df.corr())
 
     localization_debugger.add_pose_estimate(
         baselink_pose_groundtruth=obs.baselink_pose,
