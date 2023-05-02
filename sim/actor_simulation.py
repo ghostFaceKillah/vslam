@@ -136,7 +136,7 @@ class ManualActor:
             'desc': self.text_renderer.render(f'frame {obs.frame_idx} pose {obs.baselink_pose[:3, 3]}'),
             'left_img': obs.left_eye_img,
             'right_img': obs.right_eye_img,
-            'birdseye_view': magnify(obs.bev_img, 1.0),
+            'birdseye_view': magnify(obs.bev_img, 0.4),
         })
 
         cv2.imshow('scene', onp.array(img))
@@ -148,7 +148,7 @@ class ManualActor:
 
         return Action(
             transforms=key_to_maybe_transforms(key),
-            end=key == ord('q')
+            end=end
         )
 
 
