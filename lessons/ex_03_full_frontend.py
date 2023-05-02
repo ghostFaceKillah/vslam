@@ -19,11 +19,11 @@ if __name__ == "__main__":
             scene_for_debug=data_streamer.recorded_data.scene,
             max_px_distance=200.,
             max_hamming_distance=128,
-            keyframe_max_px_distance = 300.,
-            keyframe_max_hamming_distance = 128,
-            minimum_number_of_matches = 12,
-            max_allowed_error = 0.05,
-            outlier_rejection_margin = 0.01
+            keyframe_max_px_distance=300.,
+            keyframe_max_hamming_distance=128,
+            minimum_number_of_matches=12,
+            max_allowed_error=0.05,
+            outlier_rejection_margin=0.01
     ),
         result_recorder=ResultRecorder(),
         localization_debugger_or_none=LocalizationDebugger.from_scene(
