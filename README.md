@@ -11,9 +11,9 @@ The VSLAM part of this repo is largely reinterpretation of tutorials presented i
 *"Introduction to Visual SLAM: From Theory to Practice"*. See the associated
 [github repo](https://github.com/gaoxiang12/slambook) provided by the authors of the book.
 They also generously [provided pdf of the book itself in a realted repo](https://github.com/gaoxiang12/slambook-en/blob/master/slambook-en.pdf).
-This is very awesome and I am grateful for that.
+This is very awesome, and I am grateful for that.
 
-Here is how it looks like currently on an imagined triangle scene.
+Here is how it looks like on an imagined triangle scene.
 
 ![render](imgs/gui.gif)
 
