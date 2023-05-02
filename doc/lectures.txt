@@ -7,8 +7,10 @@ Course book
 - SO(3), SE(3)
 - so(3), se(3)
 - coordinate systems
+    - this in that transform system
 - pinhole camera
 - rendering
 - feature matching etc
 - 3d-2d PnP
+- gauss newton
 
