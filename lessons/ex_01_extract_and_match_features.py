@@ -9,7 +9,7 @@ from vslam.features import OrbBasedFeatureMatcher
 
 if __name__ == "__main__":
     dataset_path = os.path.join(
-        ROOT_DIR, "data/short_recording_2023-04-01--22-41-24.msgpack"
+        ROOT_DIR, "data/short_recording_2023-04-20--22-46-06.msgpack"
     )
 
     data_streamer = SimDataStreamer.from_dataset_path(dataset_path=dataset_path)
