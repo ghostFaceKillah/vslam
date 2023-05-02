@@ -7,7 +7,6 @@ from .numpy import SO3 as SO3
 
 try:
     from . import numpy
-    from . import torch
 except:
     pass
 
