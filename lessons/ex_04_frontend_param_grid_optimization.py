@@ -56,13 +56,13 @@ if __name__ == "__main__":
     data_streamer = SimDataStreamer.from_dataset_path(dataset_path=dataset_path, max_obs=130)
 
     np.set_printoptions(suppress=True)  # TODO: remove
-    max_px_distance = [50.0, 100.0, 200.0, 400.0, float('inf')]
-    max_hamming_distance = [4, 8, 16, 32, 128]
-    keyframe_max_px_distance = [300.0, float('inf')]
-    keyframe_max_hamming_distance = [4, 8, 16, 32, 128]
+    max_px_distance = [200.0, 400.0, float('inf')]
+    max_hamming_distance = [64, 128, 256]
+    keyframe_max_px_distance = [200.0, 300.0, float('inf')]
+    keyframe_max_hamming_distance = [64, 128, 256]
     minimum_number_of_matches = [4, 8, 12, 16]
-    max_allowed_error = [0.005, 0.01, 0.02, 0.05]
-    outlier_rejection_margin = [0.005, 0.01, 0.02, 0.05]
+    max_allowed_error = [0.02, 0.05, 0.1]
+    outlier_rejection_margin = [0.005, 0.01, 0.02]
 
     all_params = [
         params for params in itertools.product(
