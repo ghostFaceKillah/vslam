@@ -84,7 +84,6 @@ class CameraSpecs:
         )
 
 
-
 @attr.define
 class Observation:
     left_eye_img: BGRImageArray
