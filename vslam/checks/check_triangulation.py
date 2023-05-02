@@ -28,7 +28,7 @@ def check_triangulation_known_case():
         cam_one_in_two=left_in_right
     )
 
-    assert depth[0] == 8.
+    assert depth[0].depth_or_none == 8.
 
 
 if __name__ == '__main__':
