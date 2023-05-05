@@ -1,14 +1,9 @@
 import numpy as np
 
-from vslam.transforms import get_world_to_cam_coord_flip_matrix
 from vslam.triangulation import naive_triangulation
 
 
-def check_triangulation_known_case():
-    point_in_world = np.array([8., -0.8, 1., 1.])
-    world_in_base = get_world_to_cam_coord_flip_matrix()
-    point_in_base_4d = world_in_base @ point_in_world
-    # point_in_base_3d = point_in_base_4d[:3]
+def test_triangulation_known_case():
     point_in_left_3d = np.array([.2, -1., 8.])
     point_in_right_3d = np.array([-1.8, -1., 8.])
     t = np.array([-2., 0., 0.])
@@ -29,7 +24,3 @@ def check_triangulation_known_case():
     )
 
     assert depth[0].depth_or_none == 8.
-
-
-if __name__ == '__main__':
-    check_triangulation_known_case()
