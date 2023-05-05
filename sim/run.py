@@ -8,7 +8,7 @@ from utils.serialization import to_native_types, msgpack_dumps
 
 def run_simulation(
     manual: bool = False,
-    save_recording: bool = False,
+    save_recording: bool = True,
     short_trip: bool = False
 ):
     scene_renderer = TriangleSceneRenderer.from_default()

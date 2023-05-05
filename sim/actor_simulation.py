@@ -49,9 +49,9 @@ class TriangleSceneRenderer:
         )
 
     @classmethod
-    def from_default(cls):
+    def from_default(cls, seed: int = 42):
 
-        triangles = get_triangles_in_sky_scene_2()
+        triangles = get_triangles_in_sky_scene_2(rng=onp.random.RandomState(seed=seed))
 
         birdseye_view_specifier = get_view_specifier_from_scene(triangles)
 
@@ -193,6 +193,9 @@ class Simulation(DataProvider):
 
     def get_scene(self) -> list[RenderTriangle3d]:
         return self.scene_renderer.scene_triangles
+
+    def get_initial_baselink_pose(self) -> CameraPoseSE3:
+        return self.initial_baselink_pose
 
     def _get_obs(self, baselink_pose: CameraPoseSE3, frame_idx: int, sim_time_s: float) -> Observation:
         """ Renders what eyes see and constructs observation object """

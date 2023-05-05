@@ -1,11 +1,13 @@
 In this first lecture we are going to provide a draft of what we are going to do later.
+
 We will look through sketch of the whole system and
 we will list things that you will need to learn in order to be able
 to understand the code, use it yourself or make it better.
 
 This course is positioned to maximize accessibility aka make it easy to grasp quickly.
 If you want steepest possible learning curve, go to ORB-SLAM3 source code and paper and start reading.
-If you want more background on this current course
+If you want more background on this current course go to the book "intro to vslam".
+There is also a good book on backend "factors graphs for robot perception")
 
 TODO: Why is this an important algorithm ? Why do we need it ?
 

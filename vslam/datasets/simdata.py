@@ -5,11 +5,24 @@ import attr
 from sim.sim_types import Recording, Observation, CameraSpecs, RenderTriangle3d
 from utils.serialization import msgpack_loads, from_native_types
 from vslam.cam import CameraIntrinsics
+from vslam.types import CameraPoseSE3
 
 
 @runtime_checkable
 class DataProvider(Protocol):
     def stream(self) -> Iterable[Observation]:
+        ...
+
+    def get_cam_intrinsics(self) -> CameraIntrinsics:
+        ...
+
+    def get_cam_specs(self) -> CameraSpecs:
+        ...
+
+    def get_scene(self) -> list[RenderTriangle3d]:
+        ...
+
+    def get_initial_baselink_pose(self) -> CameraPoseSE3:
         ...
 
 
@@ -43,6 +56,9 @@ class SimDataStreamer(DataProvider):
 
     def get_scene(self) -> list[RenderTriangle3d]:
         return self.recorded_data.scene
+
+    def get_initial_baselink_pose(self) -> CameraPoseSE3:
+        return self.recorded_data.initial_baselink_pose
 
     def stream(self) -> Iterable[Observation]:
 

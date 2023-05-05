@@ -30,8 +30,8 @@ class VelocityPoseTracker:
         linear_velocity = (self.current_pose_estimate[:3, 3] - self.last_pose_estimate[:3, 3]) / self.time_delta
 
         # Compute angular velocity
-        current_rot = R.from_matrix(self.current_pose_estimate[:3, :3])
-        last_rot = R.from_matrix(self.last_pose_estimate[:3, :3])
+        current_rot = R.from_matrix(np.copy(self.current_pose_estimate[:3, :3]))
+        last_rot = R.from_matrix(np.copy(self.last_pose_estimate[:3, :3]))
         relative_rot = last_rot.inv() * current_rot
         angular_velocity = relative_rot.as_rotvec() / self.time_delta
 

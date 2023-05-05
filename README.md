@@ -6,6 +6,8 @@ Intro
 
 Here's an easy-to-understand Visual Simultaneous Localization And Mapping (VSLAM) algorithm.
 
+![render](imgs/gui.gif)
+
 It works on top of
 data coming from kinda-easy-to-understand triangle-based scene rendering from scratch.
 
@@ -15,16 +17,6 @@ The VSLAM part of this repo is largely reinterpretation of tutorials presented i
 They also generously [provided pdf of the book itself in a realted repo](https://github.com/gaoxiang12/slambook-en/blob/master/slambook-en.pdf).
 This is very awesome, and I am grateful for that.
 
-Here is how it looks like on an imagined triangle scene.
-
-![render](imgs/gui.gif)
-
-Top panes shows current image from the left eye.
-Top middle and top right image show what respectively left eye and right eye have seen when the keyframe was estimated.
-Bottom left shows birdseye view of the system, including keyframe viewports, current estimate of the pose and
-historical ground truth poses.
-Bottom right image shows a zoom-in of the difference between ground truth and estimated poses so far.
-
 Main entry point into VSLAM demo is:
 
 ```
@@ -32,15 +24,14 @@ pipenv shell
 python -m lessons.ex_03_full_frontend
 ```
 
-It currently depends on gathering data that can saved by `python -m sim.run`
-
-Previous lessons in the `lesson` folder showcase feature matching and 3d-2d PNP via Gauss-Newton optimization.
-
+This live-renders the environment. That's a bit too slow to feel real-tiem (at around 1 fps).
+It's better to first pre-generate the data by `python -m sim.run` and the run it from saved data.
 
 Structure
 ----------
 
-- `robots`
+- `vslam`
+    - `lessons` - scripts that run the framework piece by piece
     - `vslam`  - the vslam library
         - `keyframe` - contains the most important functions that drive the SLAM algorithm
             - `def estimate_keyframe()`

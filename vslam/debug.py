@@ -1,9 +1,9 @@
 import collections
 import itertools
+from typing import List, Dict, Optional, Iterable
 
 import attr
 import numpy as np
-from typing import List, Dict, Optional, Iterable
 
 from sim.birds_eye_view_render import DisplayBirdseyeView, BirdseyeViewSpecifier
 from sim.sim_types import CameraExtrinsics, RenderTriangle3d, CameraSpecs
@@ -377,12 +377,12 @@ class LocalizationDebugger:
         scene_display_renderer.draw_triangles(scene)
 
         layout = Col(
-            Row(LocalisationDebugPanes.GENERAL_INFO_TXT),
             Row(
                 Padding(Col(Padding(LocalisationDebugPanes.CURRENT_IMG_TITLE), LocalisationDebugPanes.CURRENT_IMG)),
                 Padding(Col(Padding(LocalisationDebugPanes.KEYFRAME_LEFT_IMG_TITLE), LocalisationDebugPanes.KEYFRAME_LEFT_IMG)),
                 Padding(Col(Padding(LocalisationDebugPanes.KEYFRAME_RIGHT_IMG_TITLE), LocalisationDebugPanes.KEYFRAME_RIGHT_IMG)),
             ),
+            Row(LocalisationDebugPanes.GENERAL_INFO_TXT),
             Row(
                 Padding(Col(Padding(LocalisationDebugPanes.SCENE_TITLE), LocalisationDebugPanes.SCENE)),
                 Padding(Col(Padding(LocalisationDebugPanes.POSE_DIFF_TITLE), LocalisationDebugPanes.POSE_DIFF)),
