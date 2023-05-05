@@ -111,6 +111,7 @@ class Action:
 @attr.define
 class Recording:
     camera_specs: CameraSpecs
+    initial_baselink_pose: CameraPoseSE3
     scene: List[RenderTriangle3d]
     observations: List[Observation] = attr.ib(factory=list)
 

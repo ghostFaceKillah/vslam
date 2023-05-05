@@ -1,5 +1,5 @@
 import time
-from typing import List, Protocol
+from typing import List, Protocol, runtime_checkable, Iterable
 
 import attr
 import cv2
@@ -16,7 +16,8 @@ from utils.colors import BGRCuteColors
 from utils.custom_types import BGRImageArray, BGRColor
 from utils.image import magnify
 from utils.plot import Col, Padding, Row, TextRenderer, Packer
-from utils.profiling import just_time
+from vslam.cam import CameraIntrinsics
+from vslam.datasets.simdata import DataProvider
 from vslam.math import normalize_vector
 from vslam.poses import get_SE3_pose, correct_SE3_matrix_inplace
 from vslam.types import CameraPoseSE3, Vector3d
@@ -110,6 +111,7 @@ class TriangleSceneRenderer:
         return get_SE3_pose(y=self.camera.extrinsics.distance_between_eyes / 2)
 
 
+@runtime_checkable
 class Actor(Protocol):
     def act(self, obs: Observation) -> Action:
         ...
@@ -153,20 +155,50 @@ class ManualActor:
 
 
 @attr.define
-class Simulation:
+class Simulation(DataProvider):
     actor: Actor
     scene_renderer: TriangleSceneRenderer
+    recorder: Recording
+    initial_baselink_pose: CameraPoseSE3
+    camera_specs: CameraSpecs
     dt: float = 0.1
+    max_iterations_or_none: int | None = None
+
+    @classmethod
+    def from_defaults(
+        cls,
+        actor: Actor,
+        scene_renderer: TriangleSceneRenderer,
+        initial_baselink_pose: CameraPoseSE3 = get_SE3_pose(y=-5.),
+        max_iterations_or_none: int | None = None
+    ):
+        return cls(
+            actor=actor,
+            scene_renderer=scene_renderer,
+            recorder=Recording(
+                camera_specs=scene_renderer.camera,
+                scene=scene_renderer.scene_triangles,
+                initial_baselink_pose=initial_baselink_pose
+            ),
+            camera_specs=scene_renderer.camera,
+            initial_baselink_pose=initial_baselink_pose,
+            max_iterations_or_none=max_iterations_or_none
+        )
+
+    def get_cam_intrinsics(self) -> CameraIntrinsics:
+        return self.camera_specs.intrinsics
+
+    def get_cam_specs(self) -> CameraSpecs:
+        return self.camera_specs
+
+    def get_scene(self) -> list[RenderTriangle3d]:
+        return self.scene_renderer.scene_triangles
 
     def _get_obs(self, baselink_pose: CameraPoseSE3, frame_idx: int, sim_time_s: float) -> Observation:
         """ Renders what eyes see and constructs observation object """
-        with just_time('right eye render'):
-            right_eye_screen = self.scene_renderer.render_first_person_view(baselink_pose @ self.scene_renderer.right_eye_offset())
-        with just_time('left eye render'):
-            left_eye_screen = self.scene_renderer.render_first_person_view(baselink_pose @ self.scene_renderer.left_eye_offset())
-
-        with just_time('birdseye render'):
-            bev_img = self.scene_renderer.render_birdseye_view(baselink_pose)
+        right_eye_screen = self.scene_renderer.render_first_person_view(baselink_pose @ self.scene_renderer.right_eye_offset())
+        left_eye_screen = self.scene_renderer.render_first_person_view(baselink_pose @ self.scene_renderer.left_eye_offset())
+        bev_img = self.scene_renderer.render_birdseye_view(baselink_pose)
 
         return Observation(
             left_eye_img=left_eye_screen,
@@ -177,37 +209,39 @@ class Simulation:
             timestamp=sim_time_s,
         )
 
-    def simulate(
-        self,
-        initial_baselink_pose: CameraPoseSE3 = get_SE3_pose(y=-5.),   # looking toward +x direction in world frame, +z in camera
-    ) -> Recording:
-        """ Simulates the environment. """
-        recorder = Recording(
-            camera_specs=self.scene_renderer.camera,
-            scene=self.scene_renderer.scene_triangles
-        )
-
-        baselink_pose = initial_baselink_pose
+    def stream(self) -> Iterable[Observation]:
+        baselink_pose = self.initial_baselink_pose
         sim_time = time.time()
 
         i = 0
         action = Action.empty()
 
         while True:
-            # mutates environment based on actions
-            baselink_pose = correct_SE3_matrix_inplace(baselink_pose @ action.transforms.camera)
-
             if action.end:
                 break
 
+            if self.max_iterations_or_none is not None and i > self.max_iterations_or_none:
+                break
+
+            # mutates environment based on actions
+            baselink_pose = correct_SE3_matrix_inplace(baselink_pose @ action.transforms.camera)
+
             obs = self._get_obs(baselink_pose, i, sim_time)
             action = self.actor.act(obs)
-            recorder.record_observation(obs)
+            self.recorder.record_observation(obs)
 
             i += 1
             sim_time += self.dt
 
-        return recorder
+            yield obs
+
+    def simulate(self) -> Recording:
+        """ Simulates the environment. """
+
+        for _obs in self.stream():
+            ...
+
+        return self.recorder
 
 
 @attr.define
@@ -217,13 +251,13 @@ class PreRecordedActor(Actor):
     idx: int = 0
 
     @classmethod
-    def from_a_nice_trip(cls, short_trip: bool = True):
+    def from_a_nice_trip(cls, short_trip: bool = False):
         """ Makes an agent that replays prerecorded actions and replays them. """
 
         if short_trip:
             actions = (
-                [InteractionTransforms.go_straight()] * 20
-                + [InteractionTransforms.turn_right()] * 90
+                [InteractionTransforms.go_straight()] * 10
+                + [InteractionTransforms.turn_right()] * 10
             )
         else:
             actions = (

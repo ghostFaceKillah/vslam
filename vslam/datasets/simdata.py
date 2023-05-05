@@ -1,13 +1,20 @@
-import attr
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Protocol, runtime_checkable
 
-from sim.sim_types import Recording, Observation, CameraSpecs
+import attr
+
+from sim.sim_types import Recording, Observation, CameraSpecs, RenderTriangle3d
 from utils.serialization import msgpack_loads, from_native_types
 from vslam.cam import CameraIntrinsics
 
 
+@runtime_checkable
+class DataProvider(Protocol):
+    def stream(self) -> Iterable[Observation]:
+        ...
+
+
 @attr.define
-class SimDataStreamer:
+class SimDataStreamer(DataProvider):
     """Simulated data streamer. """
     recorded_data: Recording
     max_obs: Optional[int] = None
@@ -34,6 +41,9 @@ class SimDataStreamer:
     def get_cam_specs(self) -> CameraSpecs:
         return self.recorded_data.camera_specs
 
+    def get_scene(self) -> list[RenderTriangle3d]:
+        return self.recorded_data.scene
+
     def stream(self) -> Iterable[Observation]:
 
         for i, obs in enumerate(self.recorded_data.observations):
@@ -41,4 +51,3 @@ class SimDataStreamer:
 
             if self.max_obs is not None and i > self.max_obs:
                 break
-

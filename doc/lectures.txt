@@ -10,6 +10,8 @@ Course book
     - this in that transform system
 - pinhole camera
 - rendering
+    - clipping
+    - z buffer
 - feature matching etc
 - 3d-2d PnP
 - gauss newton

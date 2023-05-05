@@ -2,11 +2,12 @@ from typing import List, Optional
 
 import attr
 import numpy as np
+import tqdm
 
 from sim.sim_types import Observation
 from utils.custom_types import BGRImageArray
 from utils.image import just_show
-from vslam.datasets.simdata import SimDataStreamer
+from vslam.datasets.simdata import DataProvider
 from vslam.debug import LocalizationDebugger
 from vslam.frontend import FrontendTrackingResult, Frontend
 from vslam.math import get_difference_of_angles
@@ -104,13 +105,13 @@ def _process_debug_info(
 
 
 def run_slam_system(
-    data_streamer: SimDataStreamer,
+    data_streamer: DataProvider,
     slam_system: Frontend,
     result_recorder: ResultRecorder,
     localization_debugger_or_none: Optional[LocalizationDebugger]
 ) -> SlamPerformanceMetrics:
 
-    for i, obs in enumerate(data_streamer.stream()):
+    for i, obs in tqdm.tqdm(enumerate(data_streamer.stream())):
         frontend_resu = slam_system.track(obs)
         result_recorder.record(obs, frontend_resu)
 

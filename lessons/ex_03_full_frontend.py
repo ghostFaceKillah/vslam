@@ -16,7 +16,7 @@ if __name__ == "__main__":
         slam_system=Frontend.from_params(
             cam_specs=data_streamer.get_cam_specs(),
             start_pose=get_SE3_pose(y=-5.),
-            scene_for_debug=data_streamer.recorded_data.scene,
+            scene_for_debug=data_streamer.get_scene()
     ),
         result_recorder=ResultRecorder(),
         localization_debugger_or_none=LocalizationDebugger.from_scene(

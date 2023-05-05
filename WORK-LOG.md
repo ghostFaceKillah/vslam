@@ -1,3 +1,14 @@
+2023-05-04
+----------
+- [ ] live sim driver (no-one will have data ready when they run it, right ?)
+- tests / benchmark
+  - smoke tests for all the lessons
+  - builtin unit test and pytest
+- [ ] make nice readme
+- [ ] lectures
+- [ ] further cleanup (iterate through TODOs, send for code review)
+
+
 2023-05-01
 ----------
 - [X] find best params
