@@ -1,6 +1,6 @@
 2023-05-04
 ----------
-- [ ] live sim driver (no-one will have data ready when they run it, right ?)
+- [X] live sim driver (no-one will have data ready when they run it, right ?)
 - tests / benchmark
   - smoke tests for all the lessons
   - builtin unit test and pytest

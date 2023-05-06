@@ -9,10 +9,6 @@ Point2d = Array['2', np.float64]
 Line2d = Tuple[Point2d, Point2d]
 Points2d = Array['N,2', np.float64]
 
-CameraIntrinsicMatrix = Array['3,3', np.float64]
-Cam3dHomogToPxMatrix = Array['3,2', np.float64]
-
-
 """
 perception equation in the camera frame
 ---------------------------------------
