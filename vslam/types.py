@@ -4,9 +4,6 @@ import numpy as np
 from utils.custom_types import Array
 
 
-
-
-
 Vector3d = Array['3', np.float64]
 Point2d = Array['2', np.float64]
 Line2d = Tuple[Point2d, Point2d]

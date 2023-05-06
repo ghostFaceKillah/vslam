@@ -129,15 +129,11 @@ def _get_background_image(
 
 
 def render_scene_pixelwise_depth(
-    screen_h: int,
-    screen_w: int,
     camera_pose: TransformSE3,
     triangles: List[RenderTriangle3d],
     cam_intrinsics: CameraIntrinsics,
-    light_direction: Vector3d,
     sky_color: BGRColor,
     ground_color: BGRColor,
-    shade_color: BGRColor,
     clipping_surfaces: ClippingSurfaces
 ) -> JaxImageArray:
     """
@@ -171,8 +167,6 @@ def render_scene_pixelwise_depth(
         return bg_image
     else:
         colors = front_colors
-
-        # TODO: come on, write a function !
         unit_depth_cam_points = triangle_cam_points[..., :-1]
         triangle_depths = unit_depth_cam_points[..., -1]
         triangles_in_img_coords = (unit_depth_cam_points / triangle_depths[..., np.newaxis])[..., :-1]

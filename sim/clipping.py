@@ -12,6 +12,8 @@ from vslam.types import Vector3d, CamCoords3d, ArrayOfColors
 
 @attr.define
 class ClippingSurfaces:
+    """ Surfaces that go out of optical center through edges of the camera.
+    They cut the triangles that lie on the edges of field of view, such that they fit into view.  """
     right_clipping_surface_normal: Vector3d
     left_clipping_surface_normal: Vector3d
     upper_clipping_surface_normal: Vector3d

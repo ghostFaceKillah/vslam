@@ -1,3 +1,4 @@
+""" Transforms between various coordinates. See lectures and vslam.types for details. """
 from typing import Optional
 
 import numpy as np
@@ -5,10 +6,6 @@ import numpy as np
 from vslam.cam import CameraIntrinsics
 from vslam.types import PxCoords2d, ImgCoords2d, CamCoords3dHomog, TransformSE3, CameraRotationSO3, WorldCoords3D, \
     CamCoords4d
-
-
-# poor man's (me) mapping from PxCoords2d to CamCoords2d
-# return (px - cx) / fx, (py - cy) / fy
 
 
 def px_2d_to_img_coords_2d(
@@ -26,7 +23,7 @@ def px_2d_to_cam_coords_3d_homo(
     xs: PxCoords2d,
     cam_intrinsics: CameraIntrinsics
 ) -> CamCoords3dHomog:
-    # Warning! We assume no undistortion
+    # Warning! We assume no undistortion. Normally, you would put lens undistorition in here.
     x_img_coords_2d = px_2d_to_img_coords_2d(xs, cam_intrinsics)
     ones = np.ones(shape=(x_img_coords_2d.shape[0], 1), dtype=np.float64)
     return np.column_stack([x_img_coords_2d, ones])
@@ -37,7 +34,7 @@ def px_2d_to_world(
     camera_intrinsics: CameraIntrinsics,
     cam_in_world: Optional[TransformSE3] = None,
 ) -> WorldCoords3D:
-    """ assuming the optical center is at (0, 0, 0) """
+    """ Assuming the optical center is at (0, 0, 0) """
     cam_in_world = cam_in_world if cam_in_world is not None else np.eye(4, dtype=np.float64)
     xs_in_cam = px_2d_to_cam_coords_3d_homo(xs, camera_intrinsics)
     xs_in_cam_4d = homogenize(xs_in_cam)
@@ -98,6 +95,7 @@ CAM_TO_WORLD_FLIP = SE3_inverse(WORLD_TO_CAM_FLIP)
 
 
 def the_cv_flip(px_coords):
+    """ Converts 'normal' pixel coordinates (x goes down, y goes right) to cv2 (x right, y down) """
     return px_coords[:, ::-1]
 
 def homogenize(x):

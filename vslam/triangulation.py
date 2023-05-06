@@ -12,6 +12,11 @@ def _docs_of_naive_triangulation() -> str:
     Function naive_triangulation implements Triangulation based on
      change-of-coordinate system equations.
 
+    Given distance between eyes, if we project lines through two views of same point
+    in the two (left & right) images, they should cross. We can then infer the depth
+    from relative distance of points in the two images. We write out this math in a
+    specific way below.
+
     It takes as arguments:
      - coordinates of sequence of points in frames (coordinates) of two cameras
      - transform from cam one to cam two (aka pose of cam 1 in frame of cam 2)
@@ -32,11 +37,14 @@ def _docs_of_naive_triangulation() -> str:
     Let us take rotation and translation [R, t] from cam_one_in_two. Then:
 
      s_2  x_2 = s_1 R x_1 + t
-     multiply both sides by x_2^hat (wiki skew vector)
+     multiply both sides by x_2^hat (see wikipedia: skew vector)
+
      s_2 x_2^hat x_2 = 0 = s_1 x_2^hat R x_1 + x2^hat t
                            s * | - - a - - |   |- b - |
+
      and in this way we have equation of type s * a + b = 0
      where a, b are 3d vectors, and s is scale scalar.
+
      In reality, a, b have only "2 dimensions of freedom" (exercise for the reader)
      We can solve for s two times and compare the results ("minimize the error").
      If the results are close, we have good depth estimate.
@@ -56,7 +64,7 @@ def naive_triangulation(
     points_in_cam_two: CamCoords3dHomog,
     cam_one_in_two: TransformSE3
 ) -> List[DepthEstimate]:
-    """ Estimate depth based on coordinate transform formula. See above for longer doc.
+    """ Estimate depth based on coordinate transform formula. See above filedoc for longer doc.
     Returns None if there seems to be too much error in inputs. """
 
     R = cam_one_in_two[:3, :3]
