@@ -68,16 +68,6 @@ def _reorthogonalize_rotation_matrix(R: CameraRotationSO3) -> CameraRotationSO3:
     return R_ortho
 
 
-def _correct_SE3_matrix(T):
-    R = T[:3, :3]
-    t = T[:3, 3]
-    R_ortho = _reorthogonalize_rotation_matrix(R)
-    T_corrected = np.eye(4)
-    T_corrected[:3, :3] = R_ortho
-    T_corrected[:3, 3] = t
-    return T_corrected
-
-
 def correct_SE3_matrix_inplace(T: TransformSE3) -> TransformSE3:
     T[:3, :3] = _reorthogonalize_rotation_matrix(T[:3, :3])
     return T

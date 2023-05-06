@@ -6,6 +6,10 @@ _JUST_TIME_IT_DEPTH = 0
 
 @contextlib.contextmanager
 def just_time(what='timer', verbose=True):
+    """
+    with just_time('my stuff'):
+        some_expensive_function()
+    """
     global _JUST_TIME_IT_DEPTH
     depth = _JUST_TIME_IT_DEPTH
     _JUST_TIME_IT_DEPTH += 1

@@ -22,8 +22,6 @@ def mkdir_p(path: str):
             raise
 
 
-
-
 def ensure_parent_dir_exists(file_path: str) -> None:
     """ Ensure that the parent directory for the file exists """
     parent_dir, _ = os.path.split(file_path)
