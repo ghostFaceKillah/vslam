@@ -17,9 +17,9 @@ from vslam.types import Pose2DArray
 
 @attr.define
 class SlamPerformanceMetrics:
-    sum_euclidean_error: float
+    sum_euclidean_error: float  # sum of L2 euclidean error (est_pose - true_pose)^2
     sum_angular_error: float
-    sum_euclidean_diff_error: float
+    sum_euclidean_diff_error: float  # sum of L2 pose delta errors (estimated_change in pose - true change in pose)^2
     sum_angular_diff_error: float
 
 
@@ -33,6 +33,7 @@ class ResultRecorder:
         obs: Observation,
         frontend_resu: FrontendTrackingResult
     ):
+        """ Save estimated and ground truth pose for further processing. """
         est_pose = SE3_pose_to_xytheta(frontend_resu.baselink_pose_estimate)
         gt_pose = SE3_pose_to_xytheta(obs.baselink_pose)
 

@@ -11,7 +11,7 @@ from sim.sim_types import RenderTriangle3d, CameraSpecs, Observation
 from vslam.features import OrbBasedFeatureMatcher
 from vslam.keyframe import Keyframe, KeyframeMatchPoseTrackingResult, estimate_keyframe, estimate_pose_wrt_keyframe, \
     KeyFrameEstimationDebugData, KeyframeTrackingDebugData
-from vslam.tracking import VelocityPoseTracker
+from vslam.tracking import VelocityPoseFilter
 from vslam.types import TransformSE3
 
 class FrontendState:
@@ -95,7 +95,7 @@ class Frontend:
     tracking_matcher: OrbBasedFeatureMatcher
     keyframe_feature_matcher: OrbBasedFeatureMatcher
     cam_specs: CameraSpecs
-    pose_tracker: VelocityPoseTracker
+    pose_tracker: VelocityPoseFilter
     outlier_rejection_margin: float  # TODO(mike): pls no
 
     tracking_quality_estimator: FrontendPoseQualityEstimator = attr.Factory(FrontendPoseQualityEstimator)
@@ -130,7 +130,7 @@ class Frontend:
             ),
             outlier_rejection_margin=outlier_rejection_margin,
             cam_specs=cam_specs,
-            pose_tracker=VelocityPoseTracker.from_defaults() if start_pose is None else VelocityPoseTracker(start_pose),
+            pose_tracker=VelocityPoseFilter.from_defaults() if start_pose is None else VelocityPoseFilter(start_pose),
             tracking_quality_estimator=FrontendPoseQualityEstimator(
                 minimum_number_of_matches=minimum_number_of_matches,
                 max_allowed_error=max_allowed_error,

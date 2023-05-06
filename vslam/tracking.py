@@ -7,7 +7,11 @@ from scipy.spatial.transform import Rotation as R
 from vslam.types import TransformSE3
 
 @attr.define
-class VelocityPoseTracker:
+class VelocityPoseFilter:
+    """ Provides velocity based priors to the tracking pipeline. 
+
+    Keeps an estimate of angular and linear velocity and extrapolates those forward.
+    """
     # it predicts the next pose
     current_pose_estimate: TransformSE3
     last_pose_estimate: Optional[TransformSE3] = None
