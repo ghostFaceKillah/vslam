@@ -12,8 +12,7 @@ from vslam.features import OrbBasedFeatureMatcher
 from vslam.keyframe import Keyframe, KeyframeMatchPoseTrackingResult, estimate_keyframe, estimate_pose_wrt_keyframe, \
     KeyFrameEstimationDebugData, KeyframeTrackingDebugData
 from vslam.tracking import VelocityPoseTracker
-from vslam.types import TransformSE3, CameraPoseSE3
-
+from vslam.types import TransformSE3
 
 class FrontendState:
     """ In future maybe add LOST or sth"""
@@ -110,7 +109,7 @@ class Frontend:
     def from_params(
         cls,
         cam_specs: CameraSpecs,
-        start_pose: Optional[CameraPoseSE3] = None,
+        start_pose: Optional[TransformSE3] = None,
         scene_for_debug: Optional[List[RenderTriangle3d]] = None,
         max_px_distance: float=200.,
         max_hamming_distance:int=128,
@@ -171,7 +170,7 @@ class Frontend:
     def _handle_keyframe_tracking_successful(
         self,
         obs: Observation,
-        prior_baselink_pose_estimate: CameraPoseSE3,
+        prior_baselink_pose_estimate: TransformSE3,
         keyframe_tracking_debug_data: KeyframeTrackingDebugData,
         state: FrontendState.Tracking,
         tracking_result: KeyframeMatchPoseTrackingResult.Success,

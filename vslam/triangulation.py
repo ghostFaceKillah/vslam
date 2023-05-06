@@ -4,7 +4,7 @@ import attr
 import numpy as np
 
 from vslam.math import vec_hat
-from vslam.types import CameraPoseSE3, CamCoords3dHomog
+from vslam.types import TransformSE3, CamCoords3dHomog
 
 
 def _docs_of_naive_triangulation() -> str:
@@ -54,7 +54,7 @@ class DepthEstimate:
 def naive_triangulation(
     points_in_cam_one: CamCoords3dHomog,
     points_in_cam_two: CamCoords3dHomog,
-    cam_one_in_two: CameraPoseSE3
+    cam_one_in_two: TransformSE3
 ) -> List[DepthEstimate]:
     """ Estimate depth based on coordinate transform formula. See above for longer doc.
     Returns None if there seems to be too much error in inputs. """

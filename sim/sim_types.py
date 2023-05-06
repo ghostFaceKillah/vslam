@@ -9,8 +9,7 @@ from utils.colors import BGRCuteColors
 from utils.custom_types import Array, BGRColor, BGRImageArray
 from vslam.cam import CameraIntrinsics
 from vslam.poses import get_SE3_pose
-from vslam.types import TransformSE3, CameraPoseSE3
-
+from vslam.types import TransformSE3
 
 @attr.define
 class RenderTriangle3d:
@@ -36,16 +35,16 @@ class CameraExtrinsics:
     """ as you can see, it kinda hardcodes existence of two cameras, which is totally not nececssary. """
     distance_between_eyes: float
 
-    def get_pose_of_right_cam_in_left_cam(self) -> CameraPoseSE3:
+    def get_pose_of_right_cam_in_left_cam(self) -> TransformSE3:
         return get_SE3_pose(x=self.distance_between_eyes)
 
-    def get_pose_of_left_cam_in_right_cam(self) -> CameraPoseSE3:
+    def get_pose_of_left_cam_in_right_cam(self) -> TransformSE3:
         return get_SE3_pose(x=-self.distance_between_eyes)
 
-    def get_pose_of_left_cam_in_baselink(self) -> CameraPoseSE3:
+    def get_pose_of_left_cam_in_baselink(self) -> TransformSE3:
         return get_SE3_pose(y=-self.distance_between_eyes / 2)
 
-    def get_pose_of_right_cam_in_baselink(self) -> CameraPoseSE3:
+    def get_pose_of_right_cam_in_baselink(self) -> TransformSE3:
         return get_SE3_pose(y=self.distance_between_eyes / 2)
 
 
@@ -89,7 +88,7 @@ class Observation:
     left_eye_img: BGRImageArray
     right_eye_img: BGRImageArray
     bev_img: BGRImageArray   # birdseye view image
-    baselink_pose: CameraPoseSE3   # left eye to the left of this, right eye to the right of this
+    baselink_pose: TransformSE3   # left eye to the left of this, right eye to the right of this
     frame_idx: int
     timestamp: float   # in seconds since epoch, as per python convention
 
@@ -111,7 +110,7 @@ class Action:
 @attr.define
 class Recording:
     camera_specs: CameraSpecs
-    initial_baselink_pose: CameraPoseSE3
+    initial_baselink_pose: TransformSE3 
     scene: List[RenderTriangle3d]
     observations: List[Observation] = attr.ib(factory=list)
 

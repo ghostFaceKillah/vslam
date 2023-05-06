@@ -17,7 +17,7 @@ from vslam.cam import CameraIntrinsics
 from vslam.features import FeatureMatch
 from vslam.poses import SE3_pose_to_xytheta
 from vslam.transforms import px_2d_to_cam_coords_3d_homo, get_world_to_cam_coord_flip_matrix, homogenize
-from vslam.types import CameraPoseSE3, TransformSE3
+from vslam.types import BGRImageArray, TransformSE3
 
 
 class GeneralDebugPanes(StrEnum):
@@ -189,7 +189,7 @@ class TriangulationDebugger:
 
     def draw_triangulation_bird_eye_view(
             self,
-            baselink_pose: CameraPoseSE3,
+            baselink_pose: TransformSE3,
             match: FeatureMatch,
             camera_intrinsics: CameraIntrinsics,
             camera_extrinsics: CameraExtrinsics,
@@ -271,7 +271,7 @@ class TriangulationDebugger:
         to_img: BGRImageArray,
         matches: List[FeatureMatch],
         depths: List[float],
-        baselink_pose: CameraPoseSE3,
+        baselink_pose: TransformSE3,
         camera_intrinsics: CameraIntrinsics,
         camera_extrinsics: CameraExtrinsics,
         triangles: List[RenderTriangle3d],

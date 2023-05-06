@@ -8,6 +8,7 @@ import pandas as pd
 from utils.colors import get_random_color
 from utils.custom_types import BinaryFeature, BGRImageArray, Array, Pixel, BGRColor
 from utils.profiling import just_time
+from vslam.types import BGRImageArray
 
 
 @attr.s(auto_attribs=True)

@@ -8,7 +8,7 @@ from sim.sim_types import RenderTriangle3d
 from utils.custom_types import BGRColor, Array, JaxImageArray
 from vslam.cam import CameraIntrinsics
 from vslam.transforms import get_world_to_cam_coord_flip_matrix, world_to_cam_4d
-from vslam.types import CameraPoseSE3, Vector3d, ArrayOfColors
+from vslam.types import TransformSE3, Vector3d, ArrayOfColors
 
 
 def get_pixel_center_coordinates(cam_intrinsics: CameraIntrinsics) -> Array['H,W,2', np.float32]:
@@ -105,7 +105,7 @@ def parallel_z_buffer_render(
 def _get_background_image(
     px_center_coords_in_img_coords: Array['H,W,2', np.float32],
     world_to_cam_flip: Array['4,4', np.float32],
-    camera_pose: CameraPoseSE3,
+    camera_pose: TransformSE3,
     sky_color: BGRColor,
     ground_color: BGRColor,
 ) -> JaxImageArray:
@@ -131,7 +131,7 @@ def _get_background_image(
 def render_scene_pixelwise_depth(
     screen_h: int,
     screen_w: int,
-    camera_pose: CameraPoseSE3,
+    camera_pose: TransformSE3,
     triangles: List[RenderTriangle3d],
     cam_intrinsics: CameraIntrinsics,
     light_direction: Vector3d,

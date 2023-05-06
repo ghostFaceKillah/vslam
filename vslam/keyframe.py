@@ -14,14 +14,14 @@ from vslam.poses import correct_SE3_matrix_inplace
 from vslam.transforms import px_2d_to_cam_coords_3d_homo, dehomogenize, CAM_TO_WORLD_FLIP, homogenize, SE3_inverse, \
     px_2d_to_img_coords_2d
 from vslam.triangulation import naive_triangulation, DepthEstimate
-from vslam.types import CameraPoseSE3, WorldCoords3D, TransformSE3
+from vslam.types import WorldCoords3D, TransformSE3
 
 
 @attr.define
 class Keyframe:
     """ Keyframe: We will match features to features on this image and
     estimate pose wrt to coordinate system of this image . """
-    pose: CameraPoseSE3
+    pose: TransformSE3
     image: BGRImageArray
     points_3d_est: WorldCoords3D
     feature_detections: OrbFeatureDetections
@@ -46,7 +46,7 @@ class KeyFrameEstimationDebugData:
 def estimate_keyframe(
         obs: Observation,
         matcher: OrbBasedFeatureMatcher,
-        baselink_pose: CameraPoseSE3,
+        baselink_pose: TransformSE3,
         cam_intrinsics: CameraIntrinsics,
         cam_extrinsics: CameraExtrinsics,
         debug_feature_matches: bool = False,
@@ -141,7 +141,7 @@ class KeyframeMatchPoseTrackingResult:
 
     @attr.define
     class Success:
-        pose_estimate: CameraPoseSE3
+        pose_estimate: TransformSE3
         tracking_quality_info: GaussNetwonAuxillaryInfo   # mildly bad design to entangle this to Gauss Newton specifically
 
 

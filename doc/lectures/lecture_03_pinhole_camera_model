@@ -1,0 +1,18 @@
+perception equation in the camera frame
+---------------------------------------
+  takes points directly from CamCoords3d to PxCoords2d
+     [u]    [ f_x,   0, c_x]    [x]
+Z *  [v] =  [   0, f_y, c_y]  @ [y] = def = K @ P
+     [1]    [   0,   0,   1]    [z]
+     ^       ^
+     :        Camera Intrinsics matrix
+     ImgCoords2d
+
+ K - camera intrinsics matrix
+
+perception equation in world frame
+----------------------------------
+  takes points directly from WorldCoords3D to PxCoords2d
+              [u]
+ZP_uv =  Z *  [v]  = K(R P_w + T) = KTP
+              [1]

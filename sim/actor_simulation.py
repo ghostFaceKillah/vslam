@@ -20,7 +20,7 @@ from vslam.cam import CameraIntrinsics
 from vslam.datasets.simdata import DataProvider
 from vslam.math import normalize_vector
 from vslam.poses import get_SE3_pose, correct_SE3_matrix_inplace
-from vslam.types import CameraPoseSE3, Vector3d
+from vslam.types import BGRImageArray, TransformSE3, Vector3d
 
 
 @attr.define
@@ -60,7 +60,7 @@ class TriangleSceneRenderer:
             birdseye_view_specifier=birdseye_view_specifier
         )
 
-    def render_first_person_view(self, camera_pose: CameraPoseSE3) -> BGRImageArray:
+    def render_first_person_view(self, camera_pose: TransformSE3) -> BGRImageArray:
         """ Renders the scene from the perspective of the camera """
         jax_array = render_scene_pixelwise_depth(
             self.camera.intrinsics.screen_h,
@@ -78,7 +78,7 @@ class TriangleSceneRenderer:
 
     def render_birdseye_view(
             self,
-            baselink_pose: CameraPoseSE3,
+            baselink_pose: TransformSE3,
 
     ) -> BGRImageArray:
         """ Renders the scene from birdseye view """
@@ -98,10 +98,10 @@ class TriangleSceneRenderer:
 
         return display.get_image()
 
-    def render_left_eye(self, camera_pose: CameraPoseSE3) -> BGRImageArray:
+    def render_left_eye(self, camera_pose: TransformSE3) -> BGRImageArray:
         return self.render_first_person_view(camera_pose @ self.left_eye_offset())
 
-    def render_right_eye(self, camera_pose: CameraPoseSE3) -> BGRImageArray:
+    def render_right_eye(self, camera_pose: TransformSE3) -> BGRImageArray:
         return self.render_first_person_view(camera_pose @ self.right_eye_offset())
 
     def left_eye_offset(self):
@@ -159,7 +159,7 @@ class Simulation(DataProvider):
     actor: Actor
     scene_renderer: TriangleSceneRenderer
     recorder: Recording
-    initial_baselink_pose: CameraPoseSE3
+    initial_baselink_pose: TransformSE3
     camera_specs: CameraSpecs
     dt: float = 0.1
     max_iterations_or_none: int | None = None
@@ -169,7 +169,7 @@ class Simulation(DataProvider):
         cls,
         actor: Actor,
         scene_renderer: TriangleSceneRenderer,
-        initial_baselink_pose: CameraPoseSE3 = get_SE3_pose(y=-5.),
+        initial_baselink_pose: TransformSE3 = get_SE3_pose(y=-5.),
         max_iterations_or_none: int | None = None
     ):
         return cls(
@@ -194,10 +194,10 @@ class Simulation(DataProvider):
     def get_scene(self) -> list[RenderTriangle3d]:
         return self.scene_renderer.scene_triangles
 
-    def get_initial_baselink_pose(self) -> CameraPoseSE3:
+    def get_initial_baselink_pose(self) -> TransformSE3:
         return self.initial_baselink_pose
 
-    def _get_obs(self, baselink_pose: CameraPoseSE3, frame_idx: int, sim_time_s: float) -> Observation:
+    def _get_obs(self, baselink_pose: TransformSE3, frame_idx: int, sim_time_s: float) -> Observation:
         """ Renders what eyes see and constructs observation object """
         right_eye_screen = self.scene_renderer.render_first_person_view(baselink_pose @ self.scene_renderer.right_eye_offset())
         left_eye_screen = self.scene_renderer.render_first_person_view(baselink_pose @ self.scene_renderer.left_eye_offset())

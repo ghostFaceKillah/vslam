@@ -4,25 +4,24 @@ import attr
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-from vslam.types import CameraPoseSE3
-
+from vslam.types import TransformSE3
 
 @attr.define
 class VelocityPoseTracker:
     # it predicts the next pose
-    current_pose_estimate: CameraPoseSE3
-    last_pose_estimate: Optional[CameraPoseSE3] = None
+    current_pose_estimate: TransformSE3
+    last_pose_estimate: Optional[TransformSE3] = None
     time_delta: float = 1.0
 
     @classmethod
     def from_defaults(cls):
         return cls(current_pose_estimate=np.eye(4, np.float64))
 
-    def track(self, new_pose: CameraPoseSE3):
+    def track(self, new_pose: TransformSE3):
         self.last_pose_estimate = self.current_pose_estimate
         self.current_pose_estimate = new_pose
 
-    def get_next_baselink_in_world_pose_estimate(self) -> CameraPoseSE3:
+    def get_next_baselink_in_world_pose_estimate(self) -> TransformSE3:
         if self.last_pose_estimate is None:
             return self.current_pose_estimate
 

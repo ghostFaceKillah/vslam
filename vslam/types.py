@@ -1,43 +1,20 @@
 from typing import Tuple
 
 import numpy as np
-
 from utils.custom_types import Array
+
+
+
+
 
 Vector3d = Array['3', np.float64]
 Point2d = Array['2', np.float64]
 Line2d = Tuple[Point2d, Point2d]
 Points2d = Array['N,2', np.float64]
-
-"""
-perception equation in the camera frame
----------------------------------------
-  takes points directly from CamCoords3d to PxCoords2d
-     [u]    [ f_x,   0, c_x]    [x] 
-Z *  [v] =  [   0, f_y, c_y]  @ [y] = def = K @ P
-     [1]    [   0,   0,   1]    [z]
-     ^       ^
-     :        Camera Intrinsics matrix
-     ImgCoords2d
-
- K - camera intrinsics matrix
-
-perception equation in world frame
-----------------------------------
-  takes points directly from WorldCoords3D to PxCoords2d
-              [u]  
-ZP_uv =  Z *  [v]  = K(R P_w + T) = KTP
-              [1]
-"""
-
-
-CameraPoseSE3 = Array['4,4', np.float64]
-TransformSE3 = Array['4,4', np.float64]   # TODO: Unify Camera pose and transform
+TransformSE3 = Array['4,4', np.float64]
 Pose2DArray = Array['3', np.float64]   # x, y, theta in a plane
-UnorientedPose2DArray = Array['2', np.float64]   # x, y in z=0 floor plane2
 CameraRotationSO3 = Array['3,3', np.float64]
-CameraTranslationVector = Array['3', np.float64]
-Vector3dHomogenous = Array['4', np.float64]   # TODO: nomenclature difference between having 0 on last coordinate or not
+ReprojectionErrorVector = Array['2', np.float64]
 
 ArrayOfColors = Array['N,3', np.uint8]
 
@@ -48,7 +25,7 @@ CamCoords3d = Array['N,3', np.float64]        # x goes right, y down, z out, loo
 CamCoords3dHomog = Array['N,3', np.float64]   # X/Z Y/Z 1
 ImgCoords2d = Array['N,2', np.float64]        # x goes right, y down, homogenous without z,
 PxCoords2d = Array['N,2', np.int64]           # int, x goes down, y goes right, divided by fx/fy, subtracted cx, cy
-Cv2PxCoords2d = Array['N,2', np.int64]        # int, x goes right (todo left ?), y goes down
+                                              # please notice that cv pixel coordinates are swapped
 
 """
 WorldCoords3D
@@ -65,5 +42,7 @@ WorldCoords3D
                                                 -[-center, *px scale and focal (intrinsics), flip (!)]
                                                     -> PxCoords2d
 """
+OpenCVPixel = Tuple[int, int]   # right, down, non-negative
+# images
+BGRImageArray = Array['H,W,3', np.uint8]
 
-ReprojectionErrorVector = Array['2', np.float64]

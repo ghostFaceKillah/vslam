@@ -8,6 +8,7 @@ from utils.custom_types import ImageArray, BGRImageArray, HeightPx, WidthPx, Pix
 from utils.cv2_but_its_typed import cv2_get_text_size, cv2_line
 from utils.enum_utils import StrEnum
 from utils.image import get_canvas
+from vslam.types import BGRImageArray
 
 
 @attr.s(auto_attribs=True)

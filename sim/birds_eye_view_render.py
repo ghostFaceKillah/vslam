@@ -14,7 +14,7 @@ from vslam.cam import CameraIntrinsics
 from vslam.math import normalize_vector
 from vslam.poses import SE3_pose_to_xytheta
 from vslam.transforms import homogenize
-from vslam.types import CameraPoseSE3, Point2d, Points2d, TransformSE3
+from vslam.types import BGRImageArray, Point2d, Points2d, TransformSE3
 
 
 @attr.define
@@ -88,7 +88,7 @@ def get_view_specifier_from_scene(
 
 def draw_view_cone(
     view_specifier: BirdseyeViewSpecifier,
-    camera_pose: CameraPoseSE3,
+    camera_pose: TransformSE3,
     camera_intrinsics: CameraIntrinsics,
     image: BGRImageArray,
     whiskers_length_m: float = 5.0,
@@ -145,7 +145,7 @@ def draw_circle_on_bev(
 
 def render_birdseye_view(
         view_specifier: BirdseyeViewSpecifier,
-        camera_pose: CameraPoseSE3,
+        camera_pose: TransformSE3,
         camera_intrinsics: CameraIntrinsics,
         triangles: List[RenderTriangle3d],
         bg_color: BGRColor
@@ -183,7 +183,7 @@ class DisplayBirdseyeView:
 
     def draw_view_cone(
             self,
-            at_pose: CameraPoseSE3,
+            at_pose: TransformSE3,
             camera_intrinsics: CameraIntrinsics,   # viewport is for drawing viewports and not general poses
             whiskers_thickness_px: int = 2,
     ) -> None:

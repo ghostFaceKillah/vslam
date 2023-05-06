@@ -33,14 +33,14 @@ from vslam.pnp import (
 )
 from vslam.poses import get_SE3_pose
 from vslam.transforms import SE3_inverse, get_world_to_cam_coord_flip_matrix
-from vslam.types import CamFlippedWorldCoords3D, CameraPoseSE3, ImgCoords2d
+from vslam.types import CamFlippedWorldCoords3D, ImgCoords2d, TransformSE3
 
 
 @attr.define
 class _PoseEstimationData:
-    camera_pose: CameraPoseSE3
-    camera_pose_initial_guess: CameraPoseSE3
-    keyframe_pose: CameraPoseSE3
+    camera_pose: TransformSE3
+    camera_pose_initial_guess: TransformSE3
+    keyframe_pose: TransformSE3
     points_3d_in_keyframe: CamFlippedWorldCoords3D
     points_2d_in_img: ImgCoords2d
 
