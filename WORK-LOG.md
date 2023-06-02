@@ -7,6 +7,7 @@
 - [ ] make nice readme
 - [ ] lectures
 - [ ] further cleanup (iterate through TODOs, send for code review)
+- [ ] simplify the tracking (double state related to failure, sad)
 
 
 2023-05-01
