@@ -8,6 +8,8 @@ Here's an easy-to-understand Visual Simultaneous Localization And Mapping (VSLAM
 
 ![render](imgs/gui.gif)
 
+If you want to quickly get into the meat of it, go to `vslam/frontend.py` and read `Frontend.track()` function - that's what gets called on every iteration.
+
 It works on top of
 data coming from kinda-easy-to-understand triangle-based scene rendering from scratch.
 
@@ -24,7 +26,7 @@ pipenv shell
 python -m lessons.ex_03_full_frontend
 ```
 
-This live-renders the environment. That's a bit too slow to feel real-tiem (at around 1 fps).
+This live-renders the environment. That's a bit too slow to feel real-time (at around 1 fps).
 It's better to first pre-generate the data by `python -m sim.run` and the run it from saved data.
 
 Structure
