@@ -8,7 +8,7 @@ Here's an easy-to-understand Visual Simultaneous Localization And Mapping (VSLAM
 
 ![render](imgs/gui.gif)
 
-If you want to quickly get into the meat of it, go to `vslam/frontend.py` and read `Frontend.track()` function - that's what gets called on every iteration.
+If you want to quickly get to the meat of it, go to `vslam/frontend.py` and read `Frontend.track()` function - that's what gets called on every iteration to resolve pose from image input.
 
 It works on top of
 data coming from kinda-easy-to-understand triangle-based scene rendering from scratch.
@@ -34,14 +34,14 @@ Structure
 
 - `vslam`
     - `lessons` - scripts that run the framework piece by piece
-    - `vslam`  - the vslam library
+    - `vslam`  - the vslam library - doesn't use jax.
         - `keyframe` - contains the most important functions that drive the SLAM algorithm
             - `def estimate_keyframe()`
             - `def estimate_pose_wrt_keyframe()`
         - `frontend` - Is the primary VSLAM state holder. Pulls everything together.
-    - `sim` - rendering framework. Uses `jax` a lot.
+    - `sim` - rendering framework. Uses `jax`.
         - `egocentric_render` - contains the most important functions that drive rendering
-            - `def parallel_z_buffer_render()` - that's the function that resolves object drawing
+            - `def parallel_z_buffer_render()` - that's the function that does the object drawing
 
 
 
