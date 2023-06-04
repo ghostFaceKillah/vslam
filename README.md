@@ -8,7 +8,7 @@ Here's an easy-to-understand Visual Simultaneous Localization And Mapping (VSLAM
 
 ![render](imgs/gui.gif)
 
-If you want to quickly get to the meat of it, go to `vslam/frontend.py` and read `Frontend.track()` function - that's what gets called on every iteration to resolve pose from image input.
+If you want to quickly get to the meat of it, go to [`vslam/frontend.py` and read `Frontend.track()`](https://github.com/ghostFaceKillah/vslam/blob/main/vslam/frontend.py#L238) function - that's what gets called on every iteration to resolve pose from image input.
 
 It works on top of
 data coming from kinda-easy-to-understand triangle-based scene rendering from scratch.
