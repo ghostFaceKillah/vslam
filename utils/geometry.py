@@ -18,9 +18,19 @@ def pol_to_cart(rho, phi):
     return x, y
 
 
+def wrap_angle(theta):
+    """Cast angle to (-pi, pi)."""
+    return (theta + np.pi) % (2 * np.pi) - np.pi
+
+
+def diff_angle(a1, a2):
+    wrap_angle(a1 - a2)
+
+
 @dataclasses.dataclass
 class Arrow2d:
     """ This is in floating point coordinates. """
+    # TODO: this should be in a separate `drawing` library file
 
     orientation: float
     origin_point: Point2d

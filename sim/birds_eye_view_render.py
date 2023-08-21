@@ -14,7 +14,7 @@ from vslam.cam import CameraIntrinsics
 from vslam.math import normalize_vector
 from vslam.poses import SE3_pose_to_xytheta
 from vslam.transforms import homogenize
-from vslam.types import BGRImageArray, Point2d, Points2d, TransformSE3
+from vslam.types import BGRImageArray, Point2d, Points2d, TransformSE3, Pose2DArray
 
 
 @attr.define
@@ -204,6 +204,16 @@ class DisplayBirdseyeView:
     ):
         for (from_pt, to_pt) in arrow.get_lines_to_draw():
             self.draw_line_2d(from_pt, to_pt, color, thickness)
+
+    def draw_2d_pose(
+            self,
+            pose_2d: Pose2DArray,
+            color: BGRColor = BGRCuteColors.DARK_GRAY,
+            arrow_length: float = 0.15,
+            thickness: int = 2
+    ):
+        arrow = Arrow2d.from_length_and_origin(origin=pose_2d[:2], length=arrow_length, orientation=pose_2d[2])
+        self.draw_arrow(arrow, color, thickness)
 
     def draw_3d_pose(
         self,
