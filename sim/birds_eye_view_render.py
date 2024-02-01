@@ -30,6 +30,12 @@ class BirdseyeViewSpecifier:
         r = self.resolution
         return int(x / r),  int(y / r)
 
+    def pixel_to_world(self, pixel_x: int, pixel_y: int) -> tuple[float, float]:
+        """Convert pixel coordinates to world coordinates."""
+        world_x = pixel_x * self.resolution + self.origin[0]
+        world_y = pixel_y * self.resolution + self.origin[1]
+        return world_x, world_y
+
     @classmethod
     def from_view_center(
         cls,
