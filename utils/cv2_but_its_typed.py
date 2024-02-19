@@ -61,6 +61,19 @@ def cv2_get_text_size(
     )
 
 
+def cv2_put_text(
+        image: BGRImageArray,
+        text: str,
+        at: tuple[int, int] = (10, 10),
+        font_face: CvFontFace = cv2.FONT_HERSHEY_PLAIN,
+        color: BGRColor = (0, 0, 0),
+        scale: float = 1.0,
+        thickness: int = 1,
+):
+
+    cv2.putText(image, text, at, font_face, scale, color, thickness)
+
+
 def cv2_fill_poly(
         polygon_pts: Array['N,2', np.int32],
         background: BGRImageArray,

@@ -5,6 +5,7 @@ import pygame
 @attr.define
 class DeadSimpleUiState:
     keys_pressed: list[int] = attr.Factory(list)
+    keys_held: list[int] = attr.Factory(list)
     mouse_clicks: list[tuple[int, int]] = attr.Factory(list)
 
 @attr.define
@@ -15,7 +16,7 @@ class DeadSimpleUI:
     fps: int = 30
     screen_width: int = 800
     screen_height: int = 600
-    keys_pressed: set[int] = attr.Factory(set)
+    keys_held: set[int] = attr.Factory(set)
 
     @classmethod
     def make(
@@ -38,6 +39,7 @@ class DeadSimpleUI:
         pygame.display.flip()
 
         mouse_clicks = []
+        keys_pressed = []
 
         # Process events
         for event in pygame.event.get():
@@ -45,21 +47,29 @@ class DeadSimpleUI:
                 pygame.quit()
                 exit()  # Exit the program
             elif event.type == pygame.KEYDOWN:
-                self.keys_pressed.add(event.key)
+                self.keys_held.add(event.key)
+                keys_pressed.append(event.key)
             elif event.type == pygame.KEYUP:
-                self.keys_pressed.remove(event.key)
+                self.keys_held.remove(event.key)
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_clicks.append(event.pos)
 
         # Limit the frame rate to 30 FPS
         state = DeadSimpleUiState(
-            keys_pressed=list(self.keys_pressed),
+            keys_pressed=keys_pressed,
+            keys_held=list(self.keys_held),
             mouse_clicks=mouse_clicks
         )
 
         self.clock.tick(30)
 
         return state
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        pygame.quit()
 
 
 
