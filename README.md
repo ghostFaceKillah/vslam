@@ -8,10 +8,11 @@ Here's an easy-to-understand Visual Simultaneous Localization And Mapping (VSLAM
 
 ![render](imgs/gui.gif)
 
-If you want to quickly get to the meat of it, go to [`vslam/frontend.py` and read `Frontend.track()`](https://github.com/ghostFaceKillah/vslam/blob/main/vslam/frontend.py#L238) function - that's what gets called on every iteration to resolve pose from image input.
+I made a whole [youtube video series](https://www.youtube.com/playlist?list=PLENZR8id1crgCG9Dmr0uKE5mz5eE8S_0-) to explain it.
 
-It works on top of
-data coming from kinda-easy-to-understand triangle-based scene rendering from scratch.
+If you want to quickly get to the meat of the code, go to [`vslam/frontend.py` and read `Frontend.track()`](https://github.com/ghostFaceKillah/vslam/blob/main/vslam/frontend.py#L238) function - that's what gets called on every iteration to resolve pose from image input.
+
+It works on top of data coming from kinda-easy-to-understand triangle-based scene rendering from scratch.
 
 The VSLAM part of this repo is largely reinterpretation of tutorials presented in an ***excellent*** book 
 *"Introduction to Visual SLAM: From Theory to Practice"*. See the associated
