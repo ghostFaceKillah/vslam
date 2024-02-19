@@ -3,7 +3,7 @@ import numpy as np
 import pygame
 
 @attr.define
-class UIState:
+class DeadSimpleUiState:
     keys_pressed: list[int] = attr.Factory(list)
     mouse_clicks: list[tuple[int, int]] = attr.Factory(list)
 
@@ -30,7 +30,7 @@ class DeadSimpleUI:
         clock = pygame.time.Clock()
         return cls( screen, clock , screen_width, screen_height)
 
-    def update_image_and_get_state(self, numpy_img: np.ndarray) -> UIState:
+    def update_image_and_get_state(self, numpy_img: np.ndarray) -> DeadSimpleUiState:
         # Convert numpy image to Pygame Surface and display it
         image_surface = pygame.surfarray.make_surface(numpy_img.transpose((1, 0, 2)))
         self.screen.fill((255, 255, 255))  # Fill the screen with white
@@ -52,7 +52,7 @@ class DeadSimpleUI:
                 mouse_clicks.append(event.pos)
 
         # Limit the frame rate to 30 FPS
-        state = UIState(
+        state = DeadSimpleUiState(
             keys_pressed=list(self.keys_pressed),
             mouse_clicks=mouse_clicks
         )
