@@ -24,12 +24,13 @@ class DeadSimpleUI:
         screen_width: int = 800,
         screen_height: int = 600,
         title: str = "Simple UI",
+        fps: int = 30
      ):
         pygame.init()
         screen = pygame.display.set_mode((screen_width, screen_height))
         pygame.display.set_caption(title)
         clock = pygame.time.Clock()
-        return cls( screen, clock , screen_width, screen_height)
+        return cls( screen, clock , fps, screen_width, screen_height)
 
     def update_image_and_get_state(self, numpy_img: np.ndarray) -> DeadSimpleUiState:
         # Convert numpy image to Pygame Surface and display it
@@ -61,7 +62,7 @@ class DeadSimpleUI:
             mouse_clicks=mouse_clicks
         )
 
-        self.clock.tick(30)
+        self.clock.tick(self.fps)
 
         return state
 
