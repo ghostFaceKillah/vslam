@@ -31,7 +31,7 @@ def get_SO3_rotation_from_euler(
     ])
 
     # TODO: numerical error accumulation, very suspicious way to do it
-    return yaw_matrix * pitch_matrix * roll_matrix
+    return yaw_matrix @ pitch_matrix @ roll_matrix
 
 
 def get_SE3_pose(

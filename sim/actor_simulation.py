@@ -63,15 +63,11 @@ class TriangleSceneRenderer:
     def render_first_person_view(self, camera_pose: TransformSE3) -> BGRImageArray:
         """ Renders the scene from the perspective of the camera """
         jax_array = render_scene_pixelwise_depth(
-            self.camera.intrinsics.screen_h,
-            self.camera.intrinsics.screen_w,
             camera_pose,
             self.scene_triangles,
             self.camera.intrinsics,
-            self.light_direction_in_world,
             self.sky_color,
             self.ground_color,
-            self.shade_color,
             self.camera.clipping_surfaces
         )
         return onp.array(jax_array)

@@ -50,4 +50,4 @@ if __name__ == '__main__':
     around 5 mb per non-compressed frame
     around 0.058 mb per compressed frame
     """
-    run_simulation()
+    run_simulation(manual=True, save_recording=False)

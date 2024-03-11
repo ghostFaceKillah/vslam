@@ -20,7 +20,7 @@ def run_full_frontend(live_data: bool = False):
             scene_renderer=TriangleSceneRenderer.from_default(seed=42),
         )
     else:
-        dataset_path = os.path.join(ROOT_DIR, "data/short_recording_2023-05-04--19-10-34.msgpack")
+        dataset_path = os.path.join(ROOT_DIR, ROOT_DIR, "data/short_recording_2023-05-04--19-10-34.msgpack")
         data_streamer = SimDataStreamer.from_dataset_path(dataset_path=dataset_path, max_obs=130)
 
     run_slam_system(

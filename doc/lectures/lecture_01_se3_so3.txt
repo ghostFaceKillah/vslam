@@ -1,7 +1,126 @@
-- read the rotation matrix on wikipedia
-  - quick intuition: rotation around axis 0z leaves it unchanged
 
-- There is many ways to express rotations of 3d space
+
+There's many great lectures on this.
+But this one's mine.
+I will explain it how now I would like it to be explained to me.
+
+Mathematical expressions for rotations are truly fascinating.
+
+
+It has the interesting property of being very boring to most people and having
+capturing surprisign and deep properties of our reality, although they feel so easy and regular on intutive level.
+
+
+There are couple of ways to write rotations in 2d and 3d.
+
+Does it float your boat to hear about groups that are also manifolds?
+
+Does breaking down imaginary unit into two further imaginary sub-units sound exciting?
+
+Too bad, you don't get to hear about it in this lecture.
+
+
+
+In short summary, the problem is that it is not easy to get proper calculus on rotations.
+
+To solve VSLAM, you may want to solve for rotation.
+Between those two frames the robot has rotated. By how much ?
+We can measure error.
+Then let us solve for rotation.
+I have a rotation, I can try to change it a bit, see which direciton error decreases.
+But turns out that it 
+
+
+
+# ways to write out rotation matrix
+
+
+
+https://www.youtube.com/watch?v=RqZH-7hlI48&t=4s&ab_channel=Udacity
+
+
+2d rotation
+
+[cos theta, -sin theta]
+[sin theta, cos thets]
+
+
+3d rotation
+
+https://en.wikipedia.org/wiki/Rotation_matrix#General_3D_rotations
+look at wikipedia
+
+
+How to remember this?
+
+- notice how rotation around z axis does change anything?
+
+
+How to combine rotations? - multiply matrices by each other
+
+
+
+
+
+
+ 
+
+
+
+
+
+# insufficiency of naive expression of rotation
+
+In mapping, there's a bunch of optimization. Optimization needs derivatives!
+
+Derivatives need multiplication and addition that operate well on given set.
+
+        f(x + t) - f(x)
+lim     --------------- = f'(x)
+t -> 0      t
+
+exists
+
+                     V multiplication
+f(x)  = f(a) + f'(a) * (x - a) + residual
+             ^            ^ addition
+            addition
+
+
+                          V multiplication
+f(x + eps) = f(x) + f'(x) * eps + error(x)
+             ^      
+            addition
+
+
+
+If in real life we have a rotation and rotation, they are still a rotation.
+For example if I rotate a pickel by 90 deg, and then by 85 degrees, I could as well rotate it by 90+85
+
+
+# sufficiency of just normalize
+
+sometimes when we accumualte many rotation matrices in practice
+numeric error can accumualte and we we can get matrices that don't have det(A) = 1
+or are off in some other way
+and then just divide by det and hope for the best, should be OK
+
+
+
+
+# homogenous coordinates
+
+
+We introduce 
+
+- direction is different from pose
+
+
+
+
+
+
+
 
 - The idea of homogenous coordinates
     - easy to transform directions

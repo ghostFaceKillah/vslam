@@ -1,38 +1,99 @@
-In this first lecture we are going to provide a draft of what we are going to do later.
+In this series of lectures we are going to build an easy to understand VSLAM system.
+And we're going to have fun along the way!
 
-We will look through sketch of the whole system and
-we will list things that you will need to learn in order to be able
-to understand the code, use it yourself or make it better.
+But before we do this, here's the first lecture in which we are going to
+provide structure for what comes next.
 
-This course is positioned to maximize accessibility aka make it easy to grasp quickly.
-If you want steepest possible learning curve, go to ORB-SLAM3 source code and paper and start reading.
-If you want more background on this current course go to the book "intro to vslam".
-There is also a good book on backend "factors graphs for robot perception")
+We will list the order of material  that we are going to cover in the later lectures.
+We are going look through sketch of the whole system.
 
-TODO: Why is this an important algorithm ? Why do we need it ?
 
-We are going to make an agent that goes through environment and figures out where it is.
+This course:
+  - is positioned to maximize accessibility aka make it easy to grasp quickly.
+    To hit this goal, we make a bunch of tradeoffs.
+    
+    - we use simulated environment
+    - in performance / readability tradeoff we take readability, but in practice you often need a lot of performance
 
-We are going to use simulated environment, but same exact code / principles apply to real life cases.
 
-This code won't try to be production ready - we will prioritize being easy to learn over being fast.
+Let me provide you with a bunch of references, each serving specific goals:
+    - If you want steepest possible learning curve, go to ORB-SLAM3 source code and paper and start reading.
+    - If you want more background on this current course go to the book "intro to vslam".
+    - There is also a good book on backend "factors graphs for robot perception")
+    - if you want practical solutions, look at GTSAM or ORB-SLAM3 libraries
 
-In practice you may need better speed to be able to deploy this thing.
-Usually this means that you would need more threads, more processes and c++.
+About your lecturer: I am good at VSLAM but not some kind of lifelong expert.
+Even if I were the ultimate lifelong authority, you should feel free to submit corrections, 
+skeptical of what I am saying, submit PRs with corrections, etc.
 
-The agent has two cameras.
+Don't just read it, fight it!
 
-First, it uses information from two cameras to estimate depth of the points it sees.
-The agent remembers this information and call this reference frame "keyframe".
-The special thing about the keyframe is that it has a bunch of 3d points attached to it.
-This points have estimated (triangulated) depth and
 
-Then, as the agent moves on, it compares the new information from left eye in reference keyframe to information
-that the left eye currently sees.
+What's VSLAM:
+  - SLAM - simultaneous visualization and mapping, but based on vision
+  - so basically, given a bunch of cameras (usually one or two, but could be more) and sometimes IMU (accelometer)
+    figure out where you are and how the environment around you looks like. "Where are the walls and how far are you from them"
+  - the biggest practical difference between VSLAM and SLAM is that usually SLAM uses 2D or 3D LiDaR (which are laser distance meters)
+    it gives you ~20 scans per second in 2d and 3d about where you are
 
-It tries to figure out which elements of the image are the same elements as it has seen before and
-based on their movement, it figures out how much it has moved.
+  - don't buy wholesale popular narratives "Lidar is an expensive crutch. Humans can navigate from vision perfectly well".
+    it is partially true, but the sitation is dynamic.
+    LidarS are becoming cheaper at an exponential pace. Cameras have their own complexities and blindspots.
+    Cameras can be hard to integrate and surprisingly expensive if you are going for quality.
+    
 
-As it gets away from the keyframe, the shared elements between the keyframes current left eye image
-and past left eye image might get more rare. We have moved on so we see other stuff.
-So we need to make a new keyframe
+In this series of lectures we are going to work to implement a working prototype VSLAM in python based on simulated data.
+
+
+- How does the system work ?
+    - The robot has two cameras.
+    - The robot goes thru env in timesteps and each time we get picture from left eye and right eye.
+    - We could do one of 2 things at the given timestep:
+
+        - Firstly, it uses information from two cameras to estimate depth of the points it sees.
+            - we match up points from left image to points in the right image.
+
+            - we know how far apart are the eyes of the robot, and based on this we could figure out 
+              how far away from us are the things.
+
+            - Then, the robot remembers this information and call this reference frame "keyframe".
+              - so keyframe is a picture from two cameras, where we have estimated depth of points
+              - The special thing about the keyframe is that it has a bunch of 3d points attached to it.
+
+        - Then, as the rsobot moves on, we could compare the new information from left eye
+          in reference keyframe to information that the left eye currently sees.
+
+            - It tries to figure out which elements of the image are the same elements as it has seen before and
+              based on their movement, it figures out how much it has moved.
+
+            - As it gets away from the keyframe, the shared elements between the keyframes current left eye image
+             and past left eye image might get more rare. We have moved on so we see other stuff.
+            So we need to make a new keyframe every now and then
+
+
+
+- What things we will need to understand
+    - Ways to express poses mathematically: out of couple of possibilities, we will choose SO(3) SE(3) 
+    - coordinate systems & coordinate transormations
+      - if this object is at position xyz when measured wrt to left eye, where is it wrt to right eye?
+    - pinhole camera system / equations
+    - rendering
+    - feature matching
+    - depth estimation
+    - gauss newton
+    - 3d pnp via 
+    - putting it together - the actual VSLAM
+
+So this will roughly be the plan for the lectures.
+Generally the lecture was heavily inspired by Intro to VSLAM.
+
+
+Other usual suspects for the literature: 
+  <3 Intro to VSLAM
+  - Probabilistic robotics by Thrun
+
+  - for SE(3), SO(3) there's many:
+    - Barfoot
+    - Naive Lie Theory
+  
+

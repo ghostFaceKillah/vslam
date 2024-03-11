@@ -191,7 +191,7 @@ def _solve_many_points_gauss_newton(verbose: bool = False):
     )
 
     print("Final pose estimate is")
-    print(camera_pose.round(2))
+    print(np.array(camera_pose).round(2))
     print("Ground truth pose is ")
     print(data.camera_pose.round(2))
 
